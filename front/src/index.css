@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom base styles */
+@layer base {
+  html {
+    font-family: 'Cairo Play', 'Roboto', system-ui, sans-serif;
+  }
+  
+  body {
+    @apply antialiased;
+  }
+}
+
+/* Custom component styles */
+@layer components {
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+  }
+  
+  .card {
+    @apply bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20;
+  }
+}
+
+/* Custom utility styles */
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent;
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Safari and Chrome */
+  }
+} 

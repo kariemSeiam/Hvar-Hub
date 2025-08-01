@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background Circle with gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F59E0B" />
+      <stop offset="100%" style="stop-color:#D97706" />
+    </linearGradient>
+    
+    <!-- Soft glow effect -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="blur" in2="SourceGraphic" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Main Circle -->
+  <circle cx="256" cy="256" r="248" fill="url(#bgGradient)" />
+  
+  <!-- Decorative Islamic Pattern Ring -->
+  <path d="M256 16c132.5 0 240 107.5 240 240s-107.5 240-240 240S16 388.5 16 256 123.5 16 256 16"
+        fill="none" stroke="#FCD34D" stroke-width="16" stroke-dasharray="24,12" />
+
+  <!-- Gift Box Base -->
+  <path d="M176 206h160v160H176z" fill="#FEF3C7" />
+  
+  <!-- Gift Box Ribbon -->
+  <path d="M236 206v160M156 246h200" stroke="#F59E0B" stroke-width="40" />
+  
+  <!-- Gift Box Top -->
+  <path d="M156 206h200v40H156z" fill="#F59E0B" />
+  
+  <!-- Heart Design -->
+  <path d="M256 186c-20-40-80-40-80 0 0 40 80 80 80 80s80-40 80-80c0-40-60-40-80 0"
+        fill="#FEF3C7" filter="url(#glow)" />
+  
+  <!-- Islamic Crescent -->
+  <path d="M256 146c-15-30-60-30-60 0 0 30 60 60 60 60s60-30 60-60c0-30-45-30-60 0"
+        fill="#FBBF24" opacity="0.6" />
+</svg>
