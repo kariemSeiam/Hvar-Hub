@@ -219,7 +219,30 @@ def get_recent_scans():
     """Get recent scanned orders"""
     try:
         limit = min(int(request.args.get('limit', 10)), 50)  # Max 50
-        scans = OrderService.get_recent_scans(limit)
+        
+        # Get orders directly from database and transform them
+        orders = Order.query.filter(Order.scanned_at.isnot(None)).order_by(
+            Order.scanned_at.desc()
+        ).limit(limit).all()
+        
+        scans = []
+        for order in orders:
+            # Create scan data with proper structure matching frontend expectations
+            scan_data = {
+                '_id': order.id,
+                'trackingNumber': order.tracking_number,
+                'scannedAt': order.scanned_at.isoformat() if order.scanned_at else None,
+                'status': order.status.value if order.status else None,
+                'receiver': {
+                    'fullName': order.customer_name or 'غير محدد'
+                },
+                'specs': {
+                    'packageDetails': {
+                        'description': order.package_description or ''
+                    }
+                }
+            }
+            scans.append(scan_data)
         
         return jsonify({
             'success': True,
@@ -227,6 +250,9 @@ def get_recent_scans():
         }), 200
         
     except Exception as e:
+        print(f"Error in get_recent_scans API: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'message': f'خطأ في الخادم: {str(e)}'

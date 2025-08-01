@@ -447,7 +447,7 @@ class OrderService:
             for order in orders:
                 print(f"Processing order {order.id}: tracking={order.tracking_number}, customer={order.customer_name}, scanned_at={order.scanned_at}")
                 
-                # Create scan data with proper structure
+                # Create scan data with proper structure matching frontend expectations
                 scan_data = {
                     '_id': order.id,
                     'trackingNumber': order.tracking_number,
