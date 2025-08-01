@@ -8,6 +8,237 @@
 [![Tailwind](https://img.shields.io/badge/Tailwind-3.4.17-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![PWA](https://img.shields.io/badge/PWA-Ready-5A0FC8?style=for-the-badge&logo=pwa)](https://web.dev/progressive-web-apps/)
 
+## 🔄 Complete System Flow
+
+### 📊 **Bosta → HVAR Hub Integration Cycle**
+
+```mermaid
+graph TB
+    %% External Systems
+    BOSTA[Bosta API<br/>📦 Delivery Platform] --> |API Calls| AUTH[Authentication<br/>🔐 JWT Token]
+    
+    %% Frontend Layer
+    USER[👤 User<br/>QR Scanner/Camera] --> |Scan Tracking#| FRONT[React Frontend<br/>📱 PWA Interface]
+    FRONT --> |HTTP Request| BACK[Flask Backend<br/>🔧 API Gateway]
+    
+    %% Backend Processing
+    BACK --> |API Call| BOSTA_SERVICE[Bosta Service<br/>🔄 Data Integration]
+    BOSTA_SERVICE --> |Fetch Data| BOSTA
+    
+    %% Data Processing
+    BOSTA_SERVICE --> |Transform| TRANSFORM[Data Transformer<br/>🔄 Format Conversion]
+    TRANSFORM --> |Store| DB[(SQLite Database<br/>🗄️ Local Storage)]
+    
+    %% Order Management
+    DB --> |Query| ORDER_SERVICE[Order Service<br/>📋 Business Logic]
+    ORDER_SERVICE --> |Update| MAINTENANCE[Maintenance History<br/>📈 Status Tracking]
+    
+    %% Real-time Updates
+    MAINTENANCE --> |Notify| FRONT
+    FRONT --> |Display| UI[User Interface<br/>🎨 RTL Components]
+    
+    %% Performance & Caching
+    FRONT --> |Cache| PWA[Progressive Web App<br/>📱 Offline Support]
+    PWA --> |Service Worker| CACHE[Intelligent Caching<br/>⚡ Performance]
+    
+    %% Monitoring & Analytics
+    BACK --> |Log| MONITOR[Performance Monitoring<br/>📊 Analytics]
+    MONITOR --> |Metrics| ANALYTICS[Business Intelligence<br/>📈 Insights]
+    
+    %% Security Layer
+    AUTH --> |Validate| SECURITY[Security Layer<br/>🛡️ CORS & Validation]
+    SECURITY --> |Protect| BACK
+    
+    %% Styling
+    classDef external fill:#ff9999,stroke:#333,stroke-width:2px
+    classDef frontend fill:#99ccff,stroke:#333,stroke-width:2px
+    classDef backend fill:#99ff99,stroke:#333,stroke-width:2px
+    classDef database fill:#ffcc99,stroke:#333,stroke-width:2px
+    classDef service fill:#cc99ff,stroke:#333,stroke-width:2px
+    
+    class BOSTA,AUTH external
+    class USER,FRONT,UI,PWA,CACHE frontend
+    class BACK,SECURITY,TRANSFORM,ORDER_SERVICE,MAINTENANCE,MONITOR,ANALYTICS backend
+    class DB database
+    class BOSTA_SERVICE service
+```
+
+### 🔄 **Detailed Data Flow Cycle**
+
+```mermaid
+sequenceDiagram
+    participant U as 👤 User
+    participant F as 📱 Frontend
+    participant B as 🔧 Backend
+    participant BS as 🔄 Bosta Service
+    participant BO as 📦 Bosta API
+    participant DB as 🗄️ Database
+    participant UI as 🎨 UI Components
+
+    %% Initial Scan
+    U->>F: Scan QR Code
+    F->>B: POST /api/orders/scan
+    B->>BS: Fetch Order Data
+    BS->>BO: GET /deliveries/business/{tracking}
+    
+    %% Data Processing
+    BO-->>BS: Return Order Data
+    BS->>BS: Transform Bosta Format
+    BS-->>B: Transformed Order Data
+    B->>DB: Store/Update Order
+    DB-->>B: Confirmation
+    
+    %% Response & UI Update
+    B-->>F: Order Data + Status
+    F->>UI: Update Order Card
+    UI-->>U: Display Order Info
+    
+    %% User Actions
+    U->>F: Perform Action (Update Status)
+    F->>B: PUT /api/orders/{id}/action
+    B->>DB: Update Maintenance History
+    DB-->>B: Updated Data
+    B-->>F: Success Response
+    F->>UI: Refresh Order Display
+    UI-->>U: Show Updated Status
+    
+    %% Real-time Features
+    F->>F: Service Worker Cache
+    F->>F: Offline Support
+    F->>F: PWA Features
+```
+
+### 🏗️ **System Architecture Flow**
+
+```mermaid
+graph LR
+    subgraph "🌐 External Systems"
+        BOSTA[Bosta API<br/>📦 Delivery Platform]
+        AUTH[JWT Authentication<br/>🔐 Secure Access]
+    end
+    
+    subgraph "📱 Frontend Layer"
+        REACT[React 18<br/>⚛️ Component Library]
+        VITE[Vite Build<br/>🚀 Fast Development]
+        TAILWIND[Tailwind CSS<br/>🎨 Styling System]
+        PWA[Progressive Web App<br/>📱 Native Experience]
+    end
+    
+    subgraph "🔧 Backend Layer"
+        FLASK[Flask Framework<br/>🐍 Python Backend]
+        SQLALCHEMY[SQLAlchemy<br/>🗄️ ORM Layer]
+        CORS[CORS Configuration<br/>🛡️ Security]
+    end
+    
+    subgraph "🗄️ Data Layer"
+        SQLITE[SQLite Database<br/>💾 Local Storage]
+        MODELS[Data Models<br/>📋 Order & History]
+        AUTO_INIT[Auto-initialization<br/>🔄 Smart Setup]
+    end
+    
+    subgraph "🔄 Integration Layer"
+        BOSTA_SERVICE[Bosta Service<br/>🔄 API Integration]
+        TRANSFORM[Data Transformer<br/>🔄 Format Conversion]
+        ORDER_SERVICE[Order Service<br/>📋 Business Logic]
+    end
+    
+    subgraph "📊 Monitoring Layer"
+        PERFORMANCE[Performance Monitoring<br/>⚡ Optimization]
+        ANALYTICS[Business Analytics<br/>📈 Insights]
+        ERROR_TRACKING[Error Tracking<br/>🐛 Debugging]
+    end
+    
+    %% Connections
+    BOSTA --> BOSTA_SERVICE
+    AUTH --> FLASK
+    REACT --> FLASK
+    VITE --> REACT
+    TAILWIND --> REACT
+    PWA --> REACT
+    FLASK --> SQLALCHEMY
+    SQLALCHEMY --> SQLITE
+    MODELS --> SQLITE
+    AUTO_INIT --> SQLITE
+    BOSTA_SERVICE --> TRANSFORM
+    TRANSFORM --> ORDER_SERVICE
+    ORDER_SERVICE --> MODELS
+    FLASK --> PERFORMANCE
+    PERFORMANCE --> ANALYTICS
+    ANALYTICS --> ERROR_TRACKING
+    
+    %% Styling
+    classDef external fill:#ff9999,stroke:#333,stroke-width:2px
+    classDef frontend fill:#99ccff,stroke:#333,stroke-width:2px
+    classDef backend fill:#99ff99,stroke:#333,stroke-width:2px
+    classDef data fill:#ffcc99,stroke:#333,stroke-width:2px
+    classDef integration fill:#cc99ff,stroke:#333,stroke-width:2px
+    classDef monitoring fill:#99ffff,stroke:#333,stroke-width:2px
+    
+    class BOSTA,AUTH external
+    class REACT,VITE,TAILWIND,PWA frontend
+    class FLASK,SQLALCHEMY,CORS backend
+    class SQLITE,MODELS,AUTO_INIT data
+    class BOSTA_SERVICE,TRANSFORM,ORDER_SERVICE integration
+    class PERFORMANCE,ANALYTICS,ERROR_TRACKING monitoring
+```
+
+### 🎯 **Order Processing Cycle**
+
+```mermaid
+flowchart TD
+    START([🎯 Start Order Processing]) --> SCAN{📱 Scan QR Code}
+    
+    SCAN -->|Valid Tracking#| FETCH[🔄 Fetch from Bosta API]
+    SCAN -->|Invalid| ERROR[❌ Invalid Tracking Number]
+    
+    FETCH -->|Success| TRANSFORM[🔄 Transform Data Format]
+    FETCH -->|Failed| BOSTA_ERROR[❌ Bosta API Error]
+    
+    TRANSFORM --> VALIDATE{🔍 Validate Order Data}
+    VALIDATE -->|Valid| STORE[💾 Store in Database]
+    VALIDATE -->|Invalid| DATA_ERROR[❌ Data Validation Error]
+    
+    STORE -->|Success| CREATE_HISTORY[📈 Create Maintenance History]
+    STORE -->|Failed| DB_ERROR[❌ Database Error]
+    
+    CREATE_HISTORY --> UPDATE_UI[🎨 Update User Interface]
+    UPDATE_UI --> DISPLAY[📱 Display Order Card]
+    
+    DISPLAY --> USER_ACTION{👤 User Action?}
+    USER_ACTION -->|Update Status| PERFORM_ACTION[⚡ Perform Order Action]
+    USER_ACTION -->|View Details| SHOW_DETAILS[📋 Show Order Details]
+    USER_ACTION -->|No Action| WAIT[⏳ Wait for Action]
+    
+    PERFORM_ACTION --> UPDATE_DB[💾 Update Database]
+    UPDATE_DB --> UPDATE_HISTORY[📈 Update Maintenance History]
+    UPDATE_HISTORY --> REFRESH_UI[🔄 Refresh UI]
+    REFRESH_UI --> DISPLAY
+    
+    SHOW_DETAILS --> DISPLAY
+    WAIT --> USER_ACTION
+    
+    %% Error Handling
+    ERROR --> RETRY{🔄 Retry?}
+    BOSTA_ERROR --> RETRY
+    DATA_ERROR --> RETRY
+    DB_ERROR --> RETRY
+    
+    RETRY -->|Yes| SCAN
+    RETRY -->|No| END([🏁 End Process])
+    
+    %% Styling
+    classDef start fill:#99ff99,stroke:#333,stroke-width:3px
+    classDef process fill:#99ccff,stroke:#333,stroke-width:2px
+    classDef decision fill:#ffcc99,stroke:#333,stroke-width:2px
+    classDef error fill:#ff9999,stroke:#333,stroke-width:2px
+    classDef end fill:#ff99cc,stroke:#333,stroke-width:3px
+    
+    class START,END start
+    class FETCH,TRANSFORM,STORE,CREATE_HISTORY,UPDATE_UI,DISPLAY,PERFORM_ACTION,UPDATE_DB,UPDATE_HISTORY,REFRESH_UI,SHOW_DETAILS process
+    class SCAN,VALIDATE,USER_ACTION,RETRY decision
+    class ERROR,BOSTA_ERROR,DATA_ERROR,DB_ERROR error
+```
+
 ## ✨ Core Features
 
 ### 🎯 **Order Management**
@@ -427,8 +658,6 @@ doctl apps create --spec app.yaml
 - Database optimization with query and index tuning
 - Multi-layer caching strategy
 - Continuous performance monitoring
-
-
 
 ## 📞 Support & Community
 
