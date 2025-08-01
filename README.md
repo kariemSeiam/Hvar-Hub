@@ -49,12 +49,12 @@ graph TB
     AUTH --> |Validate| SECURITY[Security Layer<br/>🛡️ CORS & Validation]
     SECURITY --> |Protect| BACK
     
-    %% Styling
-    classDef external fill:#ff9999,stroke:#333,stroke-width:2px
-    classDef frontend fill:#99ccff,stroke:#333,stroke-width:2px
-    classDef backend fill:#99ff99,stroke:#333,stroke-width:2px
-    classDef database fill:#ffcc99,stroke:#333,stroke-width:2px
-    classDef service fill:#cc99ff,stroke:#333,stroke-width:2px
+    %% Styling with transparent backgrounds
+    classDef external fill:#ffe6e6,stroke:#333,stroke-width:1px
+    classDef frontend fill:#e6f3ff,stroke:#333,stroke-width:1px
+    classDef backend fill:#e6ffe6,stroke:#333,stroke-width:1px
+    classDef database fill:#fff2e6,stroke:#333,stroke-width:1px
+    classDef service fill:#f0e6ff,stroke:#333,stroke-width:1px
     
     class BOSTA,AUTH external
     class USER,FRONT,UI,PWA,CACHE frontend
@@ -166,13 +166,13 @@ graph LR
     PERFORMANCE --> ANALYTICS
     ANALYTICS --> ERROR_TRACKING
     
-    %% Styling
-    classDef external fill:#ff9999,stroke:#333,stroke-width:2px
-    classDef frontend fill:#99ccff,stroke:#333,stroke-width:2px
-    classDef backend fill:#99ff99,stroke:#333,stroke-width:2px
-    classDef data fill:#ffcc99,stroke:#333,stroke-width:2px
-    classDef integration fill:#cc99ff,stroke:#333,stroke-width:2px
-    classDef monitoring fill:#99ffff,stroke:#333,stroke-width:2px
+    %% Styling with transparent backgrounds
+    classDef external fill:#ffe6e6,stroke:#333,stroke-width:1px
+    classDef frontend fill:#e6f3ff,stroke:#333,stroke-width:1px
+    classDef backend fill:#e6ffe6,stroke:#333,stroke-width:1px
+    classDef data fill:#fff2e6,stroke:#333,stroke-width:1px
+    classDef integration fill:#f0e6ff,stroke:#333,stroke-width:1px
+    classDef monitoring fill:#e6ffff,stroke:#333,stroke-width:1px
     
     class BOSTA,AUTH external
     class REACT,VITE,TAILWIND,PWA frontend
@@ -226,12 +226,12 @@ flowchart TD
     RETRY -->|Yes| SCAN
     RETRY -->|No| END([🏁 End Process])
     
-    %% Styling
-    classDef start fill:#99ff99,stroke:#333,stroke-width:3px
-    classDef process fill:#99ccff,stroke:#333,stroke-width:2px
-    classDef decision fill:#ffcc99,stroke:#333,stroke-width:2px
-    classDef error fill:#ff9999,stroke:#333,stroke-width:2px
-    classDef end fill:#ff99cc,stroke:#333,stroke-width:3px
+    %% Styling with transparent backgrounds
+    classDef start fill:#e6ffe6,stroke:#333,stroke-width:2px
+    classDef process fill:#e6f3ff,stroke:#333,stroke-width:1px
+    classDef decision fill:#fff2e6,stroke:#333,stroke-width:1px
+    classDef error fill:#ffe6e6,stroke:#333,stroke-width:1px
+    classDef end fill:#ffe6f2,stroke:#333,stroke-width:2px
     
     class START,END start
     class FETCH,TRANSFORM,STORE,CREATE_HISTORY,UPDATE_UI,DISPLAY,PERFORM_ACTION,UPDATE_DB,UPDATE_HISTORY,REFRESH_UI,SHOW_DETAILS process
