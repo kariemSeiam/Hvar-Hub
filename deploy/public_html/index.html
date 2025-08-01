@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/assets/icon-CPDH7UB9.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary Meta Tags -->
+    <title>HVAR Hub | مركز هفار</title>
+    <meta name="title" content="HVAR Hub | مركز هفار" />
+    <meta name="description" content="نظام متقدم لإدارة المسح والفحص في المراكز. واجهة عربية حديثة مع دعم كامل للـ RTL." />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://hvar-hub.com/" />
+    <meta property="og:title" content="HVAR Hub | مركز هفار" />
+    <meta property="og:description" content="نظام متقدم لإدارة المسح والفحص في المراكز. واجهة عربية حديثة مع دعم كامل للـ RTL." />
+    <meta property="og:image" content="https://hvar-hub.com/preview.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://hvar-hub.com/" />
+    <meta property="twitter:title" content="HVAR Hub | مركز هفار" />
+    <meta property="twitter:description" content="نظام متقدم لإدارة المسح والفحص في المراكز. واجهة عربية حديثة مع دعم كامل للـ RTL." />
+    <meta property="twitter:image" content="https://hvar-hub.com/preview.png" />
+
+    <!-- Additional SEO Meta Tags -->
+    <meta name="keywords" content="HVAR Hub, مركز هفار, نظام المسح, فحص المنتجات, واجهة عربية, RTL, Arabic UI, scanning system" />
+    <meta name="robots" content="index, follow" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="language" content="Arabic" />
+    <meta name="revisit-after" content="3 days" />
+    <meta name="author" content="HVAR Team" />
+
+    <!-- Application Meta Tags -->
+    <meta name="application-name" content="HVAR Hub" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="HVAR Hub" />
+
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icon-192x192.png" />
+    <link rel="mask-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj4NCiAgPCEtLSBCYWNrZ3JvdW5kIENpcmNsZSB3aXRoIGdyYWRpZW50IC0tPg0KICA8ZGVmcz4NCiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnR3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPg0KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6I0VGNDQ0NCIgLz4NCiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6I0RDMjYyNiIgLz4NCiAgICA8L2xpbmVhckdyYWRpZW50Pg0KICAgIA0KICAgIDwhLS0gU29mdCBnbG93IGVmZmVjdCAtLT4NCiAgICA8ZmlsdGVyIGlkPSJnbG93Ij4NCiAgICAgIDxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjMiIHJlc3VsdD0iYmx1ciIgLz4NCiAgICAgIDxmZUNvbXBvc2l0ZSBpbj0iYmx1ciIgaW4yPSJTb3VyY2VHcmFwaGljIiBvcGVyYXRvcj0ib3ZlciIgLz4NCiAgICA8L2ZpbHRlcj4NCiAgICANCiAgICA8IS0tIElubmVyIGdsb3cgLS0+DQogICAgPGZpbHRlciBpZD0iaW5uZXJHbG93Ij4NCiAgICAgIDxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjIiIHJlc3VsdD0iYmx1ciIgLz4NCiAgICAgIDxmZUNvbXBvc2l0ZSBpbj0iYmx1ciIgaW4yPSJTb3VyY2VHcmFwaGljIiBvcGVyYXRvcj0iYXRvcCIgLz4NCiAgICA8L2ZpbHRlcj4NCiAgPC9kZWZzPg0KDQogIDwhLS0gTWFpbiBDaXJjbGUgLS0+DQogIDxjaXJjbGUgY3g9IjI1NiIgY3k9IjI1NiIgcj0iMjQ4IiBmaWxsPSJ1cmwoI2JnR3JhZGllbnQpIiAvPg0KICANCiAgPCEtLSBEZWNvcmF0aXZlIFJpbmcgLS0+DQogIDxwYXRoIGQ9Ik0yNTYgMTZjMTMyLjUgMCAyNDAgMTA3LjUgMjQwIDI0MHMtMTA3LjUgMjQwLTI0MCAyNDBTMTYgMzg4LjUgMTYgMjU2IDEyMy41IDE2IDI1NiAxNiINCiAgICAgICAgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjRkNBNUE1IiBzdHJva2Utd2lkdGg9IjgiIHN0cm9rZS1kYXNoYXJyYXk9IjE2LDgiIC8+DQoNCiAgPCEtLSBIVkFSIExldHRlcnMgLS0+DQogIDx0ZXh0IHg9IjI1NiIgeT0iMjAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iODAiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSJ3aGl0ZSI+SDwvdGV4dD4NCiAgPHRleHQgeD0iMjU2IiB5PSIyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI4MCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIj5WPC90ZXh0Pg0KICA8dGV4dCB4PSIyNTYiIHk9IjM2MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjgwIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiPkFSPC90ZXh0Pg0KICANCiAgPCEtLSBUZWNobm9sb2d5IENpcmN1aXQgTGluZXMgLS0+DQogIDxwYXRoIGQ9Ik0xMjAgMTIwIEwyMDAgMTIwIE0zMTIgMTIwIEwzOTIgMTIwIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIG9wYWNpdHk9IjAuNiIgLz4NCiAgPHBhdGggZD0iTTEyMCAzOTIgTDIwMCAzOTIgTTMxMiAzOTIgTDM5MiAzOTIiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMyIgb3BhY2l0eT0iMC42IiAvPg0KICA8cGF0aCBkPSJNMTIwIDEyMCBMMTIwIDIwMCBNMzkyIDEyMCBMMzkyIDIwMCIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjYiIC8+DQogIDxwYXRoIGQ9Ik0xMjAgMzEyIEwxMjAgMzkyIE0zOTIgMzEyIEwzOTIgMzkyIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIG9wYWNpdHk9IjAuNiIgLz4NCiAgDQogIDwhLS0gQ29ubmVjdGlvbiBEb3RzIC0tPg0KICA8Y2lyY2xlIGN4PSIyMDAiIGN5PSIxMjAiIHI9IjQiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjgiIC8+DQogIDxjaXJjbGUgY3g9IjMxMiIgY3k9IjEyMCIgcj0iNCIgZmlsbD0id2hpdGUiIG9wYWNpdHk9IjAuOCIgLz4NCiAgPGNpcmNsZSBjeD0iMjAwIiBjeT0iMzkyIiByPSI0IiBmaWxsPSJ3aGl0ZSIgb3BhY2l0eT0iMC44IiAvPg0KICA8Y2lyY2xlIGN4PSIzMTIiIGN5PSIzOTIiIHI9IjQiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjgiIC8+DQogIDxjaXJjbGUgY3g9IjEyMCIgY3k9IjIwMCIgcj0iNCIgZmlsbD0id2hpdGUiIG9wYWNpdHk9IjAuOCIgLz4NCiAgPGNpcmNsZSBjeD0iMzkyIiBjeT0iMjAwIiByPSI0IiBmaWxsPSJ3aGl0ZSIgb3BhY2l0eT0iMC44IiAvPg0KICA8Y2lyY2xlIGN4PSIxMjAiIGN5PSIzMTIiIHI9IjQiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjgiIC8+DQogIDxjaXJjbGUgY3g9IjM5MiIgY3k9IjMxMiIgcj0iNCIgZmlsbD0id2hpdGUiIG9wYWNpdHk9IjAuOCIgLz4NCjwvc3ZnPg==" color="#F43F5E" />
+    
+    <!-- PWA Installation Prompt -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="HVAR Hub" />
+    
+    <!-- MASTERPIECE CAMERA PERMISSIONS - Universal Device Support -->
+    <!-- Primary Camera Meta Tags -->
+    <meta name="camera" content="required" />
+    <meta name="microphone" content="optional" />
+    
+    <!-- iOS Safari Specific -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-touch-fullscreen" content="yes" />
+    
+    <!-- Android Chrome Specific -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="screen-orientation" content="portrait" />
+    
+    <!-- Camera API Support Declarations -->
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <!-- Modern Browser Camera Support -->
+    <meta http-equiv="Feature-Policy" content="camera 'self'; microphone 'self'" />
+    <meta http-equiv="Permissions-Policy" content="camera=self, microphone=self" />
+    
+    <!-- Legacy Support -->
+    <meta name="HandheldFriendly" content="true" />
+    <meta name="MobileOptimized" content="320" />
+    
+    <!-- WebRTC and MediaDevices Support -->
+    <meta name="webrtc" content="enabled" />
+    <meta name="getUserMedia" content="enabled" />
+    
+    <!-- Cross-Origin Camera Access -->
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
+    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin" />
+
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#F43F5E" />
+    <meta name="msapplication-TileColor" content="#F43F5E" />
+
+    <!-- Fonts - Optimized for Arabic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo+Play:wght@300;400;500;600;700;800&family=Cairo:wght@200;300;400;500;600;700;800;900&family=Tajawal:wght@200;300;400;500;700;800;900&family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Arabic Font Optimization -->
+    <style>
+      /* Font loading optimization for Arabic */
+      @font-face {
+        font-family: 'Cairo Play';
+        font-display: swap;
+        font-weight: 400;
+        src: url('https://fonts.googleapis.com/css2?family=Cairo+Play:wght@400&display=swap');
+      }
+      
+      /* RTL optimization */
+      html[dir="rtl"] {
+        text-align: right;
+      }
+      
+      /* Arabic text optimization */
+      .arabic-text {
+        font-family: 'Cairo Play', 'Cairo', sans-serif;
+        text-align: right;
+        direction: rtl;
+      }
+      
+      /* Numbers in LTR */
+      .arabic-number {
+        font-family: 'Roboto', sans-serif;
+        direction: ltr;
+        unicode-bidi: embed;
+      }
+      
+      /* Loading animation */
+      .loading-pulse {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      
+      @keyframes pulse {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: .5;
+        }
+      }
+      
+      /* CAMERA OPTIMIZATION STYLES */
+      /* Video element optimizations */
+      video {
+        transform: translate3d(0, 0, 0);
+        backface-visibility: hidden;
+        perspective: 1000;
+        will-change: transform;
+      }
+      
+      /* Camera permission states */
+      .camera-granted {
+        --camera-status: #10b981;
+        --camera-bg: rgba(16, 185, 129, 0.1);
+      }
+      
+      .camera-denied {
+        --camera-status: #ef4444;
+        --camera-bg: rgba(239, 68, 68, 0.1);
+      }
+      
+      .camera-pending {
+        --camera-status: #f59e0b;
+        --camera-bg: rgba(245, 158, 11, 0.1);
+      }
+      
+      /* Camera UI animations */
+      .camera-scan-line {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #10b981, transparent);
+        animation: camera-scan 2s linear infinite;
+      }
+      
+      @keyframes camera-scan {
+        0% { transform: translateY(0); opacity: 1; }
+        100% { transform: translateY(400px); opacity: 0; }
+      }
+      
+      /* Mobile camera optimizations */
+      @media (max-width: 768px) {
+        video {
+          transform: translate3d(0, 0, 0) scale(1.001);
+        }
+      }
+      
+      /* iOS specific camera fixes */
+      @supports (-webkit-touch-callout: none) {
+        video {
+          -webkit-playsinline: true;
+          -webkit-user-select: none;
+          -moz-user-select: none;
+               user-select: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+      }
+      
+      /* Android specific camera fixes */
+      @media screen and (-webkit-min-device-pixel-ratio: 0) {
+        video::-webkit-media-controls {
+          display: none !important;
+        }
+        
+        video::-webkit-media-controls-enclosure {
+          display: none !important;
+        }
+      }
+      
+      /* High DPI camera optimization */
+      @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+        video {
+          image-rendering: optimizeQuality;
+          -webkit-image-rendering: optimizeQuality;
+        }
+      }
+      
+      /* Camera permission indicator */
+      .camera-status-indicator {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--camera-status, #6b7280);
+        z-index: 9999;
+        animation: pulse 1s ease-in-out infinite;
+      }
+      
+      /* Reduce motion for accessibility */
+      @media (prefers-reduced-motion: reduce) {
+        .camera-scan-line,
+        .camera-status-indicator {
+          animation: none;
+        }
+      }
+    </style>
+
+    <script>
+      (function() {
+        'use strict';
+        
+        console.log('🚀 HVAR Camera Initializing...');
+        
+        // Device Detection
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        const isChrome = /Chrome/i.test(navigator.userAgent);
+        const isFirefox = /Firefox/i.test(navigator.userAgent);
+        const isEdge = /Edge/i.test(navigator.userAgent);
+        const isSamsungBrowser = /SamsungBrowser/i.test(navigator.userAgent);
+        
+        // Browser Version Detection
+        const getIOSVersion = () => {
+          const match = navigator.userAgent.match(/OS (\d+)_(\d+)/);
+          return match ? parseFloat(match[1] + '.' + match[2]) : 0;
+        };
+        
+        const getAndroidVersion = () => {
+          const match = navigator.userAgent.match(/Android (\d+\.?\d*)/);
+          return match ? parseFloat(match[1]) : 0;
+        };
+        
+        const getChromeVersion = () => {
+          const match = navigator.userAgent.match(/Chrome\/(\d+)/);
+          return match ? parseInt(match[1]) : 0;
+        };
+        
+        const deviceInfo = {
+          isMobile,
+          isIOS,
+          isAndroid,
+          isSafari,
+          isChrome,
+          isFirefox,
+          isEdge,
+          isSamsungBrowser,
+          iosVersion: isIOS ? getIOSVersion() : 0,
+          androidVersion: isAndroid ? getAndroidVersion() : 0,
+          chromeVersion: isChrome ? getChromeVersion() : 0
+        };
+        
+        console.log('📱 Device Info:', deviceInfo);
+        
+        // Global Camera State
+        window.HVARCameraState = {
+          isInitialized: false,
+          hasPermission: false,
+          stream: null,
+          error: null,
+          devices: [],
+          constraints: null
+        };
+        
+        // Universal Permission Request Function
+        window.HVARRequestCameraPermission = async function() {
+          console.log('🎬 Requesting camera permission...');
+          
+          try {
+            // Method 1: Modern getUserMedia with optimal constraints
+            const constraints = getOptimalConstraints();
+            console.log('📋 Using constraints:', constraints);
+            
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            if (stream) {
+              console.log('✅ Camera permission granted!');
+              window.HVARCameraState.hasPermission = true;
+              window.HVARCameraState.stream = stream;
+              window.HVARCameraState.constraints = constraints;
+              
+              // Get available devices
+              try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                window.HVARCameraState.devices = devices.filter(device => device.kind === 'videoinput');
+                console.log('📹 Available cameras:', window.HVARCameraState.devices.length);
+              } catch (e) {
+                console.warn('⚠️ Could not enumerate devices:', e);
+              }
+              
+              return { success: true, stream, constraints };
+            }
+            
+          } catch (error) {
+            console.error('❌ Camera permission error:', error);
+            window.HVARCameraState.error = error;
+            
+            // Try fallback methods
+            return await tryFallbackMethods(error);
+          }
+        };
+        
+        // Get Optimal Constraints for Device
+        function getOptimalConstraints() {
+          let constraints = { video: true, audio: false };
+          
+          // iOS Specific Optimizations
+          if (isIOS) {
+            constraints.video = {
+              facingMode: 'environment',
+              width: { ideal: 1280, min: 640, max: 1920 },
+              height: { ideal: 720, min: 480, max: 1080 },
+              frameRate: { ideal: 30, min: 15, max: 60 }
+            };
+            
+            // iOS 14+ specific
+            if (deviceInfo.iosVersion >= 14) {
+              constraints.video.advanced = [
+                { focusMode: 'continuous' },
+                { exposureMode: 'continuous' },
+                { whiteBalanceMode: 'continuous' }
+              ];
+            }
+            
+            // iOS 15+ enhanced features
+            if (deviceInfo.iosVersion >= 15) {
+              constraints.video.torch = false;
+              constraints.video.zoom = { ideal: 1 };
+            }
+          }
+          
+          // Android Specific Optimizations
+          else if (isAndroid) {
+            constraints.video = {
+              facingMode: { ideal: 'environment' },
+              width: { ideal: 1280, min: 640, max: 1920 },
+              height: { ideal: 720, min: 480, max: 1080 },
+              frameRate: { ideal: 30, min: 20, max: 60 }
+            };
+            
+            // Android 10+ specific
+            if (deviceInfo.androidVersion >= 10) {
+              constraints.video.advanced = [
+                { focusMode: 'continuous' },
+                { exposureMode: 'continuous' }
+              ];
+            }
+            
+            // Samsung Browser optimizations
+            if (isSamsungBrowser) {
+              constraints.video.frameRate = { ideal: 25, min: 15, max: 30 };
+            }
+          }
+          
+          // Desktop Browser Optimizations
+          else {
+            constraints.video = {
+              facingMode: 'environment',
+              width: { ideal: 1920, min: 1280, max: 3840 },
+              height: { ideal: 1080, min: 720, max: 2160 },
+              frameRate: { ideal: 60, min: 30, max: 120 }
+            };
+            
+            // Chrome specific
+            if (isChrome && deviceInfo.chromeVersion >= 90) {
+              constraints.video.advanced = [
+                { focusMode: 'continuous' },
+                { exposureMode: 'continuous' },
+                { whiteBalanceMode: 'continuous' },
+                { torch: false }
+              ];
+            }
+          }
+          
+          return constraints;
+        }
+        
+        // Fallback Methods for Maximum Compatibility
+        async function tryFallbackMethods(originalError) {
+          console.log('🔄 Trying fallback methods...');
+          
+          const fallbacks = [
+            // Fallback 1: Simple video only
+            { video: true },
+            
+            // Fallback 2: Basic constraints
+            { 
+              video: { 
+                facingMode: 'environment',
+                width: 640,
+                height: 480
+              }
+            },
+            
+            // Fallback 3: No facing mode
+            { 
+              video: { 
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+              }
+            },
+            
+            // Fallback 4: Minimal constraints
+            { 
+              video: { 
+                width: 320,
+                height: 240
+              }
+            },
+            
+            // Fallback 5: Any video
+            { video: {} }
+          ];
+          
+          for (let i = 0; i < fallbacks.length; i++) {
+            try {
+              console.log(`🔄 Trying fallback ${i + 1}:`, fallbacks[i]);
+              const stream = await navigator.mediaDevices.getUserMedia(fallbacks[i]);
+              
+              if (stream) {
+                console.log(`✅ Fallback ${i + 1} successful!`);
+                window.HVARCameraState.hasPermission = true;
+                window.HVARCameraState.stream = stream;
+                window.HVARCameraState.constraints = fallbacks[i];
+                return { success: true, stream, constraints: fallbacks[i], fallback: i + 1 };
+              }
+            } catch (e) {
+              console.warn(`⚠️ Fallback ${i + 1} failed:`, e);
+            }
+          }
+          
+          // Ultimate fallback: Legacy API
+          try {
+            console.log('🔄 Trying legacy getUserMedia...');
+            const legacyGetUserMedia = navigator.getUserMedia || 
+                                     navigator.webkitGetUserMedia || 
+                                     navigator.mozGetUserMedia || 
+                                     navigator.msGetUserMedia;
+            
+            if (legacyGetUserMedia) {
+              return new Promise((resolve) => {
+                legacyGetUserMedia.call(navigator, 
+                  { video: true }, 
+                  (stream) => {
+                    console.log('✅ Legacy getUserMedia successful!');
+                    window.HVARCameraState.hasPermission = true;
+                    window.HVARCameraState.stream = stream;
+                    resolve({ success: true, stream, legacy: true });
+                  },
+                  (error) => {
+                    console.error('❌ Legacy getUserMedia failed:', error);
+                    resolve({ success: false, error: originalError });
+                  }
+                );
+              });
+            }
+          } catch (e) {
+            console.error('❌ Legacy fallback failed:', e);
+          }
+          
+          return { success: false, error: originalError };
+        }
+        
+        // Initialize on load
+        window.HVARInitializeCamera = function() {
+          console.log('🚀 Initializing HVAR Camera System...');
+          
+          // Check for getUserMedia support
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            console.error('❌ getUserMedia not supported');
+            
+            // Try polyfill
+            if (navigator.getUserMedia || navigator.webkitGetUserMedia || 
+                navigator.mozGetUserMedia || navigator.msGetUserMedia) {
+              console.log('📱 Using legacy getUserMedia polyfill');
+              
+              navigator.mediaDevices = navigator.mediaDevices || {};
+              navigator.mediaDevices.getUserMedia = function(constraints) {
+                const getUserMedia = navigator.getUserMedia || 
+                                   navigator.webkitGetUserMedia || 
+                                   navigator.mozGetUserMedia || 
+                                   navigator.msGetUserMedia;
+                
+                return new Promise((resolve, reject) => {
+                  getUserMedia.call(navigator, constraints, resolve, reject);
+                });
+              };
+            } else {
+              window.HVARCameraState.error = new Error('Camera not supported on this device');
+              return false;
+            }
+          }
+          
+          // Pre-load camera permissions if secure context
+          if (location.protocol === 'https:' || location.hostname === 'localhost') {
+            console.log('🔒 Secure context detected, pre-checking permissions...');
+            
+            // Check permissions API
+            if (navigator.permissions) {
+              navigator.permissions.query({ name: 'camera' }).then(result => {
+                console.log('📋 Camera permission status:', result.state);
+                
+                if (result.state === 'granted') {
+                  window.HVARCameraState.hasPermission = true;
+                }
+                
+                result.addEventListener('change', () => {
+                  console.log('📋 Camera permission changed to:', result.state);
+                  window.HVARCameraState.hasPermission = result.state === 'granted';
+                });
+              }).catch(e => {
+                console.warn('⚠️ Permissions API not fully supported:', e);
+              });
+            }
+          } else {
+            console.warn('⚠️ Not in secure context, camera may not work properly');
+          }
+          
+          window.HVARCameraState.isInitialized = true;
+          console.log('✅ HVAR Camera System initialized!');
+          return true;
+        };
+        
+        // Auto-initialize when DOM is ready
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', window.HVARInitializeCamera);
+        } else {
+          window.HVARInitializeCamera();
+        }
+        
+        // Global error handler for camera issues
+        window.addEventListener('unhandledrejection', function(event) {
+          if (event.reason && event.reason.name && 
+              (event.reason.name.includes('NotAllowed') || 
+               event.reason.name.includes('Permission') ||
+               event.reason.name.includes('NotFound'))) {
+            console.error('🚨 Camera permission error caught globally:', event.reason);
+            window.HVARCameraState.error = event.reason;
+          }
+        });
+        
+        console.log('🎉 HVAR Camera Masterpiece loaded! Ready for ANY device! 🎉');
+        
+      })();
+    </script>
+
+    <script type="module" crossorigin src="/assets/index-C6KfzF9z.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-D_QXTwu-.js">
+    <link rel="modulepreload" crossorigin href="/assets/ui-Cl6mzRtC.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-CPzxvUFk.css">
+  </head>
+  <body class="arabic-text">
+    <div id="root"></div>
+    
+    <!-- ENHANCED CAMERA FEATURES & PWA INTEGRATION -->
+    <script>
+      // 🚀 Enhanced Camera Features for PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+              
+              // Register for camera permission events
+              if (registration.active) {
+                registration.active.postMessage({
+                  type: 'CAMERA_PERMISSION_READY',
+                  cameraState: window.HVARCameraState || {}
+                });
+              }
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+      
+      // 📱 PWA Install Handler with Camera Permission
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        console.log('🔥 PWA install prompt available');
+        e.preventDefault();
+        deferredPrompt = e;
+        
+        // Auto-trigger camera permission when PWA is installable
+        if (window.HVARRequestCameraPermission) {
+          setTimeout(() => {
+            console.log('🎬 Auto-requesting camera permission for PWA...');
+            window.HVARRequestCameraPermission().then(result => {
+              console.log('🎬 PWA camera permission result:', result);
+            }).catch(e => {
+              console.warn('⚠️ PWA camera permission failed:', e);
+            });
+          }, 2000);
+        }
+      });
+      
+      // 🔄 Visibility Change Handler for Camera
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && window.HVARCameraState) {
+          console.log('📱 App became visible, checking camera state...');
+          
+          // Re-check camera permission when app becomes visible
+          if (navigator.permissions && window.HVARCameraState.isInitialized) {
+            navigator.permissions.query({ name: 'camera' }).then(result => {
+              console.log('📋 Camera permission re-check:', result.state);
+              window.HVARCameraState.hasPermission = result.state === 'granted';
+            }).catch(e => {
+              console.warn('⚠️ Permission re-check failed:', e);
+            });
+          }
+        }
+      });
+      
+      // 🎯 Orientation Change Handler
+      window.addEventListener('orientationchange', () => {
+        console.log('📱 Orientation changed, adjusting camera...');
+        setTimeout(() => {
+          if (window.HVARCameraState && window.HVARCameraState.stream) {
+            // Refresh camera stream after orientation change
+            const tracks = window.HVARCameraState.stream.getVideoTracks();
+            tracks.forEach(track => {
+              if (track.getSettings) {
+                const settings = track.getSettings();
+                console.log('📹 Current camera settings:', settings);
+              }
+            });
+          }
+        }, 500);
+      });
+      
+      // 🚨 Network Status Handler
+      window.addEventListener('online', () => {
+        console.log('🌐 Network back online');
+        if (window.HVARCameraState && !window.HVARCameraState.hasPermission) {
+          console.log('🔄 Retrying camera permission after network restoration...');
+          setTimeout(() => {
+            if (window.HVARRequestCameraPermission) {
+              window.HVARRequestCameraPermission();
+            }
+          }, 1000);
+        }
+      });
+      
+      // 💾 Storage Quota Check for Camera Data
+      if ('storage' in navigator && 'estimate' in navigator.storage) {
+        navigator.storage.estimate().then(estimate => {
+          const usage = estimate.usage;
+          const quota = estimate.quota;
+          const usagePercentage = (usage / quota) * 100;
+          
+          console.log(`💾 Storage usage: ${usagePercentage.toFixed(2)}% (${usage} / ${quota} bytes)`);
+          
+          if (usagePercentage > 80) {
+            console.warn('⚠️ Storage quota running low, camera performance may be affected');
+          }
+        });
+      }
+      
+      // 🎪 Global Camera Helper Functions
+      window.HVARGetCameraInfo = function() {
+        return {
+          state: window.HVARCameraState,
+          isSupported: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+          isSecureContext: window.isSecureContext,
+          permissions: 'permissions' in navigator,
+          deviceMemory: navigator.deviceMemory || 'unknown',
+          hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
+          connectionType: navigator.connection ? navigator.connection.effectiveType : 'unknown'
+        };
+      };
+      
+      window.HVARStopCamera = function() {
+        if (window.HVARCameraState && window.HVARCameraState.stream) {
+          const tracks = window.HVARCameraState.stream.getTracks();
+          tracks.forEach(track => track.stop());
+          window.HVARCameraState.stream = null;
+          window.HVARCameraState.hasPermission = false;
+          console.log('📹 Camera stopped and permissions reset');
+        }
+      };
+      
+      console.log('🎉 Enhanced Camera Features loaded!');
+    </script>
+  </body>
+</html>
