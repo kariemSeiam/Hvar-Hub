@@ -231,12 +231,13 @@ flowchart TD
     classDef process fill:#e6f3ff,stroke:#333,stroke-width:1px
     classDef decision fill:#fff2e6,stroke:#333,stroke-width:1px
     classDef error fill:#ffe6e6,stroke:#333,stroke-width:1px
-    classDef end fill:#ffe6f2,stroke:#333,stroke-width:2px
+    classDef endNode fill:#ffe6f2,stroke:#333,stroke-width:2px
     
     class START,END start
     class FETCH,TRANSFORM,STORE,CREATE_HISTORY,UPDATE_UI,DISPLAY,PERFORM_ACTION,UPDATE_DB,UPDATE_HISTORY,REFRESH_UI,SHOW_DETAILS process
     class SCAN,VALIDATE,USER_ACTION,RETRY decision
     class ERROR,BOSTA_ERROR,DATA_ERROR,DB_ERROR error
+    class END endNode
 ```
 
 ## ✨ Core Features
