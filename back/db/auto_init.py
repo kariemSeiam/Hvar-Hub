@@ -18,6 +18,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.config import Config
 from db import db
+from utils.timezone import get_egypt_now
+
+# Add the parent directory to the path so we can import our modules
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config.config import Config
+from db import db
 
 # Load environment variables
 load_dotenv()
@@ -55,8 +62,8 @@ class BaseModel(db.Model):
     __abstract__ = True
     
     id = db.Column(db.Integer, primary_key=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=get_egypt_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=get_egypt_now, onupdate=get_egypt_now, nullable=False)
     
     def save(self):
         """Save instance to database"""
@@ -137,7 +144,7 @@ class Order(BaseModel):
     masked_state = db.Column(db.String(50))  # Bosta masked state
     
     # Timestamps
-    scanned_at = db.Column(db.DateTime, default=datetime.utcnow)
+    scanned_at = db.Column(db.DateTime, default=get_egypt_now)
     received_at = db.Column(db.DateTime)
     maintenance_started_at = db.Column(db.DateTime)
     maintenance_completed_at = db.Column(db.DateTime)
@@ -150,6 +157,7 @@ class Order(BaseModel):
     bosta_data = db.Column(db.JSON)  # Store complete Bosta response
     timeline_data = db.Column(db.JSON)  # Bosta timeline
     bosta_proof_images = db.Column(db.JSON)  # Bosta proof images
+    return_specs_data = db.Column(db.JSON)  # Store returnSpecs for Customer Return orders
     
     # New tracking information (for returns)
     new_tracking_number = db.Column(db.String(100))
@@ -178,6 +186,7 @@ class Order(BaseModel):
                 'new_cod_amount': float(self.new_cod_amount) if self.new_cod_amount else None,
                 'package_weight': float(self.package_weight) if self.package_weight else None,
                 'bosta_proof_images': self.bosta_proof_images or [],
+                'return_specs_data': self.return_specs_data or {},
                 'new_tracking_number': self.new_tracking_number,
                 'is_refund_or_replace': self.is_refund_or_replace,
                 'is_action_completed': self.is_action_completed,
@@ -255,7 +264,7 @@ class MaintenanceHistory(BaseModel):
     action_data = db.Column(db.JSON)
     
     # Timestamps
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    timestamp = db.Column(db.DateTime, default=get_egypt_now, nullable=False, index=True)
     
     def __repr__(self):
         return f'<MaintenanceHistory {self.action.value} for Order {self.order_id}>'

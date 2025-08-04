@@ -58,6 +58,18 @@ class ProductionConfig(Config):
     """Production configuration"""
     DEBUG = False
     DEVELOPMENT = False
+    
+    # Production database settings
+    MYSQL_HOST = os.environ.get('MYSQL_HOST') or 'localhost'
+    MYSQL_PORT = os.environ.get('MYSQL_PORT') or 3306
+    MYSQL_USER = os.environ.get('MYSQL_USER') or 'mcrmh4534_hvar'
+    MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD') or ''
+    MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE') or 'mcrmh4534_hvar_hub'
+    
+    SQLALCHEMY_DATABASE_URI = (
+        f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@"
+        f"{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8mb4"
+    )
 
 class TestingConfig(Config):
     """Testing configuration"""

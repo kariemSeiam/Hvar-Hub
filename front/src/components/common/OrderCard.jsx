@@ -92,6 +92,36 @@ const OrderCard = ({
   };
 
   // Extract Bosta-specific data
+  // Get proper Arabic order type label
+  const getOrderTypeLabel = (orderType) => {
+    switch (orderType) {
+      case 'Customer Return Pickup':
+        return 'استرجاع عميل';
+      case 'Return to Origin':
+        return 'مرتجع مخزن';
+      case 'Exchange':
+        return 'استبدال';
+      case 'Send':
+      default:
+        return 'إرسال';
+    }
+  };
+
+  // Get order type badge variant
+  const getOrderTypeBadgeVariant = (orderType) => {
+    switch (orderType) {
+      case 'Customer Return Pickup':
+        return 'orange';
+      case 'Return to Origin':
+        return 'red';
+      case 'Exchange':
+        return 'purple';
+      case 'Send':
+      default:
+        return 'blue';
+    }
+  };
+
   const getBostaData = (order) => {
     // Priority for description: returnSpecs first (for returned items), then specs, then fallback
     const getDescription = () => {
@@ -133,6 +163,7 @@ const OrderCard = ({
       proofImages: order.starProofOfReturnedPackages || [],
       returnReason: order.returnSpecs?.packageDetails?.description || '',
       isReturn: order.type?.value === "Customer Return Pickup",
+      orderType: order.type?.value || 'Send',
       attemptsCount: order.attemptsCount || 0,
       callsNumber: order.callsNumber || 0,
       smsNumber: order.smsNumber || 0,
@@ -327,6 +358,7 @@ const OrderCard = ({
       };
     }
 
+    /*
     // Bosta-specific states
     if (bostaData.shippingState === 'Returned' || bostaData.isReturn) {
       return {
@@ -335,6 +367,7 @@ const OrderCard = ({
         icon: 'return'
       };
     }
+    */
 
     return null;
   };
@@ -769,42 +802,111 @@ const OrderCard = ({
   const dynamicActions = getDynamicActions(order);
   const stateBadge = getStateBadge(order);
 
+  // Helper to format phone as 01XXXXXXXXX
+  const formatEgyptianPhone = (phone) => {
+    if (!phone) return '';
+    let cleaned = phone.toString().replace(/\D/g, '');
+    if (cleaned.startsWith('20')) cleaned = cleaned.slice(2);
+    if (cleaned.startsWith('1')) cleaned = '0' + cleaned;
+    if (!cleaned.startsWith('01')) cleaned = '01' + cleaned.slice(cleaned.startsWith('0') ? 1 : 0);
+    return cleaned.slice(0, 11);
+  };
+
+  // Toast state for copy feedback
+  const [showCopyToast, setShowCopyToast] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
+  const copyToClipboard = (text, msg = 'تم النسخ!') => {
+    navigator.clipboard.writeText(text);
+    setToastMsg(msg);
+    setShowCopyToast(true);
+    setTimeout(() => setShowCopyToast(false), 1200);
+  };
+
   return (
-    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 ${className}`} {...props}>
+    <div className={`bg-white rounded-lg shadow-md border-2 border-gray-200 hover:shadow-lg hover:border-gray-300 transition-all duration-300 ${className}`} {...props}>
       {/* Compact Header with State Badge */}
-      <div className="p-3 border-b border-gray-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2 space-x-reverse">
-            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-sm font-cairo font-bold text-gray-900">
-                <a 
-                  href={`https://business.bosta.co/orders/${bostaData.trackingNumber}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-blue-600 hover:underline transition-colors duration-200 cursor-pointer"
-                  title="فتح في بوابة بوسطا للأعمال"
-                >
-                  {bostaData.trackingNumber}
-                </a>
-              </h3>
-              <p className="text-xs text-gray-600 font-cairo">
-                {bostaData.receiver.fullName}
-              </p>
+              <div className="p-3 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${
+                bostaData.isReturn ? 'bg-gradient-to-br from-orange-100 to-orange-200' : 'bg-gradient-to-br from-blue-100 to-blue-200'
+              }`}>
+                <svg className={`w-5 h-5 ${
+                  bostaData.isReturn ? 'text-orange-700' : 'text-blue-700'
+                }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {bostaData.isReturn ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                  )}
+                </svg>
+              </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center space-x-2 space-x-reverse">
+                <h3 className="text-sm font-cairo font-bold text-gray-900">
+                  <a 
+                    href={`https://business.bosta.co/orders/${bostaData.trackingNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-blue-600 hover:underline transition-colors duration-200 cursor-pointer"
+                    title="فتح في بوابة بوسطا للأعمال"
+                  >
+                    {bostaData.trackingNumber}
+                  </a>
+                </h3>
+                {/* Order Type Badge */}
+                <span className={`px-3 py-1 text-xs font-cairo font-semibold rounded-full shadow-sm border ${
+                  getOrderTypeBadgeVariant(bostaData.orderType) === 'orange' ? 'bg-orange-200 text-orange-800 border-orange-300' :
+                  getOrderTypeBadgeVariant(bostaData.orderType) === 'red' ? 'bg-red-200 text-red-800 border-red-300' :
+                  getOrderTypeBadgeVariant(bostaData.orderType) === 'purple' ? 'bg-purple-200 text-purple-800 border-purple-300' :
+                  'bg-blue-200 text-blue-800 border-blue-300'
+                }`}>
+                  {getOrderTypeLabel(bostaData.orderType)}
+                </span>
+              </div>
+              <div className="flex items-center space-x-3 space-x-reverse mt-1">
+                <p className="text-xs text-gray-600 font-cairo flex-shrink-0">
+                  {bostaData.receiver.fullName}
+                </p>
+                {/* Show client phone for all orders */}
+                {bostaData.receiver.phone && (
+                  <div className="relative group flex items-center space-x-1 space-x-reverse">
+                                         <span
+                       className="text-xs font-cairo font-medium text-green-700 hover:text-green-800 hover:underline cursor-pointer transition-colors"
+                       title="نسخ رقم العميل"
+                       onClick={() => copyToClipboard(formatEgyptianPhone(bostaData.receiver.phone))}
+                       tabIndex={0}
+                       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyToClipboard(formatEgyptianPhone(bostaData.receiver.phone)); } }}
+                     >
+                       {formatEgyptianPhone(bostaData.receiver.phone)}
+                     </span>
+                    {/* Tooltip for second phone */}
+                    {bostaData.receiver.secondPhone && (
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200 pointer-events-none z-20 min-w-max">
+                                                 <div className="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-lg pointer-events-auto">
+                           <span 
+                             className="cursor-pointer hover:text-green-300 transition-colors"
+                             onClick={e => { e.stopPropagation(); copyToClipboard(formatEgyptianPhone(bostaData.receiver.secondPhone), 'تم نسخ الرقم الثاني!'); }}
+                             title="نسخ الرقم الثاني"
+                           >
+                             {formatEgyptianPhone(bostaData.receiver.secondPhone)}
+                           </span>
+                         </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center space-x-2 space-x-reverse">
             {/* State Badge */}
             {stateBadge && (
-              <div className={`px-2 py-1 rounded-full text-xs font-cairo font-medium flex items-center space-x-1 space-x-reverse ${stateBadge.variant === 'danger' ? 'bg-red-100 text-red-800' :
-                  stateBadge.variant === 'info' ? 'bg-blue-100 text-blue-800' :
-                    stateBadge.variant === 'secondary' ? 'bg-gray-100 text-gray-800' :
-                      stateBadge.variant === 'success' ? 'bg-green-100 text-green-800' :
-                        'bg-yellow-100 text-yellow-800'
+              <div className={`px-3 py-1.5 rounded-full text-xs font-cairo font-semibold flex items-center space-x-1 space-x-reverse shadow-sm border ${stateBadge.variant === 'danger' ? 'bg-red-200 text-red-900 border-red-300' :
+                  stateBadge.variant === 'info' ? 'bg-blue-200 text-blue-900 border-blue-300' :
+                    stateBadge.variant === 'secondary' ? 'bg-gray-200 text-gray-900 border-gray-300' :
+                      stateBadge.variant === 'success' ? 'bg-green-200 text-green-900 border-green-300' :
+                        'bg-yellow-200 text-yellow-900 border-yellow-300'
                 }`}>
                 {getStateIcon(stateBadge.icon)}
                 <span>{stateBadge.label}</span>
@@ -830,14 +932,19 @@ const OrderCard = ({
       </div>
 
       {/* Enhanced Info Section */}
-      <div className="px-3 py-2 bg-gray-50">
-        {/* Product Description */}
+      <div className="px-3 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+        {/* Product Description - Enhanced for Customer Returns */}
         {bostaData.description && bostaData.description !== 'لا يوجد وصف' && (
           <div className="mb-2">
-            <span className="text-gray-500 font-cairo text-xs block mb-1">
-              {bostaData.isReturn ? 'وصف المنتج المسترجع' : 'وصف المنتج'}
-            </span>
-            <p className="font-cairo text-xs text-gray-900 leading-relaxed bg-white rounded p-2 border-r-2 border-blue-200">
+            <div className="flex items-center space-x-1 space-x-reverse mb-1">
+              <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span className="text-gray-500 font-cairo text-xs">
+                وصف المنتج
+              </span>
+            </div>
+            <p className="font-cairo text-xs text-gray-900 leading-relaxed bg-white rounded-lg p-3 border-2 border-gray-200 shadow-sm">
               {bostaData.description}
             </p>
           </div>
@@ -919,29 +1026,116 @@ const OrderCard = ({
           );
         })()}
 
-        {/* Proof Images - Compact and Clickable */}
+        {/* Creative Proof Images with Description Layout */}
         {bostaData.proofImages && bostaData.proofImages.length > 0 && (
-          <div className="mb-2">
+          <div className="mb-3">
+            {/* Compact Header */}
             <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-500 font-cairo text-xs">صور المندوب للمرتجع ({bostaData.proofImages.length})</span>
+              <div className="flex items-center space-x-1 space-x-reverse">
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className="text-xs font-cairo font-medium text-gray-700">صور الإثبات</span>
+              </div>
+              <span className="text-xs font-cairo text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
+                {bostaData.proofImages.length}
+              </span>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {bostaData.proofImages.slice(0, 3).map((image, index) => (
-                <div key={index} className="relative group">
-                  <img
-                    src={image}
-                    alt={`إثبات ${index + 1}`}
-                    className="w-full h-12 object-cover rounded-lg border border-gray-200 cursor-pointer hover:scale-105 transition-transform duration-200 hover:shadow-md"
-                    onClick={() => window.open(image, '_blank')}
-                    title="انقر لفتح الصورة في نافذة جديدة"
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-opacity duration-200 flex items-center justify-center">
-                    <svg className="w-3 h-3 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+            
+            {/* Images Grid with Clickable Containers */}
+            <div className="grid grid-cols-6 gap-2">
+              {bostaData.proofImages.slice(0, 8).map((image, index) => (
+                <div 
+                  key={index} 
+                  className="relative group cursor-pointer"
+                  onClick={() => {
+                    try {
+                      const newWindow = window.open(image, '_blank');
+                      if (!newWindow) {
+                        window.location.href = image;
+                      }
+                    } catch (error) {
+                      console.error('Error opening image:', error);
+                      window.location.href = image;
+                    }
+                  }}
+                  title="انقر لفتح الصورة بحجم كامل في نافذة جديدة"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      try {
+                        const newWindow = window.open(image, '_blank');
+                        if (!newWindow) {
+                          window.location.href = image;
+                        }
+                      } catch (error) {
+                        console.error('Error opening image:', error);
+                        window.location.href = image;
+                      }
+                    }
+                  }}
+                  role="button"
+                  aria-label={`فتح الصورة ${index + 1} في نافذة جديدة`}
+                >
+                  {/* Image Container */}
+                  <div className="aspect-square overflow-hidden rounded-md border border-gray-200 bg-gray-100 hover:border-blue-400 transition-all duration-300 shadow-sm hover:shadow-lg group-hover:scale-105 w-16 h-16">
+                    <img
+                      src={image}
+                      alt={`صورة إثبات ${index + 1}`}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      loading="lazy"
+                      onError={(e) => {
+                        console.error('Image failed to load:', image);
+                        e.target.style.display = 'none';
+                        e.target.nextElementSibling.style.display = 'flex';
+                      }}
+                      onLoad={(e) => {
+                        e.target.style.display = 'block';
+                        e.target.nextElementSibling.style.display = 'none';
+                      }}
+                    />
+                    {/* Fallback for broken images */}
+                    <div className="w-full h-full hidden items-center justify-center bg-gray-100">
+                      <div className="text-center">
+                        <svg className="w-6 h-6 text-gray-400 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-xs text-gray-500 font-cairo">خطأ في التحميل</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Hover Overlay with Zoom Icon */}
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-md transition-all duration-300 flex items-center justify-center">
+                    <div className="bg-white bg-opacity-95 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg">
+                      <svg className="w-3 h-3 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  {/* Image Index Badge */}
+                  <div className="absolute top-1 right-1 bg-blue-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-cairo font-bold shadow-sm">
+                    {index + 1}
                   </div>
                 </div>
               ))}
+              
+              {/* Show More Indicator */}
+              {bostaData.proofImages.length > 8 && (
+                <div className="relative group cursor-pointer aspect-square overflow-hidden rounded-md border border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 transition-all duration-300 flex items-center justify-center w-16 h-16">
+                  <div className="text-center">
+                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-1">
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                    </div>
+                    <span className="text-xs font-cairo font-medium text-gray-600">+{bostaData.proofImages.length - 8}</span>
+                    <p className="text-xs font-cairo text-gray-500">المزيد</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1023,14 +1217,14 @@ const OrderCard = ({
 
       {/* Dynamic Actions - Always Visible */}
       {dynamicActions.length > 0 && (
-        <div className="p-3 bg-white border-t border-gray-100">
-          <div className="flex items-center space-x-2 space-x-reverse mb-2">
-            <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-              <svg className="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="p-4 bg-gradient-to-r from-white to-gray-50 border-t border-gray-200">
+          <div className="flex items-center space-x-2 space-x-reverse mb-3">
+            <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-sm">
+              <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <span className="text-xs font-cairo font-medium text-gray-700">إجراءات الطلب</span>
+            <span className="text-sm font-cairo font-semibold text-gray-800">إجراءات الطلب</span>
           </div>
 
           {/* Dynamic Action Buttons */}
@@ -1041,11 +1235,11 @@ const OrderCard = ({
                 onClick={() => handleAction(action.type, order, notes)}
                 disabled={action.disabled || isActionLoading}
                 className={`
-                  relative group px-3 py-2 rounded-md font-cairo text-xs font-medium transition-all duration-200
-                  flex items-center justify-center space-x-1 space-x-reverse
+                  relative group px-4 py-2.5 rounded-lg font-cairo text-xs font-semibold transition-all duration-300
+                  flex items-center justify-center space-x-1 space-x-reverse shadow-sm border-2
                   ${action.className}
-                  ${action.disabled || isActionLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 hover:shadow-sm'}
-                  focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500
+                  ${action.disabled || isActionLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 hover:shadow-md hover:border-opacity-80'}
+                  focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
                 `}
                 aria-label={action.label}
               >
@@ -1086,10 +1280,10 @@ const OrderCard = ({
                     value={newTrackingNumber}
                     onChange={(e) => setNewTrackingNumber(e.target.value)}
                     placeholder="أدخل رقم التتبع الجديد"
-                    className={`w-full px-2 py-1 border rounded-md font-cairo text-xs text-right ${
+                    className={`w-full px-3 py-2 border-2 rounded-lg font-cairo text-xs text-right shadow-sm ${
                       (isConfirmSendCompleted() || isSendOrderCompleted()) 
                         ? 'border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed' 
-                        : 'border-gray-300 focus:ring-1 focus:ring-blue-500 focus:border-transparent'
+                        : 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-400'
                     }`}
                     dir="rtl"
                     readOnly={isConfirmSendCompleted() || isSendOrderCompleted()}
@@ -1105,10 +1299,10 @@ const OrderCard = ({
                     value={newCod}
                     onChange={(e) => setNewCod(e.target.value)}
                     placeholder="أدخل المبلغ"
-                    className={`w-full px-2 py-1 border rounded-md font-cairo text-xs text-right ${
+                    className={`w-full px-3 py-2 border-2 rounded-lg font-cairo text-xs text-right shadow-sm ${
                       (isConfirmSendCompleted() || isSendOrderCompleted()) 
                         ? 'border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed' 
-                        : 'border-gray-300 focus:ring-1 focus:ring-blue-500 focus:border-transparent'
+                        : 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-400'
                     }`}
                     dir="rtl"
                     readOnly={isConfirmSendCompleted() || isSendOrderCompleted()}
@@ -1131,7 +1325,7 @@ const OrderCard = ({
                       value={refundAmount}
                       onChange={(e) => setRefundAmount(e.target.value)}
                       placeholder="أدخل مبلغ الاسترداد"
-                      className="w-full px-2 py-1 border border-gray-300 rounded-md font-cairo text-xs text-right focus:ring-1 focus:ring-orange-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg font-cairo text-xs text-right shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-400"
                       dir="rtl"
                     />
                   </div>
@@ -1144,7 +1338,7 @@ const OrderCard = ({
                       value={replacementTrackingNumber}
                       onChange={(e) => setReplacementTrackingNumber(e.target.value)}
                       placeholder="أدخل رقم التتبع"
-                      className="w-full px-2 py-1 border border-gray-300 rounded-md font-cairo text-xs text-right focus:ring-1 focus:ring-orange-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg font-cairo text-xs text-right shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-400"
                       dir="rtl"
                     />
                   </div>
@@ -1159,7 +1353,7 @@ const OrderCard = ({
                       value={newTrackingNumber}
                       onChange={(e) => setNewTrackingNumber(e.target.value)}
                       placeholder="أدخل رقم التتبع الجديد"
-                      className="w-full px-2 py-1 border border-gray-300 rounded-md font-cairo text-xs text-right focus:ring-1 focus:ring-orange-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg font-cairo text-xs text-right shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-400"
                       dir="rtl"
                     />
                   </div>
@@ -1172,7 +1366,7 @@ const OrderCard = ({
                       value={newCod}
                       onChange={(e) => setNewCod(e.target.value)}
                       placeholder="أدخل المبلغ"
-                      className="w-full px-2 py-1 border border-gray-300 rounded-md font-cairo text-xs text-right focus:ring-1 focus:ring-orange-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg font-cairo text-xs text-right shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-400"
                       dir="rtl"
                     />
                   </div>
@@ -1487,22 +1681,48 @@ const OrderCard = ({
               </div>
 
 
-              {/* Return Information */}
-              {(bostaData.returnReason || bostaData.isReturn) && (
-                <div className="bg-orange-50 rounded p-2 border border-orange-200">
-                  <h5 className="font-cairo font-medium text-orange-800 mb-2">
-                    {bostaData.isReturn ? 'معلومات الاسترجاع' : 'سبب الإرجاع'}
+              {/* Star Delivery Man Details - Always Show in Expanded View */}
+              {(bostaData.starName || bostaData.starPhone) && (
+                <div className="bg-blue-50 rounded p-2 border border-blue-200">
+                  <h5 className="font-cairo font-medium text-blue-800 mb-2 flex items-center space-x-1 space-x-reverse">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span>معلومات المندوب</span>
                   </h5>
-                  {bostaData.returnReason && (
-                    <p className="font-cairo text-orange-700 text-xs leading-relaxed mb-2">{bostaData.returnReason}</p>
-                  )}
-                  {bostaData.isReturn && (
-                    <div className="text-xs">
-                      <span className="inline-block bg-orange-100 text-orange-800 px-2 py-1 rounded font-cairo">
-                        طلب استرجاع من العميل
-                      </span>
-                    </div>
-                  )}
+                  <div className="grid grid-cols-1 gap-2">
+                    {bostaData.starName && bostaData.starName !== 'غير محدد' && (
+                      <div className="flex items-center justify-between bg-white rounded p-2 border border-blue-200/50">
+                        <span className="text-xs font-cairo text-gray-600">اسم المندوب:</span>
+                        <span className="text-xs font-cairo font-semibold text-blue-700">{bostaData.starName}</span>
+                      </div>
+                    )}
+                    {bostaData.starPhone && (
+                      <div className="flex items-center justify-between bg-white rounded p-2 border border-blue-200/50">
+                        <span className="text-xs font-cairo text-gray-600">رقم المندوب:</span>
+                        <a 
+                          href={`tel:${bostaData.starPhone}`}
+                          className="text-xs font-cairo font-semibold text-green-700 hover:text-green-800 hover:underline flex items-center space-x-1 space-x-reverse"
+                          title="اتصال بالمندوب"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                          </svg>
+                          <span>{cleanPhoneNumber(bostaData.starPhone)}</span>
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Return Information */}
+              {bostaData.returnReason && (
+                <div className="bg-gray-50 rounded p-2 border border-gray-200">
+                  <h5 className="font-cairo font-medium text-gray-800 mb-2">
+                    تفاصيل إضافية
+                  </h5>
+                  <p className="font-cairo text-gray-700 text-xs leading-relaxed">{bostaData.returnReason}</p>
                 </div>
               )}
 
@@ -1553,6 +1773,11 @@ const OrderCard = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+      {showCopyToast && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-[9999] font-cairo text-sm animate-fade-in">
+          {toastMsg}
         </div>
       )}
     </div>

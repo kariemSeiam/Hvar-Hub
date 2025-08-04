@@ -1,9 +1,33 @@
 import axios from './axios';
+import { getCurrentConfig, FEATURES, ERROR_MESSAGES, debug } from '../config/environment';
 
-// Backend API Configuration
-const API_BASE_URL = 'http://127.0.0.1:5000/api';
+// Backend API Configuration with caching
+const API_BASE_URL = '/api';
+const CACHE_DURATION = getCurrentConfig().cacheDuration;
 
-// Create backend API instance
+// Simple cache implementation
+const cache = new Map();
+
+const getCacheKey = (endpoint, params = {}) => {
+  const paramString = Object.keys(params).length > 0 
+    ? `?${new URLSearchParams(params).toString()}` 
+    : '';
+  return `${endpoint}${paramString}`;
+};
+
+const getCachedData = (key) => {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.data;
+  }
+  return null;
+};
+
+const setCachedData = (key, data) => {
+  cache.set(key, { data, timestamp: Date.now() });
+};
+
+// Create optimized backend API instance
 const backendApi = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -12,6 +36,128 @@ const backendApi = axios.create({
   },
   timeout: 10000
 });
+
+// Enhanced error message mapping using environment config
+const getErrorMessage = (error) => {
+  if (error.userMessage) return error.userMessage;
+  
+  if (error.response) {
+    const status = error.response.status;
+    const serverMessage = error.response.data?.message;
+    
+    const statusMessages = {
+      400: serverMessage || ERROR_MESSAGES.VALIDATION_ERROR,
+      401: ERROR_MESSAGES.UNAUTHORIZED,
+      404: serverMessage || ERROR_MESSAGES.NOT_FOUND,
+      500: serverMessage || ERROR_MESSAGES.SERVER_ERROR,
+      503: 'الخدمة غير متاحة مؤقتاً - يرجى المحاولة لاحقاً'
+    };
+    
+    return statusMessages[status] || serverMessage || ERROR_MESSAGES.UNKNOWN_ERROR;
+  }
+  
+  return ERROR_MESSAGES.NETWORK_ERROR;
+};
+
+// Optimized data transformation with memoization
+const transformCache = new Map();
+
+const transformBackendOrder = (backendOrder) => {
+  if (!backendOrder) return null;
+  
+  // Check cache first
+  const cacheKey = `order_${backendOrder.id}`;
+  if (transformCache.has(cacheKey)) {
+    return transformCache.get(cacheKey);
+  }
+  
+  const transformed = {
+    _id: backendOrder.id || backendOrder._id,
+    trackingNumber: backendOrder.tracking_number,
+    pickupAddress: {
+      city: { nameAr: backendOrder.city || '' },
+      zone: { nameAr: backendOrder.zone || '' },
+      firstLine: backendOrder.pickup_address || ''
+    },
+    dropOffAddress: {
+      city: { nameAr: backendOrder.city || '' },
+      zone: { nameAr: backendOrder.zone || '' },
+      firstLine: backendOrder.dropoff_address || '',
+      buildingNumber: backendOrder.building_number || '',
+      floor: backendOrder.floor || '',
+      apartment: backendOrder.apartment || ''
+    },
+    cod: backendOrder.cod_amount || 0,
+    state: {
+      value: mapBackendStatusToBostaState(backendOrder.status),
+      code: getStatusCode(backendOrder.status),
+      deliveryTime: backendOrder.updated_at
+    },
+    receiver: {
+      fullName: backendOrder.customer_name || '',
+      phone: backendOrder.customer_phone || '',
+      secondPhone: backendOrder.customer_second_phone || ''
+    },
+    type: {
+      code: 10,
+      value: backendOrder.order_type || 'Send'
+    },
+    timeline: backendOrder.timeline_data || [],
+    specs: {
+      packageDetails: {
+        itemsCount: backendOrder.items_count || 1,
+        description: backendOrder.package_description || ''
+      },
+      weight: backendOrder.package_weight || 0
+    },
+    returnSpecs: backendOrder.return_specs_data || {
+      packageDetails: {
+        itemsCount: backendOrder.items_count || 1,
+        description: backendOrder.package_description || ''
+      }
+    },
+    createdAt: backendOrder.created_at,
+    scannedAt: backendOrder.scanned_at,
+    status: backendOrder.status,
+    isReturnOrder: backendOrder.is_return_order,
+    isRefundOrReplace: backendOrder.is_refund_or_replace,
+    maintenanceHistory: backendOrder.maintenance_history || [],
+    newTrackingNumber: backendOrder.new_tracking_number,
+    newCodAmount: backendOrder.new_cod_amount,
+    starProofOfReturnedPackages: backendOrder.bosta_proof_images || [],
+    star: backendOrder.bosta_data?.star || {},
+    bostaData: backendOrder.bosta_data || {}
+  };
+  
+  // Cache the transformation
+  transformCache.set(cacheKey, transformed);
+  return transformed;
+};
+
+// Status mapping functions
+const mapBackendStatusToBostaState = (status) => {
+  const statusMap = {
+    'received': 'Picked Up',
+    'in_maintenance': 'In Transit',
+    'completed': 'Ready for Delivery',
+    'failed': 'Failed',
+    'sending': 'Out for Delivery',
+    'returned': 'Returned'
+  };
+  return statusMap[status] || status;
+};
+
+const getStatusCode = (status) => {
+  const codeMap = {
+    'received': 23,
+    'in_maintenance': 30,
+    'completed': 40,
+    'failed': 60,
+    'sending': 43,
+    'returned': 50
+  };
+  return codeMap[status] || 10;
+};
 
 // API Functions for Order Management
 export const orderAPI = {
@@ -28,6 +174,7 @@ export const orderAPI = {
         user_name: userName,
         force_create: false
       });
+      
       return {
         success: true,
         data: response.data.data,
@@ -36,70 +183,49 @@ export const orderAPI = {
     } catch (error) {
       console.error('Error scanning order:', error);
       
-      // Provide specific error messages based on status code
-      let errorMessage = 'فشل في جلب البيانات من الخادم';
-      
-      if (error.response) {
-        const status = error.response.status;
-        const serverMessage = error.response.data?.message;
-        
-        switch (status) {
-          case 400:
-            errorMessage = serverMessage || 'بيانات الطلب غير صحيحة';
-            break;
-          case 404:
-            errorMessage = serverMessage || 'لم يتم العثور على الطلب في بوسطة';
-            break;
-          case 401:
-            errorMessage = 'خطأ في المصادقة - تحقق من إعدادات API';
-            break;
-          case 500:
-            errorMessage = serverMessage || 'خطأ في الخادم - يرجى المحاولة مرة أخرى';
-            break;
-          default:
-            errorMessage = serverMessage || `خطأ في الخادم: ${status}`;
-        }
-      } else if (error.code === 'NETWORK_ERROR' || error.code === 'ERR_NETWORK') {
-        errorMessage = 'خطأ في الاتصال بالشبكة - تحقق من اتصالك بالإنترنت';
-      } else if (error.code === 'ECONNABORTED') {
-        errorMessage = 'انتهت مهلة الاتصال - يرجى المحاولة مرة أخرى';
-      }
-      
       return {
         success: false,
         data: null,
-        message: errorMessage,
+        message: getErrorMessage(error),
         error: error.response?.status || 'NETWORK_ERROR'
       };
     }
   },
 
   /**
-   * Get orders by status with pagination
+   * Get orders by status with pagination and caching
    * @param {string} status - Order status filter
    * @param {number} page - Page number
    * @param {number} limit - Items per page
    * @returns {Promise} Promise with orders data
    */
   async getOrdersByStatus(status, page = 1, limit = 20) {
+    const params = { page, limit };
+    if (status) params.status = status;
+    
+    const cacheKey = getCacheKey('/orders', params);
+    const cached = getCachedData(cacheKey);
+    
+    if (cached) {
+      return cached;
+    }
+    
     try {
-      const params = new URLSearchParams();
-      if (status) params.append('status', status);
-      params.append('page', page.toString());
-      params.append('limit', limit.toString());
-
-      const response = await backendApi.get(`/orders?${params}`);
-      return {
+      const response = await backendApi.get('/orders', { params });
+      const result = {
         success: true,
         data: response.data.data,
         message: 'تم جلب البيانات بنجاح'
       };
+      
+      setCachedData(cacheKey, result);
+      return result;
     } catch (error) {
       console.error('Error fetching orders:', error);
       return {
         success: false,
         data: { orders: [], pagination: {} },
-        message: error.response?.data?.message || 'فشل في جلب البيانات'
+        message: getErrorMessage(error)
       };
     }
   },
@@ -121,6 +247,11 @@ export const orderAPI = {
         user_name: userName,
         action_data: actionData
       });
+      
+      // Clear cache after action
+      cache.clear();
+      transformCache.clear();
+      
       return {
         success: true,
         data: response.data.data,
@@ -131,23 +262,33 @@ export const orderAPI = {
       return {
         success: false,
         data: null,
-        message: error.response?.data?.message || 'فشل في تحديث الطلب'
+        message: getErrorMessage(error)
       };
     }
   },
 
   /**
-   * Get orders summary (dashboard counts)
+   * Get orders summary (dashboard counts) with caching
    * @returns {Promise} Promise with summary data
    */
   async getOrdersSummary() {
+    const cacheKey = getCacheKey('/orders/summary');
+    const cached = getCachedData(cacheKey);
+    
+    if (cached) {
+      return cached;
+    }
+    
     try {
       const response = await backendApi.get('/orders/summary');
-      return {
+      const result = {
         success: true,
         data: response.data.data,
         message: 'تم جلب الملخص بنجاح'
       };
+      
+      setCachedData(cacheKey, result);
+      return result;
     } catch (error) {
       console.error('Error fetching summary:', error);
       return {
@@ -161,30 +302,40 @@ export const orderAPI = {
           returned: 0,
           total: 0
         },
-        message: 'فشل في جلب الملخص'
+        message: getErrorMessage(error)
       };
     }
   },
 
   /**
-   * Get recent scans
+   * Get recent scans with caching
    * @param {number} limit - Number of recent scans to fetch
    * @returns {Promise} Promise with recent scans
    */
   async getRecentScans(limit = 10) {
+    const cacheKey = getCacheKey('/orders/recent-scans', { limit });
+    const cached = getCachedData(cacheKey);
+    
+    if (cached) {
+      return cached;
+    }
+    
     try {
       const response = await backendApi.get(`/orders/recent-scans?limit=${limit}`);
-      return {
+      const result = {
         success: true,
         data: response.data.data,
         message: 'تم جلب البيانات بنجاح'
       };
+      
+      setCachedData(cacheKey, result);
+      return result;
     } catch (error) {
       console.error('Error fetching recent scans:', error);
       return {
         success: false,
         data: [],
-        message: 'فشل في جلب البيانات'
+        message: getErrorMessage(error)
       };
     }
   },
@@ -196,12 +347,11 @@ export const orderAPI = {
    * @returns {Promise} Promise with search results
    */
   async searchOrders(query, status = null) {
+    const params = { search: query };
+    if (status) params.status = status;
+    
     try {
-      const params = new URLSearchParams();
-      params.append('search', query);
-      if (status) params.append('status', status);
-
-      const response = await backendApi.get(`/orders?${params}`);
+      const response = await backendApi.get('/orders', { params });
       return {
         success: true,
         data: response.data.data,
@@ -212,7 +362,7 @@ export const orderAPI = {
       return {
         success: false,
         data: { orders: [] },
-        message: 'فشل في البحث'
+        message: getErrorMessage(error)
       };
     }
   },
@@ -241,7 +391,7 @@ export const orderAPI = {
       return {
         success: false,
         data: null,
-        message: 'خطأ في البحث عن الطلب'
+        message: getErrorMessage(error)
       };
     }
   },
@@ -251,92 +401,38 @@ export const orderAPI = {
    * @param {Object} backendOrder - Order from backend
    * @returns {Object} Transformed order for frontend
    */
-  transformBackendOrder(backendOrder) {
-    if (!backendOrder) return null;
-
-    return {
-      _id: backendOrder.id,
-      trackingNumber: backendOrder.tracking_number,
-      pickupAddress: {
-        city: { nameAr: backendOrder.city || '' },
-        zone: { nameAr: backendOrder.zone || '' },
-        firstLine: backendOrder.pickup_address || ''
-      },
-      dropOffAddress: {
-        city: { nameAr: backendOrder.city || '' },
-        zone: { nameAr: backendOrder.zone || '' },
-        firstLine: backendOrder.dropoff_address || '',
-        buildingNumber: backendOrder.building_number || '',
-        floor: backendOrder.floor || '',
-        apartment: backendOrder.apartment || ''
-      },
-      cod: backendOrder.cod_amount || 0,
-      state: {
-        value: this.mapBackendStatusToBostaState(backendOrder.status),
-        code: this.getStatusCode(backendOrder.status),
-        deliveryTime: backendOrder.updated_at
-      },
-      receiver: {
-        fullName: backendOrder.customer_name || '',
-        phone: backendOrder.customer_phone || '',
-        secondPhone: backendOrder.customer_second_phone || ''
-      },
-      type: {
-        code: 10,
-        value: backendOrder.order_type || 'Send'
-      },
-      timeline: backendOrder.timeline_data || [],
-      specs: {
-        packageDetails: {
-          itemsCount: backendOrder.items_count || 1,
-          description: backendOrder.package_description || ''
-        },
-        weight: backendOrder.package_weight || 0
-      },
-      createdAt: backendOrder.created_at,
-      scannedAt: backendOrder.scanned_at,
-      status: backendOrder.status,
-      isReturnOrder: backendOrder.is_return_order,
-      isRefundOrReplace: backendOrder.is_refund_or_replace,
-      maintenanceHistory: backendOrder.maintenance_history || [],
-      newTrackingNumber: backendOrder.new_tracking_number,
-      newCodAmount: backendOrder.new_cod_amount,
-      bostaData: backendOrder.bosta_data || {}
-    };
-  },
+  transformBackendOrder,
 
   /**
    * Map backend status to Bosta state
    * @param {string} status - Backend status
    * @returns {string} Bosta state
    */
-  mapBackendStatusToBostaState(status) {
-    const statusMap = {
-      'received': 'Picked Up',
-      'in_maintenance': 'In Transit',
-      'completed': 'Ready for Delivery',
-      'failed': 'Failed',
-      'sending': 'Out for Delivery',
-      'returned': 'Returned'
-    };
-    return statusMap[status] || status;
-  },
+  mapBackendStatusToBostaState,
 
   /**
    * Get status code for backend status
    * @param {string} status - Backend status
    * @returns {number} Status code
    */
-  getStatusCode(status) {
-    const codeMap = {
-      'received': 23,
-      'in_maintenance': 30,
-      'completed': 40,
-      'failed': 60,
-      'sending': 43,
-      'returned': 50
+  getStatusCode,
+
+  /**
+   * Clear all caches
+   */
+  clearCache() {
+    cache.clear();
+    transformCache.clear();
+  },
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStats() {
+    return {
+      apiCacheSize: cache.size,
+      transformCacheSize: transformCache.size
     };
-    return codeMap[status] || 10;
   }
 };
 

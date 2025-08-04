@@ -38,6 +38,7 @@ const OrderManagementPage = () => {
   const [lastScannedCode, setLastScannedCode] = useState('');
   const [lastScanTimestamp, setLastScanTimestamp] = useState(0);
   const [isManualSubmitting, setIsManualSubmitting] = useState(false);
+  const [isProcessingScan, setIsProcessingScan] = useState(false);
 
   // Order Management States
   const [activeTab, setActiveTab] = useState('received');
@@ -49,6 +50,7 @@ const OrderManagementPage = () => {
     returns: [],
     sending: []
   });
+  const [forceUpdate, setForceUpdate] = useState(0);
   const [ordersSummary, setOrdersSummary] = useState({
     received: 0,
     in_maintenance: 0,
@@ -67,7 +69,7 @@ const OrderManagementPage = () => {
   const qrScannerRef = useRef(null);
   const scannerInputRef = useRef(null);
 
-  // Load orders from backend
+  // Optimized load orders with error handling and caching
   const loadOrdersByStatus = useCallback(async (status) => {
     if (!status) return;
     
@@ -92,30 +94,68 @@ const OrderManagementPage = () => {
         }));
       } else {
         console.warn(`Failed to load ${status} orders:`, result.message);
+        // Show user-friendly error message
+        setScannerState(prev => ({
+          ...prev,
+          error: `فشل في تحميل الطلبات: ${result.message}`
+        }));
       }
     } catch (error) {
       console.error(`Error loading ${status} orders:`, error);
+      setScannerState(prev => ({
+        ...prev,
+        error: 'خطأ في الاتصال بالخادم'
+      }));
     } finally {
       setIsLoadingOrders(false);
     }
   }, []);
 
-  // Load orders summary
+  // Optimized load orders summary with error handling
   const loadOrdersSummary = useCallback(async () => {
     try {
       const result = await orderAPI.getOrdersSummary();
       if (result.success) {
         setOrdersSummary(result.data);
+      } else {
+        console.warn('Failed to load orders summary:', result.message);
       }
     } catch (error) {
       console.error('Error loading orders summary:', error);
+      // Use fallback data on error
+      setOrdersSummary({
+        received: 0,
+        in_maintenance: 0,
+        completed: 0,
+        failed: 0,
+        sending: 0,
+        returned: 0,
+        total: 0
+      });
     }
   }, []);
 
-  // Refresh all orders for active tab
+  // Optimized refresh with parallel loading and error handling
   const refreshActiveTabOrders = useCallback(async () => {
-    await loadOrdersByStatus(activeTab === 'inMaintenance' ? 'in_maintenance' : activeTab);
-    await loadOrdersSummary();
+    const status = activeTab === 'inMaintenance' ? 'in_maintenance' : activeTab;
+    
+    try {
+      // Load orders and summary in parallel for better performance
+      const [ordersResult, summaryResult] = await Promise.allSettled([
+        loadOrdersByStatus(status),
+        loadOrdersSummary()
+      ]);
+      
+      // Handle any errors from parallel execution
+      if (ordersResult.status === 'rejected') {
+        console.error('Failed to refresh orders:', ordersResult.reason);
+      }
+      if (summaryResult.status === 'rejected') {
+        console.error('Failed to refresh summary:', summaryResult.reason);
+      }
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    }
   }, [activeTab, loadOrdersByStatus, loadOrdersSummary]);
 
   // Enhanced QR Scanner initialization with comprehensive error handling
@@ -227,7 +267,7 @@ const OrderManagementPage = () => {
 
   // Enhanced QR detection with backend integration
   const handleQRDetected = useCallback(async (data) => {
-    if (scannerState.isProcessing) return;
+    if (scannerState.isProcessing || isProcessingScan) return;
 
     // Debounce mechanism to prevent duplicate scans
     const now = Date.now();
@@ -243,6 +283,9 @@ const OrderManagementPage = () => {
     setLastScannedCode(data);
     setLastScanTimestamp(now);
 
+    // Set processing flag
+    setIsProcessingScan(true);
+
     // Validate tracking number format
     if (!data || typeof data !== 'string') {
       console.warn('Invalid QR data detected:', data);
@@ -256,6 +299,7 @@ const OrderManagementPage = () => {
       // Clear error after 3 seconds and resume scanner
       setTimeout(() => {
         setScannerState(prev => ({ ...prev, error: null }));
+        setIsProcessingScan(false);
         if (qrScannerRef.current && typeof qrScannerRef.current.resume === 'function') {
           qrScannerRef.current.resume();
         }
@@ -278,6 +322,7 @@ const OrderManagementPage = () => {
       
       setTimeout(() => {
         setScannerState(prev => ({ ...prev, error: null }));
+        setIsProcessingScan(false);
         if (qrScannerRef.current && typeof qrScannerRef.current.resume === 'function') {
           qrScannerRef.current.resume();
         }
@@ -304,6 +349,7 @@ const OrderManagementPage = () => {
       
       setTimeout(() => {
         setScannerState(prev => ({ ...prev, error: null }));
+        setIsProcessingScan(false);
         if (qrScannerRef.current && typeof qrScannerRef.current.resume === 'function') {
           qrScannerRef.current.resume();
         }
@@ -353,6 +399,7 @@ const OrderManagementPage = () => {
           // Clear message after 4 seconds and resume scanner
           setTimeout(() => {
             setScannerState(prev => ({ ...prev, error: null }));
+            setIsProcessingScan(false);
             if (qrScannerRef.current && typeof qrScannerRef.current.resume === 'function') {
               qrScannerRef.current.resume();
             }
@@ -376,6 +423,32 @@ const OrderManagementPage = () => {
         if (scanResult.success) {
           const orderData = orderAPI.transformBackendOrder(scanResult.data.order);
           
+          // Add the order to the current state immediately
+          console.log('Auto-confirming order:', orderData);
+          
+          setOrders(prev => {
+            const newState = {
+              ...prev,
+              received: [orderData, ...prev.received]
+            };
+            console.log('Updated orders state (auto-confirm):', newState);
+            return newState;
+          });
+
+          // Update summary count
+          setOrdersSummary(prev => {
+            const newSummary = {
+              ...prev,
+              received: prev.received + 1,
+              total: prev.total + 1
+            };
+            console.log('Updated summary state (auto-confirm):', newSummary);
+            return newSummary;
+          });
+
+          // Force re-render
+          setForceUpdate(prev => prev + 1);
+          
           // Refresh orders and navigate to received tab
           setActiveTab('received');
           await loadOrdersByStatus('received');
@@ -390,10 +463,10 @@ const OrderManagementPage = () => {
           // Scroll to top and highlight
           setTimeout(() => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
-          setTimeout(() => {
-            setHighlightedOrderId(null);
-          }, 4000);
-        }, 100);
+            setTimeout(() => {
+              setHighlightedOrderId(null);
+            }, 4000);
+          }, 100);
 
         // Show expert auto-confirmation message
         setScannerState(prev => ({
@@ -407,6 +480,7 @@ const OrderManagementPage = () => {
         // Clear message after 3 seconds and resume scanner
         setTimeout(() => {
           setScannerState(prev => ({ ...prev, error: null }));
+          setIsProcessingScan(false);
           if (qrScannerRef.current && typeof qrScannerRef.current.resume === 'function') {
             qrScannerRef.current.resume();
           }
@@ -455,7 +529,10 @@ const OrderManagementPage = () => {
       // Pause scanner for confirmation
       if (qrScannerRef.current && typeof qrScannerRef.current.pause === 'function') {
         qrScannerRef.current.pause();
-        }
+      }
+      
+      // Clear processing flag for new orders (they wait for confirmation)
+      setIsProcessingScan(false);
       } else {
         throw new Error(scanResult.message);
       }
@@ -473,6 +550,7 @@ const OrderManagementPage = () => {
       // Clear error after 3 seconds and resume scanner
       setTimeout(() => {
         setScannerState(prev => ({ ...prev, error: null }));
+        setIsProcessingScan(false);
         if (qrScannerRef.current && typeof qrScannerRef.current.resume === 'function') {
           qrScannerRef.current.resume();
         }
@@ -480,6 +558,7 @@ const OrderManagementPage = () => {
     } finally {
       setTimeout(() => {
         setScannerState(prev => ({ ...prev, isProcessing: false }));
+        setIsProcessingScan(false);
       }, 1000);
     }
   }, [scannerState.isProcessing, recentScans, loadOrdersByStatus, loadOrdersSummary]);
@@ -668,20 +747,48 @@ const OrderManagementPage = () => {
 
     try {
       // Order is already created in backend during scan, just confirm it
-    setScannedOrder(null);
-    setAwaitingConfirmation(false);
+      setScannedOrder(null);
+      setAwaitingConfirmation(false);
 
-      // Refresh received orders and summary
+      // Add the new order to the current state immediately
+      const transformedOrder = orderAPI.transformBackendOrder(scannedOrder);
+      
+      console.log('Adding new order to state:', transformedOrder);
+      
+      setOrders(prev => {
+        const newState = {
+          ...prev,
+          received: [transformedOrder, ...prev.received]
+        };
+        console.log('Updated orders state:', newState);
+        return newState;
+      });
+
+      // Update summary count
+      setOrdersSummary(prev => {
+        const newSummary = {
+          ...prev,
+          received: prev.received + 1,
+          total: prev.total + 1
+        };
+        console.log('Updated summary state:', newSummary);
+        return newSummary;
+      });
+
+      // Force re-render
+      setForceUpdate(prev => prev + 1);
+
+      // Refresh received orders and summary from backend to ensure consistency
       setActiveTab('received');
       await loadOrdersByStatus('received');
       await loadOrdersSummary();
 
-              // Resume scanning
-          if (qrScannerRef.current && typeof qrScannerRef.current.resume === 'function') {
-            qrScannerRef.current.resume();
-          }
+      // Resume scanning
+      if (qrScannerRef.current && typeof qrScannerRef.current.resume === 'function') {
+        qrScannerRef.current.resume();
+      }
 
-    hapticFeedback('success');
+      hapticFeedback('success');
     } catch (error) {
       console.error('Error confirming order:', error);
     }
@@ -858,40 +965,40 @@ const OrderManagementPage = () => {
   const getTabColorClasses = (color, isActive) => {
     const colors = {
       blue: {
-        active: 'bg-blue-50 text-blue-700 border-2 border-blue-200',
-        inactive: 'text-blue-700 hover:bg-blue-50 hover:border-blue-200 border-2 border-transparent',
-        badge: 'bg-blue-100 text-blue-800',
-        badgeActive: 'bg-blue-200 text-blue-800'
+        active: 'bg-blue-100 text-blue-800 border-2 border-blue-300 shadow-sm',
+        inactive: 'text-blue-600 hover:bg-blue-50 hover:border-blue-200 border-2 border-transparent hover:text-blue-700',
+        badge: 'bg-blue-200 text-blue-900',
+        badgeActive: 'bg-blue-300 text-blue-900'
       },
       amber: {
-        active: 'bg-amber-50 text-amber-700 border-2 border-amber-200',
-        inactive: 'text-amber-700 hover:bg-amber-50 hover:border-amber-200 border-2 border-transparent',
-        badge: 'bg-amber-100 text-amber-800',
-        badgeActive: 'bg-amber-200 text-amber-800'
+        active: 'bg-amber-100 text-amber-800 border-2 border-amber-300 shadow-sm',
+        inactive: 'text-amber-600 hover:bg-amber-50 hover:border-amber-200 border-2 border-transparent hover:text-amber-700',
+        badge: 'bg-amber-200 text-amber-900',
+        badgeActive: 'bg-amber-300 text-amber-900'
       },
       green: {
-        active: 'bg-green-50 text-green-700 border-2 border-green-200',
-        inactive: 'text-green-700 hover:bg-green-50 hover:border-green-200 border-2 border-transparent',
-        badge: 'bg-green-100 text-green-800',
-        badgeActive: 'bg-green-200 text-green-800'
+        active: 'bg-green-100 text-green-800 border-2 border-green-300 shadow-sm',
+        inactive: 'text-green-600 hover:bg-green-50 hover:border-green-200 border-2 border-transparent hover:text-green-700',
+        badge: 'bg-green-200 text-green-900',
+        badgeActive: 'bg-green-300 text-green-900'
       },
       red: {
-        active: 'bg-red-50 text-red-700 border-2 border-red-200',
-        inactive: 'text-red-700 hover:bg-red-50 hover:border-red-200 border-2 border-transparent',
-        badge: 'bg-red-100 text-red-800',
-        badgeActive: 'bg-red-200 text-red-800'
+        active: 'bg-red-100 text-red-800 border-2 border-red-300 shadow-sm',
+        inactive: 'text-red-600 hover:bg-red-50 hover:border-red-200 border-2 border-transparent hover:text-red-700',
+        badge: 'bg-red-200 text-red-900',
+        badgeActive: 'bg-red-300 text-red-900'
       },
       purple: {
-        active: 'bg-purple-50 text-purple-700 border-2 border-purple-200',
-        inactive: 'text-purple-700 hover:bg-purple-50 hover:border-purple-200 border-2 border-transparent',
-        badge: 'bg-purple-100 text-purple-800',
-        badgeActive: 'bg-purple-200 text-purple-800'
+        active: 'bg-purple-100 text-purple-800 border-2 border-purple-300 shadow-sm',
+        inactive: 'text-purple-600 hover:bg-purple-50 hover:border-purple-200 border-2 border-transparent hover:text-purple-700',
+        badge: 'bg-purple-200 text-purple-900',
+        badgeActive: 'bg-purple-300 text-purple-900'
       },
       gray: {
-        active: 'bg-gray-50 text-gray-700 border-2 border-gray-200',
-        inactive: 'text-gray-700 hover:bg-gray-50 hover:border-gray-200 border-2 border-transparent',
-        badge: 'bg-gray-100 text-gray-800',
-        badgeActive: 'bg-gray-200 text-gray-800'
+        active: 'bg-gray-100 text-gray-800 border-2 border-gray-300 shadow-sm',
+        inactive: 'text-gray-600 hover:bg-gray-50 hover:border-gray-200 border-2 border-transparent hover:text-gray-700',
+        badge: 'bg-gray-200 text-gray-900',
+        badgeActive: 'bg-gray-300 text-gray-900'
       }
     };
     return colors[color] || colors.blue;
@@ -1477,7 +1584,7 @@ const OrderManagementPage = () => {
                 </div>
               </div>
             ) : orders[activeTab]?.length > 0 ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" key={`orders-${activeTab}-${forceUpdate}`}>
                 {orders[activeTab].map((order) => (
                   <OrderCard
                     key={order._id}

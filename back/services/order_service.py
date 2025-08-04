@@ -6,13 +6,14 @@ import json
 
 from db.auto_init import Order, MaintenanceHistory, OrderStatus, MaintenanceAction, ACTION_STATUS_MAP
 from db import db
+from utils.timezone import get_egypt_now
 
 
 class BostaAPIService:
     """Service for Bosta API integration"""
     
     BASE_URL = 'https://app.bosta.co/api/v2'
-    TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IkxDMDk1RFUzYVd6czhnOEpqTjM3UyIsInJvbGVzIjpbIkJVU0lORVNTX0FETUlOIl0sImJ1c2luZXNzQWRtaW5JbmZvIjp7ImJ1c2luZXNzSWQiOiJaMGZLbmVrUmQ3SXllaGhjN2hMRnoiLCJidXNpbmVzc05hbWUiOiJIVkFSIn0sImNvdW50cnkiOnsiX2lkIjoiNjBlNDQ4MmM3Y2I3ZDRiYzQ4NDljNGQ1IiwibmFtZSI6IkVneXB0IiwibmFtZUFyIjoi2YXYtdixIiwiY29kZSI6IkVHIn0sImVtYWlsIjoia2FyaWVtc2VpYW1AZ21haWwuY29tIiwicGhvbmUiOiIrMjAxMDMzOTM5ODI4IiwiZ3JvdXAiOnsiX2lkIjoiWGFxbENGQSIsIm5hbWUiOiJCVVNJTkVTU19GVUxMX0FDQ0VTUyIsImNvZGUiOjExNX0sInRva2VuVHlwZSI6IkFDQ0VTUyIsInRva2VuVmVyc2lvbiI6IlYyIiwic2Vzc2lvbklkIjoiMDFLMEhKVFdRU0s4MVQzTjlTRktZWTQ3VjEiLCJpYXQiOjE3NTI5MzY4MzcsImV4cCI6MTc1NDE0NjQzN30.9C8-LEBE_k9E_davA4ZhAg-wZ7z6405m7glL_NMZgnk'
+    TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IkxDMDk1RFUzYVd6czhnOEpqTjM3UyIsInJvbGVzIjpbIkJVU0lORVNTX0FETUlOIl0sImJ1c2luZXNzQWRtaW5JbmZvIjp7ImJ1c2luZXNzSWQiOiJaMGZLbmVrUmQ3SXllaGhjN2hMRnoiLCJidXNpbmVzc05hbWUiOiJIVkFSIn0sImNvdW50cnkiOnsiX2lkIjoiNjBlNDQ4MmM3Y2I3ZDRiYzQ4NDljNGQ1IiwibmFtZSI6IkVneXB0IiwibmFtZUFyIjoi2YXYtdixIiwiY29kZSI6IkVHIn0sImVtYWlsIjoia2FyaWVtc2VpYW1AZ21haWwuY29tIiwicGhvbmUiOiIrMjAxMDMzOTM5ODI4IiwiZ3JvdXAiOnsiX2lkIjoiWGFxbENGQSIsIm5hbWUiOiJCVVNJTkVTU19GVUxMX0FDQ0VTUyIsImNvZGUiOjExNX0sInRva2VuVHlwZSI6IkFDQ0VTUyIsInRva2VuVmVyc2lvbiI6IlYyIiwic2Vzc2lvbklkIjoiMDFLMVIxRFpSUkRaNTI1UEUyNUczWDEySkgiLCJpYXQiOjE3NTQyMjcyMTIsImV4cCI6MTc1NTQzNjgxMn0.L3E4X84JcRr898L5gvC8IhxHckhQHpdR4W3qh6gba98'
     
     @classmethod
     def get_headers(cls):
@@ -60,13 +61,22 @@ class BostaAPIService:
         pickup_addr = bosta_data.get('pickupAddress', {}) or {}
         dropoff_addr = bosta_data.get('dropOffAddress', {}) or {}
         
-        # Extract package specs
+        # Extract package specs with priority for returnSpecs in Customer Return orders
         specs = bosta_data.get('specs', {}) or {}
         return_specs = bosta_data.get('returnSpecs', {}) or {}
-        package_details = specs.get('packageDetails', {}) or return_specs.get('packageDetails', {}) or {}
         
-        # Extract nested objects with null checks
+        # For Customer Return Pickup orders, prioritize returnSpecs description
         order_type = bosta_data.get('type', {}) or {}
+        is_customer_return = order_type.get('value') == 'Customer Return Pickup'
+        
+        if is_customer_return and return_specs.get('packageDetails'):
+            # Use returnSpecs for Customer Return orders
+            package_details = return_specs.get('packageDetails', {})
+        else:
+            # Use specs for regular orders, fallback to returnSpecs
+            package_details = specs.get('packageDetails', {}) or return_specs.get('packageDetails', {}) or {}
+        
+        # Extract nested objects with null checks  
         state = bosta_data.get('state', {}) or {}
         wallet = bosta_data.get('wallet', {}) or {}
         cash_cycle = wallet.get('cashCycle', {}) or {}
@@ -79,6 +89,7 @@ class BostaAPIService:
         
         # Determine if this is a return order based on actual data
         is_return = (
+            order_type.get('value') == 'Customer Return Pickup' or
             order_type.get('value') == 'Exchange' or
             bosta_data.get('maskedState') == 'Fulfilled' or
             'return' in bosta_data.get('maskedState', '').lower()
@@ -112,6 +123,7 @@ class BostaAPIService:
             'shipping_state': state.get('value', ''),
             'masked_state': bosta_data.get('maskedState', ''),
             'is_return_order': is_return,
+            'return_specs_data': return_specs,  # Store complete returnSpecs
             'bosta_data': bosta_data,
             'timeline_data': timeline,
             'bosta_proof_images': proof_images
@@ -187,7 +199,7 @@ class OrderService:
             # Create new order
             try:
                 order = Order(**order_data)
-                order.scanned_at = datetime.utcnow()
+                order.scanned_at = get_egypt_now()
                 order.save()
                 
                 # Add initial maintenance history entry
@@ -196,7 +208,7 @@ class OrderService:
                     action=MaintenanceAction.RECEIVED,
                     notes='تم استلام الطلب بنجاح',
                     user_name=user_name,
-                    timestamp=datetime.utcnow()
+                    timestamp=get_egypt_now()
                 )
                 history.save()
                 
@@ -239,7 +251,7 @@ class OrderService:
                 return False, None, validation_error
             
             # Update order status and timestamps
-            now = datetime.utcnow()
+            now = get_egypt_now()
             order.status = new_status
             
             # Handle timestamp updates based on action

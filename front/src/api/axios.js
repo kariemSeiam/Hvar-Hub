@@ -1,38 +1,74 @@
 // src/api/axios.js
 import axios from 'axios';
+import { getCurrentConfig, FEATURES, ERROR_MESSAGES, debug } from '../config/environment';
 
-const API_URL = 'http://127.0.0.1:5000';
+// Get environment-specific configuration
+const apiConfig = getCurrentConfig();
 
+// Create optimized axios instance
 const axiosInstance = axios.create({
-  baseURL: API_URL,
+  baseURL: apiConfig.baseURL,
+  timeout: apiConfig.timeout,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
-
-  },
-  // Make sure credentials are included in all requests
-  credentials: 'include'
+    'Accept': 'application/json',
+  }
 });
 
-// Add request interceptor to ensure credentials are included
+// Request interceptor for logging and error handling
 axiosInstance.interceptors.request.use(
   config => {
-    config.withCredentials = true;
+    // Add request timestamp for debugging
+    config.metadata = { startTime: new Date() };
+    
+    // Log requests based on environment config
+    if (FEATURES.enableLogging) {
+      debug.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    }
+    
     return config;
   },
   error => {
+    debug.error('Request Error:', error);
     return Promise.reject(error);
   }
 );
 
-// Add response interceptor for debugging
+// Response interceptor for unified error handling
 axiosInstance.interceptors.response.use(
   response => {
-    // You can check for cookies in dev tools
+    // Log response time based on environment config
+    if (FEATURES.enableLogging && response.config.metadata) {
+      const duration = new Date() - response.config.metadata.startTime;
+      debug.log(`API Response: ${response.config.url} (${duration}ms)`);
+    }
+    
     return response;
   },
   error => {
-    console.error('API Error:', error.response || error);
+    // Enhanced error logging
+    if (FEATURES.enableLogging) {
+      debug.error('API Error:', {
+        url: error.config?.url,
+        method: error.config?.method,
+        status: error.response?.status,
+        message: error.message,
+        data: error.response?.data
+      });
+    }
+    
+    // Transform common errors to user-friendly messages
+    if (error.code === 'ECONNABORTED') {
+      error.userMessage = ERROR_MESSAGES.TIMEOUT_ERROR;
+    } else if (error.code === 'ERR_NETWORK') {
+      error.userMessage = ERROR_MESSAGES.NETWORK_ERROR;
+    } else if (error.response?.status === 404) {
+      error.userMessage = ERROR_MESSAGES.NOT_FOUND;
+    } else if (error.response?.status === 500) {
+      error.userMessage = ERROR_MESSAGES.SERVER_ERROR;
+    }
+    
     return Promise.reject(error);
   }
 );

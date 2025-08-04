@@ -10,18 +10,18 @@ const Badge = ({
   const baseClasses = 'inline-flex items-center justify-center font-medium rounded-full transition-all duration-200';
   
   const variants = {
-    default: 'bg-gray-100 text-gray-800 border border-gray-200',
-    primary: 'bg-blue-100 text-blue-800 border border-blue-200',
-    success: 'bg-green-100 text-green-800 border border-green-200',
-    warning: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
-    danger: 'bg-red-100 text-red-800 border border-red-200',
-    info: 'bg-cyan-100 text-cyan-800 border border-cyan-200',
-    shipping: 'bg-purple-100 text-purple-800 border border-purple-200',
-    maintenance: 'bg-orange-100 text-orange-800 border border-orange-200',
-    completed: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
-    failed: 'bg-rose-100 text-rose-800 border border-rose-200',
-    pending: 'bg-slate-100 text-slate-800 border border-slate-200',
-    processing: 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+    default: 'bg-gray-200 text-gray-900 border-2 border-gray-300 shadow-sm',
+    primary: 'bg-blue-200 text-blue-900 border-2 border-blue-300 shadow-sm',
+    success: 'bg-green-200 text-green-900 border-2 border-green-300 shadow-sm',
+    warning: 'bg-yellow-200 text-yellow-900 border-2 border-yellow-300 shadow-sm',
+    danger: 'bg-red-200 text-red-900 border-2 border-red-300 shadow-sm',
+    info: 'bg-cyan-200 text-cyan-900 border-2 border-cyan-300 shadow-sm',
+    shipping: 'bg-purple-200 text-purple-900 border-2 border-purple-300 shadow-sm',
+    maintenance: 'bg-orange-200 text-orange-900 border-2 border-orange-300 shadow-sm',
+    completed: 'bg-emerald-200 text-emerald-900 border-2 border-emerald-300 shadow-sm',
+    failed: 'bg-rose-200 text-rose-900 border-2 border-rose-300 shadow-sm',
+    pending: 'bg-slate-200 text-slate-900 border-2 border-slate-300 shadow-sm',
+    processing: 'bg-indigo-200 text-indigo-900 border-2 border-indigo-300 shadow-sm'
   };
   
   const sizes = {

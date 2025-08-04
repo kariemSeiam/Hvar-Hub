@@ -17,13 +17,17 @@ def create_app(config_name=None):
     # Load configuration
     app.config.from_object(config[config_name])
     
-    # Initialize extensions
-    CORS(app, supports_credentials=True, origins=[
+    # Initialize extensions - allow production domain
+    allowed_origins = [
         "http://localhost:5173",
         "http://127.0.0.1:5173", 
         "http://localhost:5000",
-        "http://127.0.0.1:5000"
-    ])
+        "http://127.0.0.1:5000",
+        "https://mcrm.hvarstore.com",
+        "http://mcrm.hvarstore.com"
+    ]
+    
+    CORS(app, supports_credentials=True, origins=allowed_origins)
     
     # Initialize database with auto-initialization
     init_db(app)
