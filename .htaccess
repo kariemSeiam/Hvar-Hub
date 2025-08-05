@@ -1,7 +1,4 @@
 # HVAR Hub .htaccess for CyberPanel deployment
-# This file handles routing and static file serving
-
-# Enable mod_rewrite
 RewriteEngine On
 
 # Handle CORS for API requests
@@ -16,19 +13,10 @@ RewriteEngine On
 RewriteCond %{REQUEST_METHOD} OPTIONS
 RewriteRule ^(.*)$ $1 [R=200,L]
 
-# Serve static files directly
-RewriteCond %{REQUEST_FILENAME} -f
-RewriteRule .* - [L]
-
-# Handle API routes - forward to Flask via passenger_wsgi.py
-RewriteCond %{REQUEST_URI} ^/api/
-RewriteRule ^(.*)$ passenger_wsgi.py/$1 [QSA,L]
-
-# Handle frontend routes - serve index.html for SPA routing
+# Redirect all requests to Flask backend
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_URI} !^/api/
-RewriteRule ^(.*)$ front/dist/index.html [L]
+RewriteRule ^(.*)$ http://127.0.0.1:5000/$1 [R=302,L]
 
 # Cache static assets
 <IfModule mod_expires.c>
@@ -56,7 +44,3 @@ RewriteRule ^(.*)$ front/dist/index.html [L]
 <IfModule mod_deflate.c>
     AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
 </IfModule>
-
-# Force HTTPS (optional - your SSL is already configured)
-# RewriteCond %{HTTPS} off
-# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
