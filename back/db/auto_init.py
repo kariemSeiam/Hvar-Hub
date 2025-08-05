@@ -409,7 +409,9 @@ def configure_utf8_database():
         # Execute database configuration
         for query in db_config_queries:
             try:
-                db.engine.execute(text(query))
+                with db.engine.connect() as connection:
+                    connection.execute(text(query))
+                    connection.commit()
             except Exception as e:
                 print(f"⚠️  Warning configuring database: {str(e)}")
         
@@ -418,7 +420,9 @@ def configure_utf8_database():
         
         for query in all_table_queries:
             try:
-                db.engine.execute(text(query))
+                with db.engine.connect() as connection:
+                    connection.execute(text(query))
+                    connection.commit()
             except Exception as e:
                 print(f"⚠️  Warning configuring table: {str(e)}")
         
@@ -476,7 +480,9 @@ def create_indexes():
         
         for index_sql in indexes:
             try:
-                db.engine.execute(text(index_sql))
+                with db.engine.connect() as connection:
+                    connection.execute(text(index_sql))
+                    connection.commit()
             except Exception as e:
                 print(f"⚠️  Warning creating index: {str(e)}")
         
@@ -497,9 +503,10 @@ def test_connection():
         
         with app.app_context():
             # Test connection
-            result = db.engine.execute(text("SELECT 1"))
-            print("✅ Database connection successful")
-            return True
+            with db.engine.connect() as connection:
+                result = connection.execute(text("SELECT 1"))
+                print("✅ Database connection successful")
+                return True
             
     except Exception as e:
         print(f"❌ Database connection failed: {str(e)}")
