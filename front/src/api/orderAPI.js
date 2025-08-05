@@ -9,8 +9,8 @@ const CACHE_DURATION = getCurrentConfig().cacheDuration;
 const cache = new Map();
 
 const getCacheKey = (endpoint, params = {}) => {
-  const paramString = Object.keys(params).length > 0 
-    ? `?${new URLSearchParams(params).toString()}` 
+  const paramString = Object.keys(params).length > 0
+    ? `?${new URLSearchParams(params).toString()}`
     : '';
   return `${endpoint}${paramString}`;
 };
@@ -40,11 +40,11 @@ const backendApi = axios.create({
 // Enhanced error message mapping using environment config
 const getErrorMessage = (error) => {
   if (error.userMessage) return error.userMessage;
-  
+
   if (error.response) {
     const status = error.response.status;
     const serverMessage = error.response.data?.message;
-    
+
     const statusMessages = {
       400: serverMessage || ERROR_MESSAGES.VALIDATION_ERROR,
       401: ERROR_MESSAGES.UNAUTHORIZED,
@@ -52,10 +52,10 @@ const getErrorMessage = (error) => {
       500: serverMessage || ERROR_MESSAGES.SERVER_ERROR,
       503: 'الخدمة غير متاحة مؤقتاً - يرجى المحاولة لاحقاً'
     };
-    
+
     return statusMessages[status] || serverMessage || ERROR_MESSAGES.UNKNOWN_ERROR;
   }
-  
+
   return ERROR_MESSAGES.NETWORK_ERROR;
 };
 
@@ -64,13 +64,13 @@ const transformCache = new Map();
 
 const transformBackendOrder = (backendOrder) => {
   if (!backendOrder) return null;
-  
+
   // Check cache first
   const cacheKey = `order_${backendOrder.id}`;
   if (transformCache.has(cacheKey)) {
     return transformCache.get(cacheKey);
   }
-  
+
   const transformed = {
     _id: backendOrder.id || backendOrder._id,
     trackingNumber: backendOrder.tracking_number,
@@ -119,8 +119,8 @@ const transformBackendOrder = (backendOrder) => {
     createdAt: backendOrder.created_at,
     scannedAt: backendOrder.scanned_at,
     status: backendOrder.status,
-    isReturnOrder: backendOrder.is_return_order,
-    isRefundOrReplace: backendOrder.is_refund_or_replace,
+    isReturnOrder: backendOrder.is_return_order || false,
+    isRefundOrReplace: backendOrder.is_refund_or_replace || false,
     maintenanceHistory: backendOrder.maintenance_history || [],
     newTrackingNumber: backendOrder.new_tracking_number,
     newCodAmount: backendOrder.new_cod_amount,
@@ -128,7 +128,7 @@ const transformBackendOrder = (backendOrder) => {
     star: backendOrder.bosta_data?.star || {},
     bostaData: backendOrder.bosta_data || {}
   };
-  
+
   // Cache the transformation
   transformCache.set(cacheKey, transformed);
   return transformed;
@@ -163,9 +163,8 @@ const getStatusCode = (status) => {
 export const orderAPI = {
   /**
    * Scan order by tracking number
-   * @param {string} trackingNumber - The tracking number to scan
-   * @param {string} userName - User performing the scan
-   * @returns {Promise} Promise with order data
+   * Backend: POST /api/orders/scan
+   * Response: { success, data: { order, is_existing, bosta_data }, message }
    */
   async scanOrder(trackingNumber, userName = 'فني الصيانة') {
     try {
@@ -174,15 +173,16 @@ export const orderAPI = {
         user_name: userName,
         force_create: false
       });
-      
+
+      // Backend returns: { success, data: { order, is_existing, bosta_data }, message }
       return {
-        success: true,
-        data: response.data.data,
+        success: response.data.success,
+        data: response.data.data, // Contains { order, is_existing, bosta_data }
         message: response.data.message
       };
     } catch (error) {
       console.error('Error scanning order:', error);
-      
+
       return {
         success: false,
         data: null,
@@ -194,37 +194,37 @@ export const orderAPI = {
 
   /**
    * Get orders by status with pagination and caching
-   * @param {string} status - Order status filter
-   * @param {number} page - Page number
-   * @param {number} limit - Items per page
-   * @returns {Promise} Promise with orders data
+   * Backend: GET /api/orders?status=X&page=Y&limit=Z
+   * Response: { success, data: { orders, total, page, per_page } }
    */
   async getOrdersByStatus(status, page = 1, limit = 20) {
     const params = { page, limit };
     if (status) params.status = status;
-    
+
     const cacheKey = getCacheKey('/orders', params);
     const cached = getCachedData(cacheKey);
-    
+
     if (cached) {
       return cached;
     }
-    
+
     try {
       const response = await backendApi.get('/orders', { params });
+
+      // Backend returns: { success, data: { orders, total, page, per_page } }
       const result = {
-        success: true,
-        data: response.data.data,
+        success: response.data.success,
+        data: response.data.data, // Contains { orders, total, page, per_page }
         message: 'تم جلب البيانات بنجاح'
       };
-      
+
       setCachedData(cacheKey, result);
       return result;
     } catch (error) {
       console.error('Error fetching orders:', error);
       return {
         success: false,
-        data: { orders: [], pagination: {} },
+        data: { orders: [], total: 0, page: 1, per_page: limit },
         message: getErrorMessage(error)
       };
     }
@@ -232,12 +232,8 @@ export const orderAPI = {
 
   /**
    * Perform action on order
-   * @param {number} orderId - Order ID
-   * @param {string} action - Action type
-   * @param {string} notes - Action notes
-   * @param {string} userName - User performing action
-   * @param {Object} actionData - Additional action data
-   * @returns {Promise} Promise with updated order
+   * Backend: POST /api/orders/{orderId}/action
+   * Response: { success, data: { order, history_entry }, message }
    */
   async performOrderAction(orderId, action, notes = '', userName = 'فني الصيانة', actionData = {}) {
     try {
@@ -247,14 +243,15 @@ export const orderAPI = {
         user_name: userName,
         action_data: actionData
       });
-      
+
       // Clear cache after action
       cache.clear();
       transformCache.clear();
-      
+
+      // Backend returns: { success, data: { order, history_entry }, message }
       return {
-        success: true,
-        data: response.data.data,
+        success: response.data.success,
+        data: response.data.data, // Contains { order, history_entry }
         message: response.data.message
       };
     } catch (error) {
@@ -269,24 +266,27 @@ export const orderAPI = {
 
   /**
    * Get orders summary (dashboard counts) with caching
-   * @returns {Promise} Promise with summary data
+   * Backend: GET /api/orders/summary
+   * Response: { success, data: { received, in_maintenance, completed, failed, sending, returned, total } }
    */
   async getOrdersSummary() {
     const cacheKey = getCacheKey('/orders/summary');
     const cached = getCachedData(cacheKey);
-    
+
     if (cached) {
       return cached;
     }
-    
+
     try {
       const response = await backendApi.get('/orders/summary');
+
+      // Backend returns: { success, data: { received, in_maintenance, ... } }
       const result = {
-        success: true,
-        data: response.data.data,
+        success: response.data.success,
+        data: response.data.data, // Contains summary object
         message: 'تم جلب الملخص بنجاح'
       };
-      
+
       setCachedData(cacheKey, result);
       return result;
     } catch (error) {
@@ -309,25 +309,27 @@ export const orderAPI = {
 
   /**
    * Get recent scans with caching
-   * @param {number} limit - Number of recent scans to fetch
-   * @returns {Promise} Promise with recent scans
+   * Backend: GET /api/orders/recent-scans?limit=X
+   * Response: { success, data: [ { _id, trackingNumber, scannedAt, status, receiver, specs } ] }
    */
   async getRecentScans(limit = 10) {
     const cacheKey = getCacheKey('/orders/recent-scans', { limit });
     const cached = getCachedData(cacheKey);
-    
+
     if (cached) {
       return cached;
     }
-    
+
     try {
       const response = await backendApi.get(`/orders/recent-scans?limit=${limit}`);
+
+      // Backend returns: { success, data: [ scan objects ] }
       const result = {
-        success: true,
-        data: response.data.data,
+        success: response.data.success,
+        data: response.data.data, // Array of scan objects
         message: 'تم جلب البيانات بنجاح'
       };
-      
+
       setCachedData(cacheKey, result);
       return result;
     } catch (error) {
@@ -342,26 +344,27 @@ export const orderAPI = {
 
   /**
    * Search orders
-   * @param {string} query - Search query
-   * @param {string} status - Optional status filter
-   * @returns {Promise} Promise with search results
+   * Backend: GET /api/orders?search=X&status=Y
+   * Response: { success, data: { orders, total } }
    */
   async searchOrders(query, status = null) {
     const params = { search: query };
     if (status) params.status = status;
-    
+
     try {
       const response = await backendApi.get('/orders', { params });
+
+      // Backend returns: { success, data: { orders, total } }
       return {
-        success: true,
-        data: response.data.data,
+        success: response.data.success,
+        data: response.data.data, // Contains { orders, total }
         message: 'تم البحث بنجاح'
       };
     } catch (error) {
       console.error('Error searching orders:', error);
       return {
         success: false,
-        data: { orders: [] },
+        data: { orders: [], total: 0 },
         message: getErrorMessage(error)
       };
     }
@@ -369,18 +372,22 @@ export const orderAPI = {
 
   /**
    * Get order by tracking number
-   * @param {string} trackingNumber - Tracking number
-   * @returns {Promise} Promise with order data
+   * Backend: GET /api/orders/tracking/{trackingNumber}
+   * Response: { success, data: { order, is_existing, bosta_data }, message }
    */
   async getOrderByTracking(trackingNumber) {
     try {
       const response = await backendApi.get(`/orders/tracking/${trackingNumber}`);
+
+      // Backend returns: { success, data: { order, is_existing, bosta_data }, message }
       return {
-        success: true,
-        data: response.data.data,
-        message: 'تم العثور على الطلب'
+        success: response.data.success,
+        data: response.data.data, // Contains { order, is_existing, bosta_data }
+        message: response.data.message
       };
     } catch (error) {
+      console.error('Error fetching order by tracking:', error);
+
       if (error.response?.status === 404) {
         return {
           success: false,

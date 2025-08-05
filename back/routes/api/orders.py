@@ -31,15 +31,35 @@ def scan_order():
         
         if success:
             print(f"Scan successful for {tracking_number}, is_existing: {is_existing}")
-            return jsonify({
+            
+            # Get order dictionary
+            order_dict = order.to_dict()
+            print(f"Order dict keys: {list(order_dict.keys())}")
+            
+            # Determine status name for message
+            status_names = {
+                'received': 'المستلمة',
+                'in_maintenance': 'تحت الصيانة',
+                'completed': 'مكتملة',
+                'failed': 'فاشلة/معلقة',
+                'sending': 'جاري الإرسال',
+                'returned': 'المرتجعة'
+            }
+            
+            status_name = status_names.get(order.status.value, 'غير محدد')
+            
+            response_data = {
                 'success': True,
                 'data': {
-                    'order': order.to_dict(),
+                    'order': order_dict,
                     'is_existing': is_existing,
-                    'bosta_data': order.bosta_data
+                    'bosta_data': order.bosta_data if hasattr(order, 'bosta_data') else {}
                 },
-                'message': 'تم معالجة الطلب بنجاح' if not is_existing else 'تم العثور على الطلب'
-            }), 200
+                'message': 'تم معالجة الطلب بنجاح' if not is_existing else f'تم العثور على الطلب {tracking_number} في {status_name}'
+            }
+            
+            print(f"Sending response structure: success={response_data['success']}, data keys={list(response_data['data'].keys())}")
+            return jsonify(response_data), 200
         else:
             print(f"Scan failed for {tracking_number}: {error}")
             return jsonify({
@@ -271,9 +291,26 @@ def get_order_by_tracking(tracking_number):
             try:
                 order_dict = order.to_dict()
                 print(f"Successfully serialized order {order.id}")
+                # Determine status name for message
+                status_names = {
+                    'received': 'المستلمة',
+                    'in_maintenance': 'تحت الصيانة',
+                    'completed': 'مكتملة',
+                    'failed': 'فاشلة/معلقة',
+                    'sending': 'جاري الإرسال',
+                    'returned': 'المرتجعة'
+                }
+                
+                status_name = status_names.get(order.status.value, 'غير محدد')
+                
                 return jsonify({
                     'success': True,
-                    'data': order_dict
+                    'data': {
+                        'order': order_dict,
+                        'is_existing': True,
+                        'bosta_data': order.bosta_data if hasattr(order, 'bosta_data') else {}
+                    },
+                    'message': f'تم العثور على الطلب {tracking_number} في {status_name}'
                 }), 200
             except Exception as serialization_error:
                 print(f"Serialization error for order {tracking_number}: {str(serialization_error)}")
@@ -294,10 +331,27 @@ def get_order_by_tracking(tracking_number):
             
             if success:
                 print(f"Successfully fetched order from Bosta API")
+                
+                # Determine status name for message
+                status_names = {
+                    'received': 'المستلمة',
+                    'in_maintenance': 'تحت الصيانة',
+                    'completed': 'مكتملة',
+                    'failed': 'فاشلة/معلقة',
+                    'sending': 'جاري الإرسال',
+                    'returned': 'المرتجعة'
+                }
+                
+                status_name = status_names.get(order.status.value, 'غير محدد')
+                
                 return jsonify({
                     'success': True,
-                    'data': order.to_dict(),
-                    'message': 'تم جلب الطلب من Bosta بنجاح'
+                    'data': {
+                        'order': order.to_dict(),
+                        'is_existing': is_existing,
+                        'bosta_data': order.bosta_data if hasattr(order, 'bosta_data') else {}
+                    },
+                    'message': f'تم جلب الطلب من Bosta بنجاح - {status_name}'
                 }), 200
             else:
                 print(f"Failed to fetch from Bosta API: {error}")

@@ -340,8 +340,7 @@ def create_mysql_database():
             host=Config.MYSQL_HOST,
             port=int(Config.MYSQL_PORT),
             user=Config.MYSQL_USER,
-            password=Config.MYSQL_PASSWORD,
-            charset='utf8mb4'
+            password=Config.MYSQL_PASSWORD
         )
         
         cursor = connection.cursor()
@@ -358,6 +357,76 @@ def create_mysql_database():
     except Exception as e:
         print(f"⚠️  MySQL not available: {str(e)}")
         print("🔄 Falling back to SQLite for development...")
+        return False
+
+def configure_utf8_database():
+    """Configure database and tables with UTF-8 character set"""
+    try:
+        print("🔧 Configuring UTF-8 character set for database and tables...")
+        
+        # Configure database character set
+        db_config_queries = [
+            "ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+        ]
+        
+        # Configure orders table character set
+        orders_config_queries = [
+            "ALTER TABLE orders CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY tracking_number VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY bosta_id VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY customer_name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY customer_phone VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY customer_second_phone VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY pickup_address TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY dropoff_address TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY city VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY zone VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY building_number VARCHAR(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY floor VARCHAR(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY apartment VARCHAR(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY package_description TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY order_type VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY shipping_state VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY masked_state VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE orders MODIFY new_tracking_number VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+        ]
+        
+        # Configure maintenance_history table character set
+        maintenance_config_queries = [
+            "ALTER TABLE maintenance_history CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE maintenance_history MODIFY notes TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE maintenance_history MODIFY user_name VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+        ]
+        
+        # Configure proof_images table character set
+        proof_images_config_queries = [
+            "ALTER TABLE proof_images CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE proof_images MODIFY image_url TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE proof_images MODIFY image_type VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+            "ALTER TABLE proof_images MODIFY uploaded_by VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+        ]
+        
+        # Execute database configuration
+        for query in db_config_queries:
+            try:
+                db.engine.execute(text(query))
+            except Exception as e:
+                print(f"⚠️  Warning configuring database: {str(e)}")
+        
+        # Execute table configurations
+        all_table_queries = orders_config_queries + maintenance_config_queries + proof_images_config_queries
+        
+        for query in all_table_queries:
+            try:
+                db.engine.execute(text(query))
+            except Exception as e:
+                print(f"⚠️  Warning configuring table: {str(e)}")
+        
+        print("✅ UTF-8 configuration completed successfully")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error configuring UTF-8: {str(e)}")
         return False
 
 def create_tables():
@@ -377,6 +446,9 @@ def create_tables():
             # Create all tables
             db.create_all()
             print("✅ All tables created successfully")
+            
+            # Configure UTF-8 character set
+            configure_utf8_database()
             
             # Create indexes
             create_indexes()

@@ -69,29 +69,65 @@ const OrderManagementPage = () => {
   const qrScannerRef = useRef(null);
   const scannerInputRef = useRef(null);
 
+  // Helper function to get tab display name
+  const getTabDisplayName = (tabId) => {
+    const tabNames = {
+      'received': 'المستلمة',
+      'inMaintenance': 'تحت الصيانة',
+      'completed': 'مكتملة',
+      'failed': 'فاشلة/معلقة',
+      'sending': 'جاري الإرسال',
+      'returns': 'المرتجعة'
+    };
+    return tabNames[tabId] || tabId;
+  };
+
   // Optimized load orders with error handling and caching
   const loadOrdersByStatus = useCallback(async (status) => {
     if (!status) return;
-    
+
     setIsLoadingOrders(true);
     try {
+      // Backend returns: { success, data: { orders, total, page, per_page } }
       const result = await orderAPI.getOrdersByStatus(status);
       if (result.success) {
-        const transformedOrders = result.data.orders.map(order => 
+        // Transform orders from backend format to frontend format
+        const transformedOrders = result.data.orders.map(order =>
           orderAPI.transformBackendOrder(order)
         );
-        
+
         // Map backend status to frontend state key
         const statusMap = {
           'in_maintenance': 'inMaintenance',
           'returned': 'returns'
         };
         const stateKey = statusMap[status] || status;
-        
-        setOrders(prev => ({
-          ...prev,
-          [stateKey]: transformedOrders
-        }));
+
+        setOrders(prev => {
+          // Get current orders for this status
+          const currentOrders = prev[stateKey] || [];
+          
+          // Find newly scanned orders (orders with scannedAt timestamp from today)
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const newlyScannedOrders = currentOrders.filter(order => 
+            order.scannedAt && new Date(order.scannedAt) >= today
+          );
+          
+          // Filter out newly scanned orders from backend orders to avoid duplicates
+          const backendOrderIds = new Set(transformedOrders.map(order => order._id));
+          const filteredBackendOrders = transformedOrders.filter(order => 
+            !newlyScannedOrders.some(scannedOrder => scannedOrder._id === order._id)
+          );
+          
+          // Combine newly scanned orders at the top with backend orders
+          const combinedOrders = [...newlyScannedOrders, ...filteredBackendOrders];
+          
+          return {
+            ...prev,
+            [stateKey]: combinedOrders
+          };
+        });
       } else {
         console.warn(`Failed to load ${status} orders:`, result.message);
         // Show user-friendly error message
@@ -114,6 +150,7 @@ const OrderManagementPage = () => {
   // Optimized load orders summary with error handling
   const loadOrdersSummary = useCallback(async () => {
     try {
+      // Backend returns: { success, data: { received, in_maintenance, completed, failed, sending, returned, total } }
       const result = await orderAPI.getOrdersSummary();
       if (result.success) {
         setOrdersSummary(result.data);
@@ -138,14 +175,14 @@ const OrderManagementPage = () => {
   // Optimized refresh with parallel loading and error handling
   const refreshActiveTabOrders = useCallback(async () => {
     const status = activeTab === 'inMaintenance' ? 'in_maintenance' : activeTab;
-    
+
     try {
       // Load orders and summary in parallel for better performance
       const [ordersResult, summaryResult] = await Promise.allSettled([
         loadOrdersByStatus(status),
         loadOrdersSummary()
       ]);
-      
+
       // Handle any errors from parallel execution
       if (ordersResult.status === 'rejected') {
         console.error('Failed to refresh orders:', ordersResult.reason);
@@ -273,12 +310,11 @@ const OrderManagementPage = () => {
     const now = Date.now();
     const timeSinceLastScan = now - lastScanTimestamp;
     const isDuplicateCode = lastScannedCode === data;
-    
+
     if (isDuplicateCode && timeSinceLastScan < 3000) { // 3 second debounce for same code
-      console.log('Debounced duplicate scan:', data);
       return;
     }
-    
+
     // Update last scan info
     setLastScannedCode(data);
     setLastScanTimestamp(now);
@@ -295,7 +331,7 @@ const OrderManagementPage = () => {
       }));
       scanErrorFeedback();
       hapticFeedback('error');
-      
+
       // Clear error after 3 seconds and resume scanner
       setTimeout(() => {
         setScannerState(prev => ({ ...prev, error: null }));
@@ -309,7 +345,7 @@ const OrderManagementPage = () => {
 
     // Clean and validate tracking number
     const cleanTrackingNumber = data.trim();
-    
+
     // Check if tracking number is too short or contains invalid characters
     if (cleanTrackingNumber.length < 3) {
       console.warn('Tracking number too short:', cleanTrackingNumber);
@@ -319,7 +355,7 @@ const OrderManagementPage = () => {
       }));
       scanErrorFeedback();
       hapticFeedback('error');
-      
+
       setTimeout(() => {
         setScannerState(prev => ({ ...prev, error: null }));
         setIsProcessingScan(false);
@@ -346,7 +382,7 @@ const OrderManagementPage = () => {
       }));
       scanErrorFeedback();
       hapticFeedback('error');
-      
+
       setTimeout(() => {
         setScannerState(prev => ({ ...prev, error: null }));
         setIsProcessingScan(false);
@@ -360,106 +396,150 @@ const OrderManagementPage = () => {
     setScannerState(prev => ({ ...prev, isProcessing: true, error: null }));
 
     try {
-      console.log('Scanning order with tracking number:', cleanTrackingNumber);
-
       // Check if order already exists in backend
       const existingResult = await orderAPI.getOrderByTracking(cleanTrackingNumber);
-      
-      if (existingResult.success) {
+
+      // Check if order actually exists (not just fetched from Bosta)
+      const isActuallyExisting = existingResult.success && existingResult.data.is_existing;
+
+      if (isActuallyExisting) {
         // Order exists - navigate to its tab and highlight it
-        const existingOrder = orderAPI.transformBackendOrder(existingResult.data);
+        // Handle both nested and direct order structures
+        const orderData = existingResult.data.order || existingResult.data;
+        const existingOrder = orderAPI.transformBackendOrder(orderData);
+
         const tabId = existingOrder.status === 'in_maintenance' ? 'inMaintenance' : existingOrder.status;
+
+        // Navigate to the tab containing the order
+        setActiveTab(tabId);
         
-          // Navigate to the tab containing the order
-          setActiveTab(tabId);
+        // Load orders for the target tab and add the existing order to the top
         await loadOrdersByStatus(existingOrder.status);
         
+        // Add the existing order to the top of the list if not already present
+        setOrders(prev => {
+          const newState = { ...prev };
+          const stateKey = existingOrder.status === 'in_maintenance' ? 'inMaintenance' : existingOrder.status;
+          const existingIndex = newState[stateKey]?.findIndex(order => order._id === existingOrder._id);
+          
+          if (existingIndex === -1) {
+            // Order not in current state, add it to the top
+            newState[stateKey] = [existingOrder, ...(newState[stateKey] || [])];
+          } else if (existingIndex > 0) {
+            // Order exists but not at top, move it to top
+            const orderList = [...newState[stateKey]];
+            const [movedOrder] = orderList.splice(existingIndex, 1);
+            newState[stateKey] = [movedOrder, ...orderList];
+          }
+          
+          return newState;
+        });
+
         // Highlight the order
-          setHighlightedOrderId(existingOrder._id);
-          
+        setHighlightedOrderId(existingOrder._id);
+
         // Scroll to top smoothly
-          setTimeout(() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }, 100);
-          
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
+
         // Clear highlight after 6 seconds
-          setTimeout(() => {
-            setHighlightedOrderId(null);
-          }, 6000);
+        setTimeout(() => {
+          setHighlightedOrderId(null);
+        }, 6000);
 
-          // Show success message
-          setScannerState(prev => ({
-            ...prev,
+        // Show success message
+        setScannerState(prev => ({
+          ...prev,
           error: `تم العثور على الطلب ${cleanTrackingNumber} في ${getTabLabel(tabId)}`
-          }));
-          
-          scanSuccessFeedback();
-          hapticFeedback('success');
+        }));
 
-          // Clear message after 4 seconds and resume scanner
-          setTimeout(() => {
-            setScannerState(prev => ({ ...prev, error: null }));
-            setIsProcessingScan(false);
-            if (qrScannerRef.current && typeof qrScannerRef.current.resume === 'function') {
-              qrScannerRef.current.resume();
-            }
-          }, 4000);
+        scanSuccessFeedback();
+        hapticFeedback('success');
 
-          return;
+        // Clear message after 4 seconds and resume scanner
+        setTimeout(() => {
+          setScannerState(prev => ({ ...prev, error: null }));
+          setIsProcessingScan(false);
+          if (qrScannerRef.current && typeof qrScannerRef.current.resume === 'function') {
+            qrScannerRef.current.resume();
+          }
+        }, 4000);
+
+        return;
       }
 
       // Check if this tracking number was recently scanned (within last 5 seconds)
-      const recentScan = recentScans.find(scan => 
-        scan.trackingNumber === cleanTrackingNumber && 
+      const recentScan = recentScans.find(scan =>
+        scan.trackingNumber === cleanTrackingNumber &&
         (new Date().getTime() - new Date(scan.scannedAt).getTime()) < 5000
       );
 
       if (recentScan) {
         console.log('Expert Mode: Auto-confirming duplicate scan for', cleanTrackingNumber);
-        
+
         // Auto-scan and confirm with backend
         const scanResult = await orderAPI.scanOrder(cleanTrackingNumber);
-        
+
         if (scanResult.success) {
-          const orderData = orderAPI.transformBackendOrder(scanResult.data.order);
-          
-          // Add the order to the current state immediately
+          // Backend returns: { success, data: { order, is_existing, bosta_data }, message }
+          // Handle both nested and direct order structures
+          const backendOrderData = scanResult.data.order || scanResult.data;
+          const orderData = orderAPI.transformBackendOrder(backendOrderData);
+          const isExisting = scanResult.data.is_existing;
+          const bostaData = scanResult.data.bosta_data;
+
+          // Determine the correct tab based on order status
+          const statusMap = {
+            'received': 'received',
+            'in_maintenance': 'inMaintenance',
+            'completed': 'completed',
+            'failed': 'failed',
+            'sending': 'sending',
+            'returned': 'returns'  // Backend returns 'returned', frontend uses 'returns'
+          };
+
+          const targetTab = statusMap[orderData.status] || 'received';
+
+          // Add the order to the current state immediately at the top
           console.log('Auto-confirming order:', orderData);
-          
+
           setOrders(prev => {
-            const newState = {
-              ...prev,
-              received: [orderData, ...prev.received]
-            };
-            console.log('Updated orders state (auto-confirm):', newState);
+            const newState = { ...prev };
+            const stateKey = statusMap[orderData.status] || 'received';
+            
+            // Remove existing order if it exists to avoid duplicates
+            const filteredOrders = newState[stateKey]?.filter(order => order._id !== orderData._id) || [];
+            
+            // Add new order at the top
+            newState[stateKey] = [orderData, ...filteredOrders];
             return newState;
           });
 
           // Update summary count
           setOrdersSummary(prev => {
-            const newSummary = {
-              ...prev,
-              received: prev.received + 1,
-              total: prev.total + 1
-            };
-            console.log('Updated summary state (auto-confirm):', newSummary);
+            const newSummary = { ...prev };
+            const summaryKey = orderData.status === 'in_maintenance' ? 'in_maintenance' :
+              orderData.status === 'returned' ? 'returned' : orderData.status;
+            newSummary[summaryKey] = (newSummary[summaryKey] || 0) + 1;
+            newSummary.total = (newSummary.total || 0) + 1;
             return newSummary;
           });
 
           // Force re-render
           setForceUpdate(prev => prev + 1);
-          
-          // Refresh orders and navigate to received tab
-          setActiveTab('received');
-          await loadOrdersByStatus('received');
+
+          // Navigate to the correct tab and refresh orders
+          setActiveTab(targetTab);
+          await loadOrdersByStatus(targetTab);
           await loadOrdersSummary();
-          
+
           // Add to recent scans
           setRecentScans(prev => [orderData, ...prev.slice(0, 8)]);
-          
+
           // Highlight the new order
           setHighlightedOrderId(orderData._id);
-          
+
           // Scroll to top and highlight
           setTimeout(() => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -468,78 +548,138 @@ const OrderManagementPage = () => {
             }, 4000);
           }, 100);
 
-        // Show expert auto-confirmation message
-        setScannerState(prev => ({
-          ...prev,
-            error: `تم تأكيد استلام الطلب ${cleanTrackingNumber} تلقائياً (وضع الخبير)`
-        }));
+          // Show expert auto-confirmation message using backend message
+          const expertMessage = scanResult.message ?
+            `${scanResult.message} (وضع الخبير)` :
+            `تم العثور على الطلب ${cleanTrackingNumber} في ${getTabDisplayName(targetTab)} (وضع الخبير)`;
 
-        scanSuccessFeedback();
-        hapticFeedback('success');
+          setScannerState(prev => ({
+            ...prev,
+            error: expertMessage
+          }));
 
-        // Clear message after 3 seconds and resume scanner
-        setTimeout(() => {
-          setScannerState(prev => ({ ...prev, error: null }));
-          setIsProcessingScan(false);
-          if (qrScannerRef.current && typeof qrScannerRef.current.resume === 'function') {
-            qrScannerRef.current.resume();
-          }
-        }, 3000);
+          scanSuccessFeedback();
+          hapticFeedback('success');
 
-        return;
+          // Clear message after 3 seconds and resume scanner
+          setTimeout(() => {
+            setScannerState(prev => ({ ...prev, error: null }));
+            setIsProcessingScan(false);
+            if (qrScannerRef.current && typeof qrScannerRef.current.resume === 'function') {
+              qrScannerRef.current.resume();
+            }
+          }, 3000);
+
+          return;
         }
       }
 
       // New order - scan from backend
       const scanResult = await orderAPI.scanOrder(cleanTrackingNumber);
-      
+
       if (scanResult.success) {
-        const orderData = orderAPI.transformBackendOrder(scanResult.data.order);
+        // Backend returns: { success, data: { order, is_existing, bosta_data }, message }
+        // Handle both nested and direct order structures
+        const backendOrderData = scanResult.data.order || scanResult.data;
+        const orderData = orderAPI.transformBackendOrder(backendOrderData);
+        const isExisting = scanResult.data.is_existing;
+        const bostaData = scanResult.data.bosta_data;
 
-      // Add scanned timestamp
-      orderData.scannedAt = new Date().toISOString();
+        // Add scanned timestamp
+        orderData.scannedAt = new Date().toISOString();
 
-      setScannedOrder(orderData);
-      setAwaitingConfirmation(true);
+        // Determine the correct tab based on order status
+        const statusMap = {
+          'received': 'received',
+          'in_maintenance': 'inMaintenance',
+          'completed': 'completed',
+          'failed': 'failed',
+          'sending': 'sending',
+          'returned': 'returns'  // Backend returns 'returned', frontend uses 'returns'
+        };
+
+        const targetTab = statusMap[orderData.status] || 'received';
+
+        // Navigate to the correct tab if not already there
+        if (activeTab !== targetTab) {
+          setActiveTab(targetTab);
+        }
+
+        // Add the order to the current state immediately at the top
+        setOrders(prev => {
+          const newState = { ...prev };
+          const stateKey = statusMap[orderData.status] || 'received';
+          
+          // Remove existing order if it exists to avoid duplicates
+          const filteredOrders = newState[stateKey]?.filter(order => order._id !== orderData._id) || [];
+          
+          // Add new order at the top
+          newState[stateKey] = [orderData, ...filteredOrders];
+          return newState;
+        });
+
+        // Update summary count
+        setOrdersSummary(prev => {
+          const newSummary = { ...prev };
+          const summaryKey = orderData.status === 'in_maintenance' ? 'in_maintenance' :
+            orderData.status === 'returned' ? 'returned' : orderData.status;
+          newSummary[summaryKey] = (newSummary[summaryKey] || 0) + 1;
+          newSummary.total = (newSummary.total || 0) + 1;
+          return newSummary;
+        });
+
+        setScannedOrder(orderData);
+        setAwaitingConfirmation(true);
 
         // Add to recent scans
-      setRecentScans(prev => {
-        const existingIndex = prev.findIndex(scan => scan.trackingNumber === orderData.trackingNumber);
-        if (existingIndex !== -1) {
-          const updatedScans = [...prev];
-          updatedScans[existingIndex] = {
-            ...updatedScans[existingIndex],
-            scannedAt: orderData.scannedAt
-          };
-          return updatedScans;
-        } else {
-          return [orderData, ...prev.slice(0, 8)];
-        }
-      });
+        setRecentScans(prev => {
+          const existingIndex = prev.findIndex(scan => scan.trackingNumber === orderData.trackingNumber);
+          if (existingIndex !== -1) {
+            const updatedScans = [...prev];
+            updatedScans[existingIndex] = {
+              ...updatedScans[existingIndex],
+              scannedAt: orderData.scannedAt
+            };
+            return updatedScans;
+          } else {
+            return [orderData, ...prev.slice(0, 8)];
+          }
+        });
+
+        // Highlight the new order
+        setHighlightedOrderId(orderData._id);
 
         // Scroll to top smoothly for new orders
-      setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }, 100);
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          setTimeout(() => {
+            setHighlightedOrderId(null);
+          }, 4000);
+        }, 100);
 
-      // Enhanced feedback
-      scanSuccessFeedback();
-      hapticFeedback('success');
+        // Enhanced feedback
+        scanSuccessFeedback();
+        hapticFeedback('success');
 
-      // Pause scanner for confirmation
-      if (qrScannerRef.current && typeof qrScannerRef.current.pause === 'function') {
-        qrScannerRef.current.pause();
-      }
-      
-      // Clear processing flag for new orders (they wait for confirmation)
-      setIsProcessingScan(false);
+        // Use backend message instead of constructing our own
+        const message = scanResult.message || (isExisting ?
+          `تم العثور على الطلب ${cleanTrackingNumber} في ${getTabDisplayName(targetTab)}` :
+          'تم إضافة طلب جديد بنجاح');
+
+        // Pause scanner for confirmation
+        if (qrScannerRef.current && typeof qrScannerRef.current.pause === 'function') {
+          qrScannerRef.current.pause();
+        }
+
+        // Clear processing flag for new orders (they wait for confirmation)
+        setIsProcessingScan(false);
       } else {
         throw new Error(scanResult.message);
       }
 
     } catch (error) {
       console.error('Error processing scanned data:', error);
-      
+
       setScannerState(prev => ({
         ...prev,
         error: error.message || 'فشل في معالجة البيانات الممسوحة'
@@ -561,18 +701,18 @@ const OrderManagementPage = () => {
         setIsProcessingScan(false);
       }, 1000);
     }
-  }, [scannerState.isProcessing, recentScans, loadOrdersByStatus, loadOrdersSummary]);
+  }, [scannerState.isProcessing, recentScans, loadOrdersByStatus, loadOrdersSummary, activeTab]);
 
   // Handle manual input
   const handleManualSubmit = async (e) => {
     e.preventDefault();
     if (manualInput.trim()) {
       setIsManualSubmitting(true);
-      
+
       try {
         // Use the same validation logic as QR scanner
         const cleanTrackingNumber = manualInput.trim();
-        
+
         // Check if tracking number is too short
         if (cleanTrackingNumber.length < 3) {
           setScannerState(prev => ({
@@ -581,7 +721,7 @@ const OrderManagementPage = () => {
           }));
           scanErrorFeedback();
           hapticFeedback('error');
-          
+
           setTimeout(() => {
             setScannerState(prev => ({ ...prev, error: null }));
           }, 3000);
@@ -603,7 +743,7 @@ const OrderManagementPage = () => {
           }));
           scanErrorFeedback();
           hapticFeedback('error');
-          
+
           setTimeout(() => {
             setScannerState(prev => ({ ...prev, error: null }));
           }, 3000);
@@ -663,14 +803,15 @@ const OrderManagementPage = () => {
     const loadInitialData = async () => {
       await loadOrdersSummary();
       await loadOrdersByStatus('received'); // Load default tab
-      
+
       // Load recent scans
       try {
+        // Backend returns: { success, data: [ { _id, trackingNumber, scannedAt, status, receiver, specs } ] }
         const result = await orderAPI.getRecentScans(10);
         if (result.success) {
           console.log('Recent scans raw data:', result.data);
           console.log('First scan example:', result.data[0]);
-          // The backend now returns the correct structure, no transformation needed
+          // Backend returns the correct structure directly
           setRecentScans(result.data);
         } else {
           console.warn('Failed to load recent scans:', result.message);
@@ -746,31 +887,53 @@ const OrderManagementPage = () => {
     if (!scannedOrder) return;
 
     try {
+      console.log('Original scanned order:', scannedOrder);
+      console.log('Original scanned order keys:', Object.keys(scannedOrder || {}));
+      
       // Order is already created in backend during scan, just confirm it
-      setScannedOrder(null);
-      setAwaitingConfirmation(false);
-
-      // Add the new order to the current state immediately
       const transformedOrder = orderAPI.transformBackendOrder(scannedOrder);
-      
+
+      console.log('Transformed order:', transformedOrder);
+      console.log('Transformed order keys:', Object.keys(transformedOrder || {}));
       console.log('Adding new order to state:', transformedOrder);
-      
+
+      // Determine the correct tab based on order status
+      const statusMap = {
+        'received': 'received',
+        'in_maintenance': 'inMaintenance',
+        'completed': 'completed',
+        'failed': 'failed',
+        'sending': 'sending',
+        'returned': 'returns'
+      };
+
+      const targetTab = statusMap[transformedOrder.status] || 'received';
+
+      // Add the new order to the current state immediately at the top
       setOrders(prev => {
-        const newState = {
-          ...prev,
-          received: [transformedOrder, ...prev.received]
-        };
+        const newState = { ...prev };
+        const stateKey = statusMap[transformedOrder.status] || 'received';
+        
+        console.log('Adding order to state key:', stateKey);
+        console.log('Order to add:', transformedOrder);
+        
+        // Remove existing order if it exists to avoid duplicates
+        const filteredOrders = newState[stateKey]?.filter(order => order._id !== transformedOrder._id) || [];
+        
+        // Add new order at the top
+        newState[stateKey] = [transformedOrder, ...filteredOrders];
         console.log('Updated orders state:', newState);
+        console.log('Orders in target tab:', newState[stateKey]);
         return newState;
       });
 
       // Update summary count
       setOrdersSummary(prev => {
-        const newSummary = {
-          ...prev,
-          received: prev.received + 1,
-          total: prev.total + 1
-        };
+        const newSummary = { ...prev };
+        const summaryKey = transformedOrder.status === 'in_maintenance' ? 'in_maintenance' :
+          transformedOrder.status === 'returned' ? 'returned' : transformedOrder.status;
+        newSummary[summaryKey] = (newSummary[summaryKey] || 0) + 1;
+        newSummary.total = (newSummary.total || 0) + 1;
         console.log('Updated summary state:', newSummary);
         return newSummary;
       });
@@ -778,10 +941,22 @@ const OrderManagementPage = () => {
       // Force re-render
       setForceUpdate(prev => prev + 1);
 
-      // Refresh received orders and summary from backend to ensure consistency
-      setActiveTab('received');
-      await loadOrdersByStatus('received');
-      await loadOrdersSummary();
+      // Navigate to the correct tab if not already there
+      if (activeTab !== targetTab) {
+        setActiveTab(targetTab);
+      }
+
+      // Highlight the new order
+      setHighlightedOrderId(transformedOrder._id);
+
+      // Clear highlight after 4 seconds
+      setTimeout(() => {
+        setHighlightedOrderId(null);
+      }, 4000);
+
+      // Clear scanned order state immediately after adding to orders list
+      setScannedOrder(null);
+      setAwaitingConfirmation(false);
 
       // Resume scanning
       if (qrScannerRef.current && typeof qrScannerRef.current.resume === 'function') {
@@ -798,10 +973,10 @@ const OrderManagementPage = () => {
 
   const handleOrderAction = async (actionType, order, actionNotes = '') => {
     setActionInProgress(actionType);
-    
+
     try {
       let actionData = {};
-      
+
       // Extract action data based on action type
       if (typeof actionNotes === 'object' && actionNotes !== null) {
         actionData = actionNotes;
@@ -809,7 +984,8 @@ const OrderManagementPage = () => {
       }
 
       console.log(`Performing action: ${actionType} on order ${order._id}`);
-      
+
+      // Backend returns: { success, data: { order, history_entry }, message }
       const result = await orderAPI.performOrderAction(
         order._id,
         actionType,
@@ -819,17 +995,79 @@ const OrderManagementPage = () => {
       );
 
       if (result.success) {
-        // Refresh current tab orders and summary
-        await refreshActiveTabOrders();
+        // Get the updated order from the backend response
+        const updatedOrder = result.data.order ? orderAPI.transformBackendOrder(result.data.order) : order;
         
-        // If action moves order to different tab, also refresh that tab
+        // Get target status for this action
         const targetStatus = getTargetStatusForAction(actionType);
-        if (targetStatus && targetStatus !== activeTab) {
-          await loadOrdersByStatus(targetStatus === 'inMaintenance' ? 'in_maintenance' : targetStatus);
+        const targetTab = targetStatus === 'inMaintenance' ? 'inMaintenance' : targetStatus;
+        
+        // Update local state immediately
+        setOrders(prev => {
+          const newState = { ...prev };
+          
+          // Remove order from current tab
+          const currentTab = activeTab;
+          if (newState[currentTab]) {
+            newState[currentTab] = newState[currentTab].filter(o => o._id !== order._id);
+          }
+          
+          // Add order to target tab (if different from current tab)
+          if (targetTab && targetTab !== currentTab) {
+            const targetStateKey = targetStatus === 'inMaintenance' ? 'inMaintenance' : targetStatus;
+            if (!newState[targetStateKey]) {
+              newState[targetStateKey] = [];
+            }
+            newState[targetStateKey] = [updatedOrder, ...newState[targetStateKey]];
+          }
+          
+          return newState;
+        });
+
+        // Update summary counts
+        setOrdersSummary(prev => {
+          const newSummary = { ...prev };
+          
+          // Decrease count for current tab
+          const currentSummaryKey = activeTab === 'inMaintenance' ? 'in_maintenance' : 
+            activeTab === 'returns' ? 'returned' : activeTab;
+          if (newSummary[currentSummaryKey] > 0) {
+            newSummary[currentSummaryKey] = Math.max(0, newSummary[currentSummaryKey] - 1);
+          }
+          
+          // Increase count for target tab (if different)
+          if (targetTab && targetTab !== activeTab) {
+            const targetSummaryKey = targetStatus === 'inMaintenance' ? 'in_maintenance' : 
+              targetStatus === 'returns' ? 'returned' : targetStatus;
+            newSummary[targetSummaryKey] = (newSummary[targetSummaryKey] || 0) + 1;
+          }
+          
+          return newSummary;
+        });
+
+        // Force re-render
+        setForceUpdate(prev => prev + 1);
+
+        // Navigate to target tab if action moves order to different tab
+        if (targetTab && targetTab !== activeTab) {
+          setActiveTab(targetTab);
+          
+          // Highlight the moved order
+          setHighlightedOrderId(updatedOrder._id);
+          
+          // Clear highlight after 4 seconds
+          setTimeout(() => {
+            setHighlightedOrderId(null);
+          }, 4000);
+          
+          // Scroll to top smoothly
+          setTimeout(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }, 100);
         }
 
         hapticFeedback('success');
-        } else {
+      } else {
         throw new Error(result.message);
       }
     } catch (error) {
@@ -852,7 +1090,8 @@ const OrderManagementPage = () => {
       'confirm_send': 'sending',
       'return_order': 'returns',
       'move_to_returns': 'returns',
-      'refund_or_replace': 'completed'
+      'refund_or_replace': 'completed',
+      'confirm_refund_replace': 'completed'
     };
     return actionStatusMap[actionType];
   };
@@ -879,15 +1118,15 @@ const OrderManagementPage = () => {
   const getHighlightClasses = (tabId) => {
     const tabColorMap = {
       'received': 'blue',
-      'inMaintenance': 'amber', 
+      'inMaintenance': 'amber',
       'completed': 'green',
       'failed': 'red',
       'sending': 'purple',
       'returns': 'gray'
     };
-    
+
     const color = tabColorMap[tabId] || 'blue';
-    
+
     const highlightStyles = {
       blue: 'border-l-4 border-blue-500 bg-gradient-to-r from-blue-50/80 to-blue-100/40 shadow-lg shadow-blue-200/50 ring-2 ring-blue-300/30',
       amber: 'border-l-4 border-amber-500 bg-gradient-to-r from-amber-50/80 to-amber-100/40 shadow-lg shadow-amber-200/50 ring-2 ring-amber-300/30',
@@ -896,7 +1135,7 @@ const OrderManagementPage = () => {
       purple: 'border-l-4 border-purple-500 bg-gradient-to-r from-purple-50/80 to-purple-100/40 shadow-lg shadow-purple-200/50 ring-2 ring-purple-300/30',
       gray: 'border-l-4 border-gray-500 bg-gradient-to-r from-gray-50/80 to-gray-100/40 shadow-lg shadow-gray-200/50 ring-2 ring-gray-300/30'
     };
-    
+
     return highlightStyles[color];
   };
 
@@ -1213,9 +1452,9 @@ const OrderManagementPage = () => {
           <div className="flex items-center space-x-3 space-x-reverse">
             <div className="flex items-center space-x-2 space-x-reverse">
               <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${scannerState.isInitializing ? 'bg-yellow-500 animate-pulse' :
-                  scannerState.isProcessing ? 'bg-blue-500 animate-pulse' :
-                    scannerState.isScanning ? 'bg-green-500' :
-                      scannerState.error ? 'bg-red-500' : 'bg-gray-400'
+                scannerState.isProcessing ? 'bg-blue-500 animate-pulse' :
+                  scannerState.isScanning ? 'bg-green-500' :
+                    scannerState.error ? 'bg-red-500' : 'bg-gray-400'
                 }`}></div>
               <span className="text-xs text-gray-600 font-cairo-play">
                 {scannerState.isInitializing ? 'جاري التشغيل...' :
@@ -1362,7 +1601,7 @@ const OrderManagementPage = () => {
                   {isManualSubmitting ? 'جاري البحث...' : 'بحث عن الطلب'}
                 </button>
               </form>
-              
+
               {/* Scanner Input Indicator */}
               <div className="flex items-center justify-between text-xs text-gray-500">
                 <span className="font-cairo-play">جهاز المسح الضوئي:</span>
@@ -1463,20 +1702,20 @@ const OrderManagementPage = () => {
           {/* Enhanced Scanned Order Confirmation - Compact Design */}
           {awaitingConfirmation && scannedOrder && (
             <div className={`bg-gradient-to-r border-b p-3 ${isReturnOrder(scannedOrder)
-                ? 'from-orange-50 to-red-50 border-orange-200'
-                : 'from-green-50 to-emerald-50 border-green-200'
+              ? 'from-orange-50 to-red-50 border-orange-200'
+              : 'from-green-50 to-emerald-50 border-green-200'
               }`}>
               <div className="flex items-center justify-between">
                 {/* Left - Order Details */}
                 <div className="flex items-center space-x-3 space-x-reverse flex-1">
                   {/* Status Icon */}
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isReturnOrder(scannedOrder)
-                      ? 'bg-orange-100'
-                      : 'bg-green-100'
+                    ? 'bg-orange-100'
+                    : 'bg-green-100'
                     }`}>
                     <svg className={`w-4 h-4 ${isReturnOrder(scannedOrder)
-                        ? 'text-orange-600'
-                        : 'text-green-600'
+                      ? 'text-orange-600'
+                      : 'text-green-600'
                       }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       {isReturnOrder(scannedOrder) ? (
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
@@ -1557,13 +1796,13 @@ const OrderManagementPage = () => {
                     تأكيد (Enter)
                   </button>
                   <button
-                                onClick={() => {
-              setScannedOrder(null);
-              setAwaitingConfirmation(false);
-              if (qrScannerRef.current && typeof qrScannerRef.current.resume === 'function') {
-                qrScannerRef.current.resume();
-              }
-            }}
+                    onClick={() => {
+                      setScannedOrder(null);
+                      setAwaitingConfirmation(false);
+                      if (qrScannerRef.current && typeof qrScannerRef.current.resume === 'function') {
+                        qrScannerRef.current.resume();
+                      }
+                    }}
                     className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-cairo-play transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                     aria-label="إلغاء استلام الطلب"
                   >
@@ -1595,11 +1834,10 @@ const OrderManagementPage = () => {
                       setSelectedOrderForTimeline(order);
                       setShowTimelineModal(true);
                     }}
-                    className={`text-sm transition-all duration-500 ease-out transform ${
-                      highlightedOrderId === order._id 
-                        ? `${getHighlightClasses(activeTab)} scale-[1.02]` 
-                        : ''
-                    } ${actionInProgress ? 'opacity-75' : ''}`}
+                    className={`text-sm transition-all duration-500 ease-out transform ${highlightedOrderId === order._id
+                      ? `${getHighlightClasses(activeTab)} scale-[1.02]`
+                      : ''
+                      } ${actionInProgress ? 'opacity-75' : ''}`}
                     disabled={actionInProgress}
                   />
                 ))}
@@ -1649,3 +1887,4 @@ const OrderManagementPage = () => {
 };
 
 export default OrderManagementPage;
+
