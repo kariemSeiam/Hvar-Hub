@@ -4,9 +4,11 @@ from typing import Dict, List, Optional, Tuple
 import requests
 import json
 
-from db.auto_init import Order, MaintenanceHistory, OrderStatus, MaintenanceAction, ACTION_STATUS_MAP
+from db.auto_init import Order, MaintenanceHistory, OrderStatus, MaintenanceAction, ACTION_STATUS_MAP, ReturnCondition
 from db import db
 from utils.timezone import get_egypt_now
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
 
 
 class BostaAPIService:
@@ -236,6 +238,29 @@ class OrderService:
             if not order:
                 return False, None, "الطلب غير موجود"
             
+            # Special case: setting return condition does not change status
+            if action == MaintenanceAction.SET_RETURN_CONDITION:
+                if not order.status == OrderStatus.RETURNED:
+                    return False, None, "يمكن تعيين حالة المرتجع فقط للطلبات في قائمة المرتجعات"
+                # Validate action data (must include return_condition)
+                is_valid, validation_error = OrderService.validate_action_data(action, action_data or {})
+                if not is_valid:
+                    return False, None, validation_error
+                rc = (action_data or {}).get('return_condition')
+                order.return_condition = ReturnCondition.VALID if rc == 'valid' else ReturnCondition.DAMAGED
+                now = get_egypt_now()
+                history = MaintenanceHistory(
+                    order_id=order.id,
+                    action=action,
+                    notes=notes.strip() if notes else '',
+                    user_name=user_name,
+                    action_data=action_data,
+                    timestamp=now
+                )
+                order.save()
+                history.save()
+                return True, order, None
+
             # Get new status from action mapping
             new_status = ACTION_STATUS_MAP.get(action)
             if not new_status:
@@ -277,6 +302,12 @@ class OrderService:
                     if action_data.get('new_cod'):
                         order.new_cod_amount = float(action_data['new_cod'])
                 
+                # When moving to returns or returning to customer, capture return condition
+                if action in [MaintenanceAction.MOVE_TO_RETURNS, MaintenanceAction.RETURN_ORDER]:
+                    rc = action_data.get('return_condition')
+                    if rc in ['valid', 'damaged']:
+                        order.return_condition = ReturnCondition.VALID if rc == 'valid' else ReturnCondition.DAMAGED
+
                 # Handle refund/replace specific logic
                 if action == MaintenanceAction.REFUND_OR_REPLACE:
                     order.is_refund_or_replace = True
@@ -313,6 +344,9 @@ class OrderService:
         Returns: (is_valid, error_message)
         """
         if not action_data:
+            # For return-related actions, require action_data to include return_condition
+            if action in [MaintenanceAction.MOVE_TO_RETURNS, MaintenanceAction.RETURN_ORDER, MaintenanceAction.SET_RETURN_CONDITION]:
+                return False, "يجب تحديد حالة المرتجع (صالح/تالف)"
             return True, None
         
         # Validate tracking number format
@@ -335,19 +369,51 @@ class OrderService:
             notes = action_data['notes'].strip()
             if len(notes) > 1000:
                 return False, "الملاحظات يجب أن تكون أقل من 1000 حرف"
+
+        # Validate return_condition for related actions
+        if action in [MaintenanceAction.MOVE_TO_RETURNS, MaintenanceAction.RETURN_ORDER, MaintenanceAction.SET_RETURN_CONDITION]:
+            rc = action_data.get('return_condition')
+            if rc not in ['valid', 'damaged']:
+                return False, "حالة المرتجع غير صحيحة (اختر صالح أو تالف)"
         
         return True, None
     
     @staticmethod
-    def get_orders_by_status(status: OrderStatus, page: int = 1, per_page: int = 20) -> Dict:
-        """Get orders by status with pagination and optimized performance"""
+    def get_orders_by_status(status: Optional[OrderStatus], page: int = 1, per_page: int = 20, return_condition: Optional[str] = None) -> Dict:
+        """Get orders by status with pagination and optimized performance. Supports filtering returned orders by return_condition.
+        If status is None, returns all orders without status filter (ignores return_condition)."""
         try:
-            print(f"Fetching orders for status: {status.value}, page: {page}, per_page: {per_page}")
+            print(f"Fetching orders for status: {status.value if status else 'ALL'}, page: {page}, per_page: {per_page}, return_condition={return_condition}")
             
+            # Build base query
+            query = Order.query
+            if status is not None:
+                query = query.filter_by(status=status)
+            if status == OrderStatus.RETURNED and return_condition in ['valid', 'damaged']:
+                rc_enum = ReturnCondition.VALID if return_condition == 'valid' else ReturnCondition.DAMAGED
+                query = query.filter(Order.return_condition == rc_enum)
+
             # Use direct query to avoid relationship loading issues
-            pagination = Order.query.filter_by(status=status)\
-                .order_by(Order.updated_at.desc())\
-                .paginate(page=page, per_page=per_page, error_out=False)
+            try:
+                pagination = query\
+                    .order_by(Order.updated_at.desc())\
+                    .paginate(page=page, per_page=per_page, error_out=False)
+            except OperationalError as oe:
+                # Attempt to self-heal if the new column is missing in existing SQLite DB
+                if 'no such column: orders.return_condition' in str(oe):
+                    try:
+                        with db.engine.connect() as connection:
+                            connection.execute(text("ALTER TABLE orders ADD COLUMN return_condition VARCHAR(20)"))
+                            connection.commit()
+                            print("✅ Added missing column via self-heal: orders.return_condition")
+                        # Retry after adding column
+                        pagination = query\
+                            .order_by(Order.updated_at.desc())\
+                            .paginate(page=page, per_page=per_page, error_out=False)
+                    except Exception as e2:
+                        raise oe
+                else:
+                    raise
             
             print(f"Found {len(pagination.items)} orders")
             
@@ -358,12 +424,24 @@ class OrderService:
                     maintenance_history = order.maintenance_history.order_by(MaintenanceHistory.timestamp.desc()).all()
                     proof_images = order.proof_images.all()
                     
+                    # Helper: map backend status to UI tab id
+                    def _status_to_ui_tab(status_value: str) -> str:
+                        if not status_value:
+                            return status_value
+                        if status_value == 'in_maintenance':
+                            return 'inMaintenance'
+                        if status_value == 'returned':
+                            return 'returns'
+                        return status_value
+
                     # Create order dict manually
                     order_dict = {
                         'id': order.id,
                         'tracking_number': order.tracking_number,
                         'bosta_id': order.bosta_id,
                         'status': order.status.value if order.status else None,
+                        'return_condition': order.return_condition.value if order.return_condition else None,
+                        'ui_status': _status_to_ui_tab(order.status.value if order.status else None),
                         'customer_name': order.customer_name,
                         'customer_phone': order.customer_phone,
                         'customer_second_phone': order.customer_second_phone,
@@ -537,3 +615,53 @@ class OrderService:
             
         except Exception as e:
             return {'error': f"خطأ في جلب ملخص البيانات: {str(e)}"}
+
+    @staticmethod
+    def refresh_from_bosta(tracking_number: str) -> Tuple[bool, Optional[Order], Optional[str]]:
+        """Refresh an existing order's data from Bosta (including proof images URLs)."""
+        try:
+            order = Order.get_by_tracking_number(tracking_number)
+            if not order:
+                return False, None, "الطلب غير موجود"
+
+            success, bosta_data, error = BostaAPIService.fetch_order_data(tracking_number)
+            if not success:
+                return False, None, error
+
+            # Transform and update only relevant fields
+            transformed = BostaAPIService.transform_bosta_data(bosta_data)
+
+            # Safely update fields if present in transformed payload
+            def maybe_set(attr: str, key: str):
+                if key in transformed and transformed[key] is not None:
+                    setattr(order, attr, transformed[key])
+
+            maybe_set('customer_name', 'customer_name')
+            maybe_set('customer_phone', 'customer_phone')
+            maybe_set('customer_second_phone', 'customer_second_phone')
+            maybe_set('pickup_address', 'pickup_address')
+            maybe_set('dropoff_address', 'dropoff_address')
+            maybe_set('city', 'city')
+            maybe_set('zone', 'zone')
+            maybe_set('building_number', 'building_number')
+            maybe_set('floor', 'floor')
+            maybe_set('apartment', 'apartment')
+            maybe_set('cod_amount', 'cod_amount')
+            maybe_set('bosta_fees', 'bosta_fees')
+            maybe_set('package_description', 'package_description')
+            maybe_set('package_weight', 'package_weight')
+            maybe_set('items_count', 'items_count')
+            maybe_set('order_type', 'order_type')
+            maybe_set('shipping_state', 'shipping_state')
+            maybe_set('masked_state', 'masked_state')
+            maybe_set('timeline_data', 'timeline_data')
+            maybe_set('bosta_proof_images', 'bosta_proof_images')
+
+            # Always store fresh raw bosta_data (full object)
+            order.bosta_data = bosta_data
+
+            order.save()
+            return True, order, None
+        except Exception as e:
+            db.session.rollback()
+            return False, None, f"خطأ في تحديث البيانات من Bosta: {str(e)}"

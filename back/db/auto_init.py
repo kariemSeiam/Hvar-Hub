@@ -41,6 +41,10 @@ class OrderStatus(Enum):
     SENDING = 'sending'
     RETURNED = 'returned'
 
+class ReturnCondition(Enum):
+    VALID = 'valid'
+    DAMAGED = 'damaged'
+
 class MaintenanceAction(Enum):
     RECEIVED = 'received'
     START_MAINTENANCE = 'start_maintenance'
@@ -52,6 +56,8 @@ class MaintenanceAction(Enum):
     RETURN_ORDER = 'return_order'
     MOVE_TO_RETURNS = 'move_to_returns'
     REFUND_OR_REPLACE = 'refund_or_replace'
+    # New action that does not change status; only updates return condition for returned orders
+    SET_RETURN_CONDITION = 'set_return_condition'
 
 # ============================================================================
 # MODEL DEFINITIONS
@@ -153,6 +159,9 @@ class Order(BaseModel):
     rescheduled_at = db.Column(db.DateTime)
     returned_at = db.Column(db.DateTime)
     
+    # Returns classification (valid/damaged)
+    return_condition = db.Column(SQLEnum(ReturnCondition), nullable=True)
+    
     # Bosta integration data
     bosta_data = db.Column(db.JSON)  # Store complete Bosta response
     timeline_data = db.Column(db.JSON)  # Bosta timeline
@@ -179,6 +188,7 @@ class Order(BaseModel):
             
             base_dict.update({
                 'status': self.status.value if self.status else None,
+                'return_condition': self.return_condition.value if self.return_condition else None,
                 'maintenance_history': [history.to_dict() for history in maintenance_history],
                 'proof_images': [image.to_dict() for image in self.proof_images.all()],
                 'cod_amount': float(self.cod_amount) if self.cod_amount else 0,
@@ -326,6 +336,7 @@ ACTION_STATUS_MAP = {
     MaintenanceAction.RETURN_ORDER: OrderStatus.RETURNED,
     MaintenanceAction.MOVE_TO_RETURNS: OrderStatus.RETURNED,
     MaintenanceAction.REFUND_OR_REPLACE: OrderStatus.COMPLETED,  # Move to completed for failed orders
+    # SET_RETURN_CONDITION does not change status
 }
 
 # ============================================================================
@@ -333,15 +344,23 @@ ACTION_STATUS_MAP = {
 # ============================================================================
 
 def create_mysql_database():
-    """Create MySQL database if it doesn't exist"""
-    try:
-        # Connect to MySQL server (without specifying database)
-        connection = pymysql.connect(
+    """Create MySQL database if it doesn't exist. Tries normal creds, then admin creds if provided."""
+    def _connect(user, password):
+        return pymysql.connect(
             host=Config.MYSQL_HOST,
             port=int(Config.MYSQL_PORT),
-            user=Config.MYSQL_USER,
-            password=Config.MYSQL_PASSWORD
+            user=user,
+            password=password
         )
+
+    try:
+        # Try with app user first
+        try:
+            connection = _connect(Config.MYSQL_USER, Config.MYSQL_PASSWORD)
+        except Exception:
+            # Fallback to admin if available
+            connection = _connect(getattr(Config, 'MYSQL_ADMIN_USER', Config.MYSQL_USER),
+                                  getattr(Config, 'MYSQL_ADMIN_PASSWORD', Config.MYSQL_PASSWORD))
         
         cursor = connection.cursor()
         
@@ -360,17 +379,48 @@ def create_mysql_database():
         return False
 
 def configure_utf8_database():
-    """Configure database and tables with UTF-8 character set"""
+    """Configure database and tables with UTF-8 character set. Uses admin creds if needed."""
     try:
         print("🔧 Configuring UTF-8 character set for database and tables...")
-        
-        # Configure database character set
-        db_config_queries = [
-            "ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-        ]
-        
-        # Configure orders table character set
-        orders_config_queries = [
+
+        # Helper to run DDL via SQLAlchemy, fallback to admin PyMySQL if permission error
+        def run_sql(query: str):
+            try:
+                with db.engine.connect() as connection:
+                    connection.execute(text(query))
+                    connection.commit()
+                    return True
+            except Exception as primary_error:
+                # Try admin path only for MySQL
+                try:
+                    if db.engine.dialect.name == 'mysql':
+                        admin_user = getattr(Config, 'MYSQL_ADMIN_USER', Config.MYSQL_USER)
+                        admin_pass = getattr(Config, 'MYSQL_ADMIN_PASSWORD', Config.MYSQL_PASSWORD)
+                        conn = pymysql.connect(
+                            host=Config.MYSQL_HOST,
+                            port=int(Config.MYSQL_PORT),
+                            user=admin_user,
+                            password=admin_pass,
+                            database=Config.MYSQL_DATABASE,
+                            charset='utf8mb4'
+                        )
+                        try:
+                            with conn.cursor() as cursor:
+                                cursor.execute(query)
+                            conn.commit()
+                            return True
+                        finally:
+                            conn.close()
+                except Exception as admin_error:
+                    print(f"⚠️  Failed to run DDL with admin fallback: {admin_error}")
+                print(f"⚠️  Warning running DDL: {primary_error}")
+                return False
+
+        # Database-level charset
+        run_sql(f"ALTER DATABASE `{Config.MYSQL_DATABASE}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
+
+        # Table-level charset conversions
+        table_charsets = [
             "ALTER TABLE orders CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
             "ALTER TABLE orders MODIFY tracking_number VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
             "ALTER TABLE orders MODIFY bosta_id VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
@@ -388,47 +438,38 @@ def configure_utf8_database():
             "ALTER TABLE orders MODIFY order_type VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
             "ALTER TABLE orders MODIFY shipping_state VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
             "ALTER TABLE orders MODIFY masked_state VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
-            "ALTER TABLE orders MODIFY new_tracking_number VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-        ]
-        
-        # Configure maintenance_history table character set
-        maintenance_config_queries = [
+            "ALTER TABLE orders MODIFY new_tracking_number VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
             "ALTER TABLE maintenance_history CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
             "ALTER TABLE maintenance_history MODIFY notes TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
-            "ALTER TABLE maintenance_history MODIFY user_name VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-        ]
-        
-        # Configure proof_images table character set
-        proof_images_config_queries = [
+            "ALTER TABLE maintenance_history MODIFY user_name VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
             "ALTER TABLE proof_images CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
             "ALTER TABLE proof_images MODIFY image_url TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
             "ALTER TABLE proof_images MODIFY image_type VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
-            "ALTER TABLE proof_images MODIFY uploaded_by VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+            "ALTER TABLE proof_images MODIFY uploaded_by VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
         ]
-        
-        # Execute database configuration
-        for query in db_config_queries:
-            try:
-                with db.engine.connect() as connection:
-                    connection.execute(text(query))
-                    connection.commit()
-            except Exception as e:
-                print(f"⚠️  Warning configuring database: {str(e)}")
-        
-        # Execute table configurations
-        all_table_queries = orders_config_queries + maintenance_config_queries + proof_images_config_queries
-        
-        for query in all_table_queries:
-            try:
-                with db.engine.connect() as connection:
-                    connection.execute(text(query))
-                    connection.commit()
-            except Exception as e:
-                print(f"⚠️  Warning configuring table: {str(e)}")
-        
+
+        for q in table_charsets:
+            run_sql(q)
+
+        # Ensure return_condition exists with proper type per dialect
+        from sqlalchemy import inspect as sa_inspect
+        try:
+            inspector = sa_inspect(db.engine)
+            order_columns = [col['name'] for col in inspector.get_columns('orders')]
+        except Exception:
+            order_columns = []
+
+        if 'return_condition' not in order_columns:
+            if db.engine.dialect.name == 'mysql':
+                run_sql("ALTER TABLE orders ADD COLUMN return_condition ENUM('valid','damaged') NULL")
+            else:
+                # SQLite or others
+                run_sql("ALTER TABLE orders ADD COLUMN return_condition VARCHAR(20)")
+            print("✅ Ensured column orders.return_condition exists")
+
         print("✅ UTF-8 configuration completed successfully")
         return True
-        
+
     except Exception as e:
         print(f"❌ Error configuring UTF-8: {str(e)}")
         return False
@@ -553,6 +594,7 @@ __all__ = [
     'MaintenanceHistory', 
     'ProofImage',
     'OrderStatus',
+    'ReturnCondition',
     'MaintenanceAction',
     'ACTION_STATUS_MAP',
     'auto_initialize_database'

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Badge, CompactProfile, Timeline } from './index';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Badge, CompactProfile, Timeline, SendDataPanel } from './index';
 import { formatGregorianDate, formatTimeOnly, formatDateOnly, getRelativeTime } from '../../utils/dateUtils';
 
 const OrderCard = ({
@@ -179,27 +179,67 @@ const OrderCard = ({
     };
   };
 
-  const bostaData = getBostaData(order);
+  const bostaData = useMemo(() => getBostaData(order), [order]);
 
-  // Clean phone number by removing country code
+  // Attempt to refresh Bosta proof images when an image fails to load
+  const handleProofImageError = async (e) => {
+    try {
+      console.error('Image failed to load:', e.target?.src);
+      if (!order?.trackingNumber) return;
+      const { orderAPI } = await import('../../api/orderAPI');
+      const res = await orderAPI.refreshOrderFromBosta(order.trackingNumber);
+      if (res.success && res.data?.order?.bosta_proof_images) {
+        // Update element src with a fresh URL for the same index if possible
+        const idx = Number(e.target?.dataset?.idx);
+        const freshImages = res.data.order.bosta_proof_images;
+        if (!Number.isNaN(idx) && freshImages[idx]) {
+          // Signed URLs must not be mutated with extra query params
+          e.target.src = freshImages[idx];
+          e.target.style.display = 'block';
+          if (e.target.nextElementSibling) {
+            e.target.nextElementSibling.style.display = 'none';
+          }
+        } else if (freshImages.length > 0) {
+          e.target.src = freshImages[0];
+        }
+      } else {
+        // fallback to hide broken image UI that already exists below
+        if (e.target) {
+          e.target.style.display = 'none';
+          if (e.target.nextElementSibling) {
+            e.target.nextElementSibling.style.display = 'flex';
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error refreshing proof images:', err);
+      if (e.target) {
+        e.target.style.display = 'none';
+        if (e.target.nextElementSibling) {
+          e.target.nextElementSibling.style.display = 'flex';
+        }
+      }
+    }
+  };
+
   const cleanPhoneNumber = (phone) => {
     if (!phone) return '';
 
-    // Remove +20 or 20 from the beginning
     let cleaned = phone.toString().trim();
+    cleaned = cleaned.replace(/[^\d+]/g, '');
 
     if (cleaned.startsWith('+20')) {
-      cleaned = cleaned.substring(3);
+      cleaned = cleaned.slice(3);
     } else if (cleaned.startsWith('20')) {
-      cleaned = cleaned.substring(2);
+      cleaned = cleaned.slice(2);
     }
 
-    // Remove any leading zeros and ensure it starts with 1
-    cleaned = cleaned.replace(/^0+/, '');
+    if (cleaned.startsWith('0')) {
+      return cleaned;
+    }
 
-    // Format as 01XXXXXXXXX if it's a valid Egyptian mobile number
-    if (cleaned.length === 9 && (cleaned.startsWith('1') || cleaned.startsWith('5'))) {
-      cleaned = '0' + cleaned;
+    if (cleaned.startsWith('1') || cleaned.startsWith('5')) {
+      return '0' + cleaned;
     }
 
     return cleaned;
@@ -262,7 +302,7 @@ const OrderCard = ({
     // If completed with refund/replace action but not yet confirmed, show preparing badge
     if (order.status === 'completed' && maintenanceHistory.some(h => h.action === 'refund_or_replace') && !maintenanceHistory.some(h => h.action === 'confirm_refund_replace')) {
       return {
-        label: 'تحضير الاسترداد أو الإرسال',
+        label: 'تحضير استرداد/إرسال',
         variant: 'warning',
         icon: 'warning'
       };
@@ -309,6 +349,15 @@ const OrderCard = ({
       return {
         label: 'مرتجع للعميل',
         variant: 'secondary',
+        icon: 'return'
+      };
+    }
+
+    // If in returns list, show condition badge when available
+    if (order.status === 'returned' && order.returnCondition) {
+      return {
+        label: order.returnCondition === 'valid' ? 'مرتجع سليم' : 'مرتجع تالف',
+        variant: order.returnCondition === 'valid' ? 'info' : 'danger',
         icon: 'return'
       };
     }
@@ -392,11 +441,21 @@ const OrderCard = ({
             className: 'bg-blue-600 hover:bg-blue-700 text-white',
             priority: 'primary'
           },
+          // Move to returns as VALID
           {
             type: 'move_to_returns',
-            label: 'نقل للمرتجعات',
+            label: 'نقل للمرتجعات (سليم)',
             className: 'bg-orange-600 hover:bg-orange-700 text-white',
-            priority: 'secondary'
+            priority: 'secondary',
+            return_condition: 'valid'
+          },
+          // Move to returns as DAMAGED
+          {
+            type: 'move_to_returns',
+            label: 'نقل للمرتجعات (تالف)',
+            className: 'bg-red-600 hover:bg-red-700 text-white',
+            priority: 'secondary',
+            return_condition: 'damaged'
           }
         );
         break;
@@ -478,6 +537,45 @@ const OrderCard = ({
         // This is the final state of the order
         break;
 
+      case 'returned':
+        // Allow toggling between valid <-> damaged - only show the opposite action
+        if (order.returnCondition === 'valid') {
+          baseActions.push({
+            type: 'set_return_condition',
+            label: 'نقل للمرتجعات (تالف)',
+            className: 'bg-red-600 hover:bg-red-700 text-white',
+            priority: 'primary',
+            return_condition: 'damaged'
+          });
+        } else if (order.returnCondition === 'damaged') {
+          baseActions.push({
+            type: 'set_return_condition',
+            label: 'نقل للمرتجعات (سليم)',
+            className: 'bg-blue-600 hover:bg-blue-700 text-white',
+            priority: 'primary',
+            return_condition: 'valid'
+          });
+        } else {
+          // If not set, allow both options
+          baseActions.push(
+            {
+              type: 'set_return_condition',
+              label: 'نقل للمرتجعات (سليم)',
+              className: 'bg-blue-600 hover:bg-blue-700 text-white',
+              priority: 'primary',
+              return_condition: 'valid'
+            },
+            {
+              type: 'set_return_condition',
+              label: 'نقل للمرتجعات (تالف)',
+              className: 'bg-red-600 hover:bg-red-700 text-white',
+              priority: 'secondary',
+              return_condition: 'damaged'
+            }
+          );
+        }
+        break;
+
       default:
         break;
     }
@@ -513,7 +611,7 @@ const OrderCard = ({
       }
       
       return {
-        title: getArabicActionTitle(item.action),
+        title: getArabicActionTitle(item.action, item.action_data || item.actionData),
         description: item.notes,
         time: formatTimeOnly(item.timestamp),
         date: formatDateOnly(item.timestamp),
@@ -541,8 +639,8 @@ const OrderCard = ({
     return statusMap[status] || status;
   };
 
-  const getArabicActionTitle = (action) => {
-    const actionMap = {
+  const getArabicActionTitle = (action, actionData = null) => {
+    const base = {
       'received': 'تم الاستلام في المركز',
       'start_maintenance': 'بدء الصيانة',
       'complete_maintenance': 'انتهاء الصيانة',
@@ -553,9 +651,26 @@ const OrderCard = ({
       'refund_or_replace': 'استرداد أو إرسال منتج آخر',
       'move_to_returns': 'نقل للمرتجعات',
       'confirm_send': 'تأكيد الإرسال للعميل',
-      'confirm_refund_replace': 'تأكيد الاسترداد أو الإرسال'
+      'confirm_refund_replace': 'تأكيد الاسترداد أو الإرسال',
+      // Show as move-to-returns family, not "set"
+      'set_return_condition': 'نقل للمرتجعات'
     };
-    return actionMap[action] || action;
+
+    // Enhance labels for returns-related actions using actionData
+    if (action === 'move_to_returns' && actionData && actionData.return_condition) {
+      const cond = actionData.return_condition === 'valid' ? 'سليم' : 'تالف';
+      return `نقل للمرتجعات (${cond})`;
+    }
+    if (action === 'set_return_condition') {
+      const condRaw = actionData?.return_condition || actionData?.returnCondition;
+      if (condRaw) {
+        const cond = condRaw === 'valid' ? 'سليم' : 'تالف';
+        return `نقل للمرتجعات (${cond})`;
+      }
+      return 'نقل للمرتجعات';
+    }
+
+    return base[action] || action;
   };
 
   const getActionIcon = (actionType) => {
@@ -597,6 +712,11 @@ const OrderCard = ({
         </svg>
       ),
       'move_to_returns': (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+        </svg>
+      ),
+      'set_return_condition': (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
         </svg>
@@ -712,6 +832,14 @@ const OrderCard = ({
           </svg>
         </div>
       ),
+      // Use the same icon for set_return_condition as move_to_returns
+      'set_return_condition': (
+        <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center">
+          <svg className="w-3 h-3 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+          </svg>
+        </div>
+      ),
       'confirm_send': (
         <div className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center">
           <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -799,8 +927,8 @@ const OrderCard = ({
   };
 
   // Get dynamic actions based on order state
-  const dynamicActions = getDynamicActions(order);
-  const stateBadge = getStateBadge(order);
+  const dynamicActions = useMemo(() => getDynamicActions(order), [order]);
+  const stateBadge = useMemo(() => getStateBadge(order), [order]);
 
   // Helper to format phone as 01XXXXXXXXX
   const formatEgyptianPhone = (phone) => {
@@ -820,6 +948,77 @@ const OrderCard = ({
     setToastMsg(msg);
     setShowCopyToast(true);
     setTimeout(() => setShowCopyToast(false), 1200);
+  };
+
+  // Treat some backend default messages as non-notes for the dot indicator
+  const DEFAULT_NOTE_PHRASES = [
+    'تم استلام الطلب بنجاح',
+    'تم الاستلام بنجاح',
+    'انتهاء الصيانة بنجاح',
+    'تمت الصيانة بنجاح',
+    'تم الإرسال',
+    'تم الإرسال بنجاح',
+    'تم الإرجاع',
+    'تم الإرجاع بنجاح',
+    'إعادة للصيانة',
+    'تمت إعادة الجدولة',
+  ];
+
+  const isDefaultMaintenanceNote = (note) => {
+    if (!note) return false;
+    const text = typeof note === 'string' ? note : JSON.stringify(note);
+    const normalized = text.trim().replace(/\s+/g, ' ');
+    return DEFAULT_NOTE_PHRASES.some((p) => normalized.startsWith(p));
+  };
+
+  // Tooltip notes that can expand/collapse and handle long text
+  const TooltipNotes = ({ text }) => {
+    if (!text) return null;
+    const [expanded, setExpanded] = useState(false);
+    const [isOverflowing, setIsOverflowing] = useState(false);
+    const contentRef = useRef(null);
+
+    const displayText = typeof text === 'string' ? text : JSON.stringify(text);
+    const collapsedMax = 'max-h-16'; // ~3 lines with text-xs/relaxed
+    const expandedMax = 'max-h-[60vh]'; // allow large view without overflowing screen
+
+    useEffect(() => {
+      const el = contentRef.current;
+      if (!el) return;
+      const measure = () => {
+        setIsOverflowing(el.scrollHeight > el.clientHeight + 2);
+      };
+      // Initial measure after paint
+      requestAnimationFrame(measure);
+      const resizeObserver = new ResizeObserver(measure);
+      resizeObserver.observe(el);
+      return () => resizeObserver.disconnect();
+    }, [displayText]);
+
+    return (
+      <div>
+        <div
+          ref={contentRef}
+          className={`whitespace-pre-wrap leading-relaxed text-xs text-gray-600 font-cairo overflow-auto scrollbar-hide pe-1 ${
+            expanded ? expandedMax : collapsedMax
+          }`}
+        >
+          {displayText}
+        </div>
+        {(isOverflowing || expanded) && (
+          <button
+            type="button"
+            onClick={() => setExpanded(v => !v)}
+            className="mt-1 inline-flex items-center gap-1 text-[11px] font-cairo text-ui-info-600 hover:text-ui-info-700 focus:outline-none focus:ring-2 focus:ring-ui-info-500 rounded px-1 py-0.5"
+          >
+            <span>{expanded ? 'عرض أقل' : 'عرض المزيد'}</span>
+            <svg className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -854,8 +1053,8 @@ const OrderCard = ({
                     {bostaData.trackingNumber}
                   </a>
                 </h3>
-                {/* Order Type Badge */}
-                <span className={`px-3 py-1 text-xs font-cairo font-semibold rounded-full shadow-sm border ${
+                {/* Order Type Badge - align with small badge sizing */}
+                <span className={`px-2 py-1 text-xs font-cairo font-semibold rounded-full shadow-sm border ${
                   getOrderTypeBadgeVariant(bostaData.orderType) === 'orange' ? 'bg-orange-200 text-orange-800 border-orange-300' :
                   getOrderTypeBadgeVariant(bostaData.orderType) === 'red' ? 'bg-red-200 text-red-800 border-red-300' :
                   getOrderTypeBadgeVariant(bostaData.orderType) === 'purple' ? 'bg-purple-200 text-purple-800 border-purple-300' :
@@ -902,7 +1101,7 @@ const OrderCard = ({
           <div className="flex items-center space-x-2 space-x-reverse">
             {/* State Badge */}
             {stateBadge && (
-              <div className={`px-3 py-1.5 rounded-full text-xs font-cairo font-semibold flex items-center space-x-1 space-x-reverse shadow-sm border ${stateBadge.variant === 'danger' ? 'bg-red-200 text-red-900 border-red-300' :
+              <div className={`px-2 py-1 rounded-full text-xs leading-tight font-cairo font-medium flex items-center gap-1 whitespace-nowrap shadow-sm border ${stateBadge.variant === 'danger' ? 'bg-red-200 text-red-900 border-red-300' :
                   stateBadge.variant === 'info' ? 'bg-blue-200 text-blue-900 border-blue-300' :
                     stateBadge.variant === 'secondary' ? 'bg-gray-200 text-gray-900 border-gray-300' :
                       stateBadge.variant === 'success' ? 'bg-green-200 text-green-900 border-green-300' :
@@ -913,7 +1112,7 @@ const OrderCard = ({
               </div>
             )}
 
-            {/* Status Badge */}
+            {/* Status Badge - match visual weight of state badge */}
             <Badge variant={getStatusVariant(order.status)} size="sm">
               {getStatusLabel(order.status)}
             </Badge>
@@ -933,101 +1132,112 @@ const OrderCard = ({
 
       {/* Enhanced Info Section */}
       <div className="px-3 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
-        {/* Product Description - Enhanced for Customer Returns */}
+        {/* Description */}
         {bostaData.description && bostaData.description !== 'لا يوجد وصف' && (
           <div className="mb-2">
-            <div className="flex items-center space-x-1 space-x-reverse mb-1">
-              <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <span className="text-gray-500 font-cairo text-xs">
-                وصف المنتج
-              </span>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center space-x-1 space-x-reverse">
+                <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="text-gray-500 font-cairo text-xs">وصف المنتج</span>
+              </div>
+              {order.status === 'sending' && bostaData.proofImages && bostaData.proofImages.length > 0 && (
+                <div className="flex items-center gap-2 text-[11px] text-gray-700 font-cairo">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block"></span>
+                  <span>صور متوفرة</span>
+                </div>
+              )}
             </div>
-            <p className="font-cairo text-xs text-gray-900 leading-relaxed bg-white rounded-lg p-3 border-2 border-gray-200 shadow-sm">
-              {bostaData.description}
-            </p>
+            <p className="font-cairo text-xs text-gray-900 leading-relaxed bg-white rounded-lg p-3 border-2 border-gray-200 shadow-sm">{bostaData.description}</p>
           </div>
         )}
 
-        {/* Sending Data Display - Creative Compact Design */}
-        {order.status === 'sending' && (() => {
+        {/* Interactive Timeline Preview - RTL Layout with Improved Z-Index */}
+        {order.maintenanceHistory && order.maintenanceHistory.length > 0 && (
+          <div className="flex items-center space-x-1 space-x-reverse">
+            <span className="text-xs text-gray-500 font-cairo">دورة الصيانة:</span>
+            <div className="flex items-center space-x-1 space-x-reverse relative">
+              {/* Reverse the order for RTL display */}
+              {order.maintenanceHistory.slice().reverse().map((entry, index) => (
+                <div key={index} className="relative group" onMouseEnter={() => setHoveredAction(entry)} onMouseLeave={() => setHoveredAction(null)}>
+                  <div
+                    className="flex items-center space-x-1 space-x-reverse cursor-pointer rounded-lg p-1 pb-2"
+                    onClick={() => onShowTimeline?.(order)}
+                  >
+                    <div className="relative z-10">
+                      {getTimelineIcon(entry.action)}
+                      {entry.notes && !isDefaultMaintenanceNote(entry.notes) ? (
+                        <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 bg-ui-info-600 rounded-full ring-2 ring-white" aria-hidden="true"></span>
+                      ) : null}
+                    </div>
+                    {index < order.maintenanceHistory.length - 1 && (
+                      <div className="w-3 h-0.5 bg-gray-300 mx-1 transition-colors duration-200 group-hover:bg-blue-300"></div>
+                    )}
+                  </div>
+
+                  {/* Enhanced Tooltip with Higher Z-Index */}
+                  {hoveredAction === entry && (
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-0.5 z-[99999]" onMouseEnter={() => setHoveredAction(entry)} onMouseLeave={() => setHoveredAction(null)}>
+                      <div className="absolute -top-0.5 left-0 right-0 h-1"></div>
+                      <div className="bg-white text-gray-900 rounded-lg p-3 shadow-xl border border-gray-200 min-w-[240px] max-w-[320px] max-h-[70vh] overflow-auto scrollbar-hide">
+                        {/* Tooltip Arrow */}
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-white"></div>
+
+                        {/* Tooltip Header */}
+                        <div className="flex items-center space-x-2 space-x-reverse mb-2">
+                          <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
+                            {getTimelineIcon(entry.action)}
+                          </div>
+                          <h4 className="font-cairo font-semibold text-sm text-gray-900">
+                            {getArabicActionTitle(entry.action, entry.action_data || entry.actionData)}
+                          </h4>
+                        </div>
+
+                        {/* Tooltip Content */}
+                        <div className="space-y-2">
+                          <TooltipNotes text={entry.notes} />
+                          <div className="flex items-center justify-between text-xs text-gray-500 font-cairo">
+                            <span>{formatDate(entry.timestamp)}</span>
+                            <span className="text-gray-600">{getRelativeTime(entry.timestamp)}</span>
+                          </div>
+                        </div>
+
+                        {/* Step Indicator - RTL Order */}
+                        <div className="mt-2 pt-2 border-t border-gray-100">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-gray-500 font-cairo">الخطوة {order.maintenanceHistory.length - index} من {order.maintenanceHistory.length}</span>
+                            <div className="flex space-x-1 space-x-reverse">
+                              {order.maintenanceHistory.slice().reverse().map((_, i) => (
+                                <div
+                                  key={i}
+                                  className={`w-1.5 h-1.5 rounded-full ${i <= index ? 'bg-blue-500' : 'bg-gray-300'
+                                    }`}
+                                ></div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* بيانات الإرسال - compact, WCAG-compliant panel (only when action data exists) */}
+        {(() => {
           const actionData = getStoredActionData();
           if (!actionData || (!actionData.new_tracking_number && !actionData.new_cod && !actionData.notes)) return null;
-          
-          return (
-            <div className="mb-2">
-              <div className="flex items-center space-x-2 space-x-reverse mb-2">
-                <div className="w-3 h-3 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full animate-pulse"></div>
-                <span className="text-gray-500 font-cairo text-xs font-medium">بيانات الإرسال</span>
-              </div>
-              
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 border border-blue-200/50 shadow-sm">
-                <div className="grid grid-cols-1 gap-2">
-                  {actionData.new_tracking_number && (
-                    <div className="flex items-center justify-between bg-white/80 backdrop-blur-sm rounded-md p-2 border border-blue-200/30 hover:border-blue-300/50 transition-all duration-200">
-                      <div className="flex items-center space-x-2 space-x-reverse">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <span className="text-xs font-cairo text-gray-600">رقم التتبع</span>
-                      </div>
-                      <a 
-                        href={`https://business.bosta.co/orders/${actionData.new_tracking_number}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs font-cairo font-semibold text-blue-700 bg-blue-50 px-2 py-1 rounded-md hover:bg-blue-100 hover:text-blue-800 transition-all duration-200 cursor-pointer"
-                        title="فتح في بوابة بوسطا للأعمال"
-                      >
-                        {actionData.new_tracking_number}
-                      </a>
-                    </div>
-                  )}
-                  
-                  {actionData.new_cod && (
-                    <div className="flex items-center justify-between bg-white/80 backdrop-blur-sm rounded-md p-2 border border-green-200/30 hover:border-green-300/50 transition-all duration-200">
-                      <div className="flex items-center space-x-2 space-x-reverse">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <span className="text-xs font-cairo text-gray-600">المبلغ</span>
-                      </div>
-                      <span className="text-xs font-cairo font-semibold text-green-700 bg-green-50 px-2 py-1 rounded-md">
-                        {actionData.new_cod} ج.م
-                      </span>
-                    </div>
-                  )}
-                  
-                  {actionData.notes && (
-                    <div className="bg-white/80 backdrop-blur-sm rounded-md p-2 border border-purple-200/30 hover:border-purple-300/50 transition-all duration-200">
-                      <div className="flex items-center space-x-2 space-x-reverse mb-1">
-                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                        <span className="text-xs font-cairo text-gray-600">ملاحظات</span>
-                      </div>
-                      <p className="text-xs font-cairo text-gray-700 leading-relaxed bg-purple-50/50 px-2 py-1 rounded-md">
-                        {typeof actionData.notes === 'string' ? actionData.notes : JSON.stringify(actionData.notes)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Creative Status Indicator */}
-                <div className="mt-2 pt-2 border-t border-blue-200/30">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1 space-x-reverse">
-                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-ping"></div>
-                      <span className="text-xs font-cairo text-blue-600 font-medium">جاهز للإرسال</span>
-                    </div>
-                    <div className="flex space-x-1 space-x-reverse">
-                      <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
-                      <div className="w-1 h-1 bg-purple-400 rounded-full"></div>
-                      <div className="w-1 h-1 bg-green-400 rounded-full"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
+          return <SendDataPanel actionData={actionData} className="mb-2" />;
         })()}
 
+        {/* (Moved) Simple indicator for images availability is shown inline with description title for sending */}
+
         {/* Creative Proof Images with Description Layout */}
-        {bostaData.proofImages && bostaData.proofImages.length > 0 && (
+        {bostaData.proofImages && bostaData.proofImages.length > 0 && order.status !== 'sending' && (
           <div className="mb-3">
             {/* Compact Header */}
             <div className="flex items-center justify-between mb-2">
@@ -1085,11 +1295,8 @@ const OrderCard = ({
                       alt={`صورة إثبات ${index + 1}`}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       loading="lazy"
-                      onError={(e) => {
-                        console.error('Image failed to load:', image);
-                        e.target.style.display = 'none';
-                        e.target.nextElementSibling.style.display = 'flex';
-                      }}
+                      data-idx={index}
+                      onError={handleProofImageError}
                       onLoad={(e) => {
                         e.target.style.display = 'block';
                         e.target.nextElementSibling.style.display = 'none';
@@ -1139,80 +1346,6 @@ const OrderCard = ({
             </div>
           </div>
         )}
-
-        {/* Interactive Timeline Preview - RTL Layout with Improved Z-Index */}
-        {order.maintenanceHistory && order.maintenanceHistory.length > 0 && (
-          <div className="flex items-center space-x-1 space-x-reverse">
-            <span className="text-xs text-gray-500 font-cairo">دورة الصيانة:</span>
-            <div className="flex items-center space-x-1 space-x-reverse relative">
-              {/* Reverse the order for RTL display */}
-              {order.maintenanceHistory.slice().reverse().map((entry, index) => (
-                <div key={index} className="relative group">
-                  <div
-                    className="flex items-center space-x-1 space-x-reverse cursor-pointer transition-all duration-200 hover:scale-110 hover:bg-blue-50 rounded-lg p-1"
-                    onMouseEnter={() => setHoveredAction(entry)}
-                    onMouseLeave={() => setHoveredAction(null)}
-                    onClick={() => onShowTimeline?.(order)}
-                  >
-                    <div className="transition-all duration-200 group-hover:scale-110 group-hover:shadow-sm">
-                      {getTimelineIcon(entry.action)}
-                    </div>
-                    {index < order.maintenanceHistory.length - 1 && (
-                      <div className="w-3 h-0.5 bg-gray-300 mx-1 transition-colors duration-200 group-hover:bg-blue-300"></div>
-                    )}
-                  </div>
-
-                  {/* Enhanced Tooltip with Higher Z-Index */}
-                  {hoveredAction === entry && (
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 z-[9999] pointer-events-none">
-                      <div className="bg-white text-gray-900 rounded-lg p-3 shadow-xl border border-gray-200 min-w-[220px] max-w-[280px] backdrop-blur-sm">
-                        {/* Tooltip Arrow */}
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-white"></div>
-
-                        {/* Tooltip Header */}
-                        <div className="flex items-center space-x-2 space-x-reverse mb-2">
-                          <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
-                            {getTimelineIcon(entry.action)}
-                          </div>
-                          <h4 className="font-cairo font-semibold text-sm text-gray-900">
-                            {getArabicActionTitle(entry.action)}
-                          </h4>
-                        </div>
-
-                        {/* Tooltip Content */}
-                        <div className="space-y-2">
-                          <p className="text-xs text-gray-600 font-cairo leading-relaxed">
-                            {entry.notes}
-                          </p>
-                          <div className="flex items-center justify-between text-xs text-gray-500 font-cairo">
-                            <span>بواسطة: {entry.user}</span>
-                            <span>{formatDate(entry.timestamp)}</span>
-                          </div>
-                        </div>
-
-                        {/* Step Indicator - RTL Order */}
-                        <div className="mt-2 pt-2 border-t border-gray-100">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-gray-500 font-cairo">الخطوة {order.maintenanceHistory.length - index} من {order.maintenanceHistory.length}</span>
-                            <div className="flex space-x-1 space-x-reverse">
-                              {order.maintenanceHistory.slice().reverse().map((_, i) => (
-                                <div
-                                  key={i}
-                                  className={`w-1.5 h-1.5 rounded-full ${i <= index ? 'bg-blue-500' : 'bg-gray-300'
-                                    }`}
-                                ></div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Dynamic Actions - Always Visible */}
@@ -1228,11 +1361,15 @@ const OrderCard = ({
           </div>
 
           {/* Dynamic Action Buttons */}
-          <div className={`grid gap-2 ${dynamicActions.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          <div className={`grid gap-2 ${dynamicActions.length >= 3 ? 'grid-cols-3' : dynamicActions.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {dynamicActions.map((action, index) => (
               <button
                 key={index}
-                onClick={() => handleAction(action.type, order, notes)}
+                onClick={() => handleAction(
+                  action.type,
+                  order,
+                  action.return_condition ? { return_condition: action.return_condition, notes } : notes
+                )}
                 disabled={action.disabled || isActionLoading}
                 className={`
                   relative group px-4 py-2.5 rounded-lg font-cairo text-xs font-semibold transition-all duration-300
@@ -1240,6 +1377,7 @@ const OrderCard = ({
                   ${action.className}
                   ${action.disabled || isActionLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 hover:shadow-md hover:border-opacity-80'}
                   focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+                  w-full whitespace-nowrap
                 `}
                 aria-label={action.label}
               >
@@ -1261,7 +1399,7 @@ const OrderCard = ({
                 )}
 
                 {/* Label */}
-                <span className="font-cairo">{action.label}</span>
+                <span className="font-cairo whitespace-nowrap">{action.label}</span>
               </button>
             ))}
           </div>
@@ -1581,7 +1719,7 @@ const OrderCard = ({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                     </svg>
                   </div>
-                  <span className="text-xs font-cairo font-semibold text-blue-700">بيانات الإرسال</span>
+                  <span className="text-xs font-cairo font-semibold text-brand-blue-700">بيانات الإرسال</span>
                 </div>
                 
                 {(() => {
@@ -1700,16 +1838,27 @@ const OrderCard = ({
                     {bostaData.starPhone && (
                       <div className="flex items-center justify-between bg-white rounded p-2 border border-blue-200/50">
                         <span className="text-xs font-cairo text-gray-600">رقم المندوب:</span>
-                        <a 
-                          href={`tel:${bostaData.starPhone}`}
-                          className="text-xs font-cairo font-semibold text-green-700 hover:text-green-800 hover:underline flex items-center space-x-1 space-x-reverse"
-                          title="اتصال بالمندوب"
-                        >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                          </svg>
-                          <span>{cleanPhoneNumber(bostaData.starPhone)}</span>
-                        </a>
+                        <div className="flex items-center space-x-1 space-x-reverse">
+                          <a
+                            href={`tel:${formatEgyptianPhone(bostaData.starPhone)}`}
+                            className="text-green-700 hover:text-green-800"
+                            title="اتصال بالمندوب"
+                            aria-label="اتصال بالمندوب"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                            </svg>
+                          </a>
+                          <span
+                            className="text-xs font-cairo font-semibold text-green-700 hover:text-green-800 hover:underline cursor-pointer"
+                            title="نسخ رقم المندوب"
+                            onClick={() => copyToClipboard(formatEgyptianPhone(bostaData.starPhone), 'تم نسخ رقم المندوب!')}
+                            tabIndex={0}
+                            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyToClipboard(formatEgyptianPhone(bostaData.starPhone), 'تم نسخ رقم المندوب!'); } }}
+                          >
+                            {formatEgyptianPhone(bostaData.starPhone)}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1740,6 +1889,93 @@ const OrderCard = ({
             </div>
           )}
 
+          {/* Proof Images (Sending status only - moved to expanded view) */}
+          {order.status === 'sending' && bostaData.proofImages && bostaData.proofImages.length > 0 && (
+            <div className="bg-white rounded-md p-3 border border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-1 space-x-reverse">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-xs font-cairo font-medium text-gray-700">صور الإثبات</span>
+                </div>
+                <span className="text-xs font-cairo text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
+                  {bostaData.proofImages.length}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-6 gap-2">
+                {bostaData.proofImages.slice(0, 12).map((image, index) => (
+                  <div 
+                    key={index} 
+                    className="relative group cursor-pointer"
+                    onClick={() => {
+                      try {
+                        const newWindow = window.open(image, '_blank');
+                        if (!newWindow) {
+                          window.location.href = image;
+                        }
+                      } catch (error) {
+                        console.error('Error opening image:', error);
+                        window.location.href = image;
+                      }
+                    }}
+                    title="انقر لفتح الصورة بحجم كامل في نافذة جديدة"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        try {
+                          const newWindow = window.open(image, '_blank');
+                          if (!newWindow) {
+                            window.location.href = image;
+                          }
+                        } catch (error) {
+                          console.error('Error opening image:', error);
+                          window.location.href = image;
+                        }
+                      }
+                    }}
+                    role="button"
+                    aria-label={`فتح الصورة ${index + 1} في نافذة جديدة`}
+                  >
+                    <div className="aspect-square overflow-hidden rounded-md border border-gray-200 bg-gray-100 hover:border-blue-400 transition-all duration-300 shadow-sm hover:shadow-lg group-hover:scale-105 w-16 h-16">
+                      <img
+                        src={image}
+                        alt={`صورة إثبات ${index + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        loading="lazy"
+                        data-idx={index}
+                        onError={handleProofImageError}
+                        onLoad={(e) => {
+                          e.target.style.display = 'block';
+                          e.target.nextElementSibling.style.display = 'none';
+                        }}
+                      />
+                      <div className="w-full h-full hidden items-center justify-center bg-gray-100">
+                        <div className="text-center">
+                          <svg className="w-6 h-6 text-gray-400 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span className="text-xs text-gray-500 font-cairo">خطأ في التحميل</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-md transition-all duration-300 flex items-center justify-center">
+                      <div className="bg-white bg-opacity-95 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg">
+                        <svg className="w-3 h-3 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="absolute top-1 right-1 bg-blue-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-cairo font-bold">
+                      {index + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Complete Maintenance Timeline */}
           {order.maintenanceHistory && order.maintenanceHistory.length > 0 && (
             <div className="bg-yellow-50 rounded-md p-3">
@@ -1759,14 +1995,13 @@ const OrderCard = ({
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <p className="font-cairo font-medium text-gray-900 text-xs">
-                          {getArabicActionTitle(entry.action)}
+                          {getArabicActionTitle(entry.action, entry.action_data || entry.actionData)}
                         </p>
                         <span className="text-xs text-gray-500 font-cairo">
                           {formatDate(entry.timestamp)}
                         </span>
                       </div>
                       <p className="text-xs text-gray-600 font-cairo mt-1">{entry.notes}</p>
-                      <p className="text-xs text-gray-500 font-cairo mt-1">بواسطة: {entry.user}</p>
                     </div>
                   </div>
                 ))}
@@ -1784,4 +2019,4 @@ const OrderCard = ({
   );
 };
 
-export default OrderCard; 
+export default React.memo(OrderCard);

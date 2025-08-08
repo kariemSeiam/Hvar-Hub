@@ -166,3 +166,42 @@ export const getRelativeTime = (dateString) => {
     return `منذ ${convertToArabic(days)} يوم`;
   }
 }; 
+
+/**
+ * Get short relative time in Arabic without "منذ" prefix
+ * Examples: "من دقيقة", "من 3 ساعات", "من 5 أيام", "من شهر", "من 3 شهور", "من سنة", "من سنتين", "من 3 سنوات"
+ * @param {string|Date} dateString
+ * @returns {string}
+ */
+export const getRelativeTimeShort = (dateString) => {
+  if (!dateString) return 'الآن';
+  const date = new Date(dateString);
+  const now = new Date();
+  if (isNaN(date.getTime())) return 'الآن';
+
+  const diffMs = now - date;
+  const sec = Math.floor(diffMs / 1000);
+  const min = Math.floor(sec / 60);
+  const hr = Math.floor(min / 60);
+  const day = Math.floor(hr / 24);
+  const month = Math.floor(day / 30);
+  const year = Math.floor(day / 365);
+
+  const arabicNumerals = { 0: '٠', 1: '١', 2: '٢', 3: '٣', 4: '٤', 5: '٥', 6: '٦', 7: '٧', 8: '٨', 9: '٩' };
+  const toAr = (n) => n.toString().split('').map(d => arabicNumerals[d] || d).join('');
+
+  if (sec < 60) return 'الآن';
+  if (min < 60) return `من ${toAr(min)} دقيقة`;
+  if (hr < 24) return `من ${toAr(hr)} ساعة`;
+  if (day < 30) return `من ${toAr(day)} يوم`;
+
+  if (month < 12) {
+    if (month === 1) return 'من شهر';
+    if (month === 2) return 'من شهرين';
+    return `من ${toAr(month)} شهور`;
+  }
+
+  if (year === 1) return 'من سنة';
+  if (year === 2) return 'من سنتين';
+  return `من ${toAr(year)} سنوات`;
+};

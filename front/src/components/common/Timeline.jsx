@@ -1,4 +1,5 @@
 import React from 'react';
+import { getRelativeTimeShort, formatDateOnly } from '../../utils/dateUtils';
 
 const Timeline = ({ 
   items, 
@@ -67,9 +68,18 @@ const Timeline = ({
                 )}
               </div>
               <div className="text-right">
-                <time className="text-xs text-gray-500 font-roboto">
-                  {item.time}
-                </time>
+                <div className="flex flex-col items-end gap-0.5">
+                  {item.time && (
+                    <time className="text-[11px] text-gray-500 font-cairo-play">
+                      {item.time}
+                    </time>
+                  )}
+                  {(item.date || item.timestamp) && (
+                    <span className="text-[11px] text-gray-600 font-cairo-play whitespace-nowrap">
+                      {getRelativeTimeShort(item.timestamp || item.date)}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             

@@ -1,7 +1,7 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Badge, Tabs, Timeline, ConfirmationModal, CompactProfile, OrderCard } from '../components/common';
-import QrScanner from 'qr-scanner';
+import React, { useState, useRef, useCallback, useEffect, Suspense, useMemo } from 'react';
+import { toast } from 'react-hot-toast';
+// Lazy-load heavy components to reduce initial bundle size
+const OrderCard = React.lazy(() => import('../components/common/OrderCard'));
 import { scanSuccessFeedback, scanErrorFeedback, hapticFeedback } from '../utils/feedback';
 import {
   getDeviceInfo,
@@ -32,8 +32,7 @@ const OrderManagementPage = () => {
   const [recentScans, setRecentScans] = useState([]);
   const [scannerBuffer, setScannerBuffer] = useState('');
   const [lastScanTime, setLastScanTime] = useState(0);
-  const [showTimelineModal, setShowTimelineModal] = useState(false);
-  const [selectedOrderForTimeline, setSelectedOrderForTimeline] = useState(null);
+  
   const [highlightedOrderId, setHighlightedOrderId] = useState(null);
   const [lastScannedCode, setLastScannedCode] = useState('');
   const [lastScanTimestamp, setLastScanTimestamp] = useState(0);
@@ -42,12 +41,13 @@ const OrderManagementPage = () => {
 
   // Order Management States
   const [activeTab, setActiveTab] = useState('received');
+  const [returnsSubTab, setReturnsSubTab] = useState('valid'); // 'valid' | 'damaged'
   const [orders, setOrders] = useState({
     received: [],
     inMaintenance: [],
     completed: [],
     failed: [],
-    returns: [],
+    returns: [], // All returned combined; UI will refilter per sub-tab
     sending: []
   });
   const [forceUpdate, setForceUpdate] = useState(0);
@@ -82,14 +82,30 @@ const OrderManagementPage = () => {
     return tabNames[tabId] || tabId;
   };
 
+  // Map backend status to UI tab id
+  const mapBackendStatusToTabId = (status) => {
+    if (!status) return status;
+    if (status === 'in_maintenance') return 'inMaintenance';
+    if (status === 'returned') return 'returns';
+    return status;
+  };
+
+  // Get Arabic label from either a backend status or a UI tab id
+  const getTabLabelFromAny = (idOrStatus) => {
+    const tabId = mapBackendStatusToTabId(idOrStatus);
+    return getTabLabel(tabId);
+  };
+
   // Optimized load orders with error handling and caching
-  const loadOrdersByStatus = useCallback(async (status) => {
+  const loadOrdersByStatus = useCallback(async (status, overrideReturnCondition = null) => {
     if (!status) return;
 
     setIsLoadingOrders(true);
     try {
       // Backend returns: { success, data: { orders, total, page, per_page } }
-      const result = await orderAPI.getOrdersByStatus(status);
+      const effectiveReturnCondition = overrideReturnCondition ?? returnsSubTab;
+      const options = (status === 'returned') ? { returnCondition: effectiveReturnCondition } : {};
+      const result = await orderAPI.getOrdersByStatus(status, 1, 20, options);
       if (result.success) {
         // Transform orders from backend format to frontend format
         const transformedOrders = result.data.orders.map(order =>
@@ -145,7 +161,7 @@ const OrderManagementPage = () => {
     } finally {
       setIsLoadingOrders(false);
     }
-  }, []);
+  }, [returnsSubTab]);
 
   // Optimized load orders summary with error handling
   const loadOrdersSummary = useCallback(async () => {
@@ -230,6 +246,7 @@ const OrderManagementPage = () => {
         throw new Error('تم رفض إذن الكاميرا. يرجى السماح بالوصول للكاميرا في إعدادات المتصفح.');
       }
 
+      const { default: QrScanner } = await import('qr-scanner');
       qrScannerRef.current = new QrScanner(
         videoRef.current,
         (result) => {
@@ -408,18 +425,25 @@ const OrderManagementPage = () => {
         const orderData = existingResult.data.order || existingResult.data;
         const existingOrder = orderAPI.transformBackendOrder(orderData);
 
-        const tabId = existingOrder.status === 'in_maintenance' ? 'inMaintenance' : existingOrder.status;
+        const tabId = mapBackendStatusToTabId(existingOrder.status);
 
-        // Navigate to the tab containing the order
-        setActiveTab(tabId);
-        
-        // Load orders for the target tab and add the existing order to the top
-        await loadOrdersByStatus(existingOrder.status);
+        // If returned, navigate to correct sub-tab based on condition
+        if (tabId === 'returns') {
+          const condition = existingOrder.returnCondition === 'damaged' ? 'damaged' : 'valid';
+          setReturnsSubTab(condition);
+          setActiveTab('returns');
+          await loadOrdersByStatus('returned', condition);
+        } else {
+          // Navigate to the tab containing the order
+          setActiveTab(tabId);
+          // Load orders for the target tab and add the existing order to the top
+          await loadOrdersByStatus(existingOrder.status);
+        }
         
         // Add the existing order to the top of the list if not already present
         setOrders(prev => {
           const newState = { ...prev };
-          const stateKey = existingOrder.status === 'in_maintenance' ? 'inMaintenance' : existingOrder.status;
+          const stateKey = mapBackendStatusToTabId(existingOrder.status);
           const existingIndex = newState[stateKey]?.findIndex(order => order._id === existingOrder._id);
           
           if (existingIndex === -1) {
@@ -451,7 +475,7 @@ const OrderManagementPage = () => {
         // Show success message
         setScannerState(prev => ({
           ...prev,
-          error: `تم العثور على الطلب ${cleanTrackingNumber} في ${getTabLabel(tabId)}`
+          error: `تم العثور على الطلب ${cleanTrackingNumber} في ${getTabLabelFromAny(tabId)}`
         }));
 
         scanSuccessFeedback();
@@ -530,8 +554,15 @@ const OrderManagementPage = () => {
           setForceUpdate(prev => prev + 1);
 
           // Navigate to the correct tab and refresh orders
-          setActiveTab(targetTab);
-          await loadOrdersByStatus(targetTab);
+          if (targetTab === 'returns') {
+            const condition = orderData.returnCondition === 'damaged' ? 'damaged' : 'valid';
+            setReturnsSubTab(condition);
+            setActiveTab('returns');
+            await loadOrdersByStatus('returned', condition);
+          } else {
+            setActiveTab(targetTab);
+            await loadOrdersByStatus(targetTab);
+          }
           await loadOrdersSummary();
 
           // Add to recent scans
@@ -601,8 +632,12 @@ const OrderManagementPage = () => {
         const targetTab = statusMap[orderData.status] || 'received';
 
         // Navigate to the correct tab if not already there
-        if (activeTab !== targetTab) {
-          setActiveTab(targetTab);
+        if (targetTab === 'returns') {
+          const condition = orderData.returnCondition === 'damaged' ? 'damaged' : 'valid';
+          setReturnsSubTab(condition);
+          if (activeTab !== 'returns') setActiveTab('returns');
+        } else {
+          if (activeTab !== targetTab) setActiveTab(targetTab);
         }
 
         // Add the order to the current state immediately at the top
@@ -832,7 +867,7 @@ const OrderManagementPage = () => {
     };
     const status = statusMap[activeTab] || activeTab;
     loadOrdersByStatus(status);
-  }, [activeTab, loadOrdersByStatus]);
+  }, [activeTab, loadOrdersByStatus, returnsSubTab]);
 
   // Auto-start camera on component mount
   useEffect(() => {
@@ -887,14 +922,8 @@ const OrderManagementPage = () => {
     if (!scannedOrder) return;
 
     try {
-      console.log('Original scanned order:', scannedOrder);
-      console.log('Original scanned order keys:', Object.keys(scannedOrder || {}));
-      
-      // Order is already created in backend during scan, just confirm it
-      const transformedOrder = orderAPI.transformBackendOrder(scannedOrder);
-
-      console.log('Transformed order:', transformedOrder);
-      console.log('Transformed order keys:', Object.keys(transformedOrder || {}));
+      console.log('Confirming scanned order (already transformed):', scannedOrder);
+      const transformedOrder = scannedOrder; // prevent double-transform that loses fields
       console.log('Adding new order to state:', transformedOrder);
 
       // Determine the correct tab based on order status
@@ -941,10 +970,7 @@ const OrderManagementPage = () => {
       // Force re-render
       setForceUpdate(prev => prev + 1);
 
-      // Navigate to the correct tab if not already there
-      if (activeTab !== targetTab) {
-        setActiveTab(targetTab);
-      }
+      // Stay on the same tab; do not auto-navigate after confirmation
 
       // Highlight the new order
       setHighlightedOrderId(transformedOrder._id);
@@ -1006,19 +1032,25 @@ const OrderManagementPage = () => {
         setOrders(prev => {
           const newState = { ...prev };
           
-          // Remove order from current tab
           const currentTab = activeTab;
-          if (newState[currentTab]) {
-            newState[currentTab] = newState[currentTab].filter(o => o._id !== order._id);
-          }
-          
-          // Add order to target tab (if different from current tab)
-          if (targetTab && targetTab !== currentTab) {
-            const targetStateKey = targetStatus === 'inMaintenance' ? 'inMaintenance' : targetStatus;
-            if (!newState[targetStateKey]) {
-              newState[targetStateKey] = [];
+
+          if (!targetTab) {
+            // No status change (e.g., set_return_condition). Update in-place in current list
+            if (newState[currentTab]) {
+              newState[currentTab] = newState[currentTab].map(o => o._id === order._id ? updatedOrder : o);
             }
-            newState[targetStateKey] = [updatedOrder, ...newState[targetStateKey]];
+          } else {
+            // Remove from current and add to target if needed
+            if (newState[currentTab]) {
+              newState[currentTab] = newState[currentTab].filter(o => o._id !== order._id);
+            }
+            if (targetTab !== currentTab) {
+              const targetStateKey = targetStatus === 'inMaintenance' ? 'inMaintenance' : targetStatus;
+              if (!newState[targetStateKey]) {
+                newState[targetStateKey] = [];
+              }
+              newState[targetStateKey] = [updatedOrder, ...newState[targetStateKey]];
+            }
           }
           
           return newState;
@@ -1028,18 +1060,19 @@ const OrderManagementPage = () => {
         setOrdersSummary(prev => {
           const newSummary = { ...prev };
           
-          // Decrease count for current tab
-          const currentSummaryKey = activeTab === 'inMaintenance' ? 'in_maintenance' : 
-            activeTab === 'returns' ? 'returned' : activeTab;
-          if (newSummary[currentSummaryKey] > 0) {
-            newSummary[currentSummaryKey] = Math.max(0, newSummary[currentSummaryKey] - 1);
-          }
-          
-          // Increase count for target tab (if different)
-          if (targetTab && targetTab !== activeTab) {
-            const targetSummaryKey = targetStatus === 'inMaintenance' ? 'in_maintenance' : 
-              targetStatus === 'returns' ? 'returned' : targetStatus;
-            newSummary[targetSummaryKey] = (newSummary[targetSummaryKey] || 0) + 1;
+          if (targetTab) {
+            // Decrease count for current tab
+            const currentSummaryKey = activeTab === 'inMaintenance' ? 'in_maintenance' : 
+              activeTab === 'returns' ? 'returned' : activeTab;
+            if (newSummary[currentSummaryKey] > 0) {
+              newSummary[currentSummaryKey] = Math.max(0, newSummary[currentSummaryKey] - 1);
+            }
+            // Increase for target tab
+            if (targetTab && targetTab !== activeTab) {
+              const targetSummaryKey = targetStatus === 'inMaintenance' ? 'in_maintenance' : 
+                targetStatus === 'returns' ? 'returned' : targetStatus;
+              newSummary[targetSummaryKey] = (newSummary[targetSummaryKey] || 0) + 1;
+            }
           }
           
           return newSummary;
@@ -1048,23 +1081,26 @@ const OrderManagementPage = () => {
         // Force re-render
         setForceUpdate(prev => prev + 1);
 
-        // Navigate to target tab if action moves order to different tab
-        if (targetTab && targetTab !== activeTab) {
-          setActiveTab(targetTab);
-          
-          // Highlight the moved order
-          setHighlightedOrderId(updatedOrder._id);
-          
-          // Clear highlight after 4 seconds
-          setTimeout(() => {
-            setHighlightedOrderId(null);
-          }, 4000);
-          
-          // Scroll to top smoothly
-          setTimeout(() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }, 100);
-        }
+        // Stay on the same tab after action; do not auto-navigate to target tab
+
+        // Show toast with movement info (tracking number + from -> to)
+        try {
+          const tracking = actionData?.new_tracking_number
+            || updatedOrder?.newTrackingNumber
+            || updatedOrder?.trackingNumber
+            || order?.trackingNumber
+            || order?.tracking_number;
+          if (targetTab) {
+            if (targetTab === activeTab) {
+              const label = getTabLabel(activeTab);
+              toast.success(`تم تحديث الطلب ${tracking || '—'} في قائمة ${label}`);
+            } else {
+              showMoveToast({ trackingNumber: tracking, fromTabId: activeTab, toTabId: targetTab });
+            }
+          } else {
+            toast.success(`تم تحديث الطلب ${tracking || '—'} بنجاح`);
+          }
+        } catch (_) {}
 
         hapticFeedback('success');
       } else {
@@ -1112,6 +1148,14 @@ const OrderManagementPage = () => {
       'returns': 'المرتجعة'
     };
     return tabLabels[tabId] || tabId;
+  };
+
+  // Toast helper to announce movement between lists
+  const showMoveToast = ({ trackingNumber, fromTabId, toTabId }) => {
+    const fromLabel = getTabLabel(fromTabId);
+    const toLabel = getTabLabel(toTabId);
+    const displayTracking = trackingNumber || '—';
+    toast.success(`تم نقل الطلب ${displayTracking} من ${fromLabel} إلى ${toLabel}`);
   };
 
   // Get creative highlight classes based on tab color
@@ -1176,16 +1220,16 @@ const OrderManagementPage = () => {
       color: 'amber'
     },
     {
-      id: 'completed',
-      label: 'مكتملة',
-      badge: ordersSummary.completed.toString(),
-      color: 'green'
-    },
-    {
       id: 'failed',
       label: 'فاشلة/معلقة',
       badge: ordersSummary.failed.toString(),
       color: 'red'
+    },
+    {
+      id: 'completed',
+      label: 'مكتملة',
+      badge: ordersSummary.completed.toString(),
+      color: 'green'
     },
     {
       id: 'sending',
@@ -1195,7 +1239,7 @@ const OrderManagementPage = () => {
     },
     {
       id: 'returns',
-      label: 'المرتجعة',
+      label: 'المرتجعات',
       badge: ordersSummary.returned.toString(),
       color: 'gray'
     }
@@ -1243,117 +1287,7 @@ const OrderManagementPage = () => {
     return colors[color] || colors.blue;
   };
 
-  // Timeline Modal Component
-  const TimelineModal = ({ isOpen, onClose, order }) => {
-    if (!isOpen || !order) return null;
-
-    const timelineItems = [
-      // Order timeline
-      ...(order.timeline || []).map((item, index) => ({
-        title: getTimelineTitle(item.value),
-        description: getTimelineDescription(item.value),
-        time: formatGregorianDate(item.date, true),
-        status: item.done ? 'completed' : 'pending',
-        details: `المرحلة ${index + 1} من ${order.timeline.length}`
-      })),
-      // Maintenance history
-      ...(order.maintenanceHistory || []).map((history, index) => ({
-        title: getMaintenanceTitle(history.action),
-        description: history.notes,
-        time: formatGregorianDate(history.timestamp, true),
-        status: getMaintenanceStatus(history.action),
-        details: `بواسطة: ${history.user}`
-      }))
-    ];
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-brand-red-500 to-brand-red-600 px-6 py-4 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold font-cairo-play">خط زمني للطلب</h2>
-                <p className="text-sm opacity-90 font-cairo-play">
-                  {order.trackingNumber} - {order.receiver?.fullName}
-                </p>
-              </div>
-              <button
-                onClick={onClose}
-                className="text-white hover:text-gray-200 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
-            <Timeline
-              items={timelineItems}
-              variant="default"
-              className="space-y-4"
-            />
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Helper functions for timeline
-  const getTimelineTitle = (value) => {
-    const titles = {
-      'ready_for_pickup': 'جاهز للاستلام',
-      'picked_up': 'تم الاستلام',
-      'in_transit': 'في الطريق',
-      'out_for_delivery': 'خارج للتوصيل',
-      'delivered': 'تم التوصيل',
-      'returned': 'تم الإرجاع',
-      'failed': 'فشل في التوصيل'
-    };
-    return titles[value] || value;
-  };
-
-  const getTimelineDescription = (value) => {
-    const descriptions = {
-      'ready_for_pickup': 'الطلب جاهز للاستلام من المرسل',
-      'picked_up': 'تم استلام الطلب بنجاح',
-      'in_transit': 'الطلب في الطريق إلى وجهته',
-      'out_for_delivery': 'الطلب خارج للتوصيل للمستلم',
-      'delivered': 'تم توصيل الطلب بنجاح',
-      'returned': 'تم إرجاع الطلب',
-      'failed': 'فشل في توصيل الطلب'
-    };
-    return descriptions[value] || '';
-  };
-
-  const getMaintenanceTitle = (action) => {
-    const titles = {
-      'received': 'استلام الطلب',
-      'start_maintenance': 'بدء الصيانة',
-      'fail_maintenance': 'فشل في الصيانة',
-      'reschedule': 'إعادة للصيانة',
-      'complete_maintenance': 'إنجاز الصيانة',
-      'send_order': 'إرسال الطلب',
-      'confirm_send': 'تأكيد إرسال الطلب'
-    };
-    return titles[action] || action;
-  };
-
-  const getMaintenanceStatus = (action) => {
-    const statuses = {
-      'received': 'completed',
-      'start_maintenance': 'processing',
-      'fail_maintenance': 'failed',
-      'reschedule': 'pending',
-      'complete_maintenance': 'completed',
-      'send_order': 'shipping',
-      'confirm_send': 'shipping'
-    };
-    return statuses[action] || 'pending';
-  };
+  
 
   // Custom HVAR Professional Logo
   const HvarSystemIcon = () => (
@@ -1403,7 +1337,7 @@ const OrderManagementPage = () => {
             <HvarSystemIcon />
             <div>
               <h1 className="text-xl font-bold text-gray-900 font-cairo-play">
-                ميتو الرايق للصيانة
+               مخزن هفار
               </h1>
             </div>
           </div>
@@ -1690,11 +1624,31 @@ const OrderManagementPage = () => {
           {/* Tab Header with Count */}
           <div className="bg-white border-b border-gray-100 px-6 py-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900 font-cairo-play">
-                {tabs.find(tab => tab.id === activeTab)?.label}
-              </h2>
+              <div className="flex items-center space-x-2 space-x-reverse">
+                <h2 className="text-lg font-bold text-gray-900 font-cairo-play">
+                  {tabs.find(tab => tab.id === activeTab)?.label}
+                </h2>
+                {activeTab === 'returns' && (
+                  <div className="flex items-center space-x-2 space-x-reverse">
+                    <button
+                      onClick={() => setReturnsSubTab('valid')}
+                      className={`px-3 py-1 rounded-full text-xs font-cairo ${returnsSubTab === 'valid' ? 'bg-blue-100 text-blue-800 border border-blue-300' : 'text-blue-700 hover:bg-blue-50 border border-transparent'}`}
+                    >
+                      سليمة
+                    </button>
+                    <button
+                      onClick={() => setReturnsSubTab('damaged')}
+                      className={`px-3 py-1 rounded-full text-xs font-cairo ${returnsSubTab === 'damaged' ? 'bg-red-100 text-red-800 border border-red-300' : 'text-red-700 hover:bg-red-50 border border-transparent'}`}
+                    >
+                      تالفة
+                    </button>
+                  </div>
+                )}
+              </div>
               <span className="text-sm text-gray-600 font-cairo-play">
-                {orders[activeTab]?.length || 0} طلب
+                {activeTab === 'returns' 
+                  ? ((orders.returns || []).filter(o => (o.returnCondition || 'valid') === returnsSubTab).length) 
+                  : (orders[activeTab]?.length || 0)} طلب
               </span>
             </div>
           </div>
@@ -1815,7 +1769,7 @@ const OrderManagementPage = () => {
 
           {/* Orders List */}
           <div className="flex-1 overflow-y-auto p-6">
-            {isLoadingOrders ? (
+            {isLoadingOrders && (!orders[activeTab] || orders[activeTab].length === 0) ? (
               <div className="flex items-center justify-center py-12">
                 <div className="flex items-center space-x-3 space-x-reverse">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -1823,24 +1777,30 @@ const OrderManagementPage = () => {
                 </div>
               </div>
             ) : orders[activeTab]?.length > 0 ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" key={`orders-${activeTab}-${forceUpdate}`}>
-                {orders[activeTab].map((order) => (
-                  <OrderCard
-                    key={order._id}
-                    order={order}
-                    onAction={handleOrderAction}
-                    showTimeline={false}
-                    onShowTimeline={(order) => {
-                      setSelectedOrderForTimeline(order);
-                      setShowTimelineModal(true);
-                    }}
-                    className={`text-sm transition-all duration-500 ease-out transform ${highlightedOrderId === order._id
-                      ? `${getHighlightClasses(activeTab)} scale-[1.02]`
-                      : ''
-                      } ${actionInProgress ? 'opacity-75' : ''}`}
-                    disabled={actionInProgress}
-                  />
-                ))}
+              <div
+                className="columns-1 lg:columns-2 gap-4"
+                key={`orders-${activeTab}-${forceUpdate}`}
+              >
+                <Suspense fallback={<div className="py-6 text-center text-gray-500 font-cairo-play">جاري التحضير...</div>}>
+                  {(activeTab === 'returns'
+                    ? orders[activeTab].filter(o => (o.returnCondition || 'valid') === returnsSubTab)
+                    : orders[activeTab]
+                   ).map((order) => (
+                    <div key={order._id} className="break-inside-avoid mb-4">
+                      <OrderCard
+                        order={order}
+                        onAction={handleOrderAction}
+                        showTimeline={false}
+                        className={`text-sm transition-all duration-500 ease-out transform ${
+                          highlightedOrderId === order._id
+                            ? `${getHighlightClasses(activeTab)} scale-[1.02]`
+                            : ''
+                        } ${actionInProgress ? 'opacity-75' : ''}`}
+                        disabled={actionInProgress}
+                      />
+                    </div>
+                  ))}
+                </Suspense>
               </div>
             ) : (
               <div className="text-center py-12">
@@ -1861,15 +1821,7 @@ const OrderManagementPage = () => {
         </div>
       </div>
 
-      {/* Timeline Modal */}
-      <TimelineModal
-        isOpen={showTimelineModal}
-        onClose={() => {
-          setShowTimelineModal(false);
-          setSelectedOrderForTimeline(null);
-        }}
-        order={selectedOrderForTimeline}
-      />
+      
 
       {/* Refund/Replace Modal */}
       {/* Removed as per edit hint */}

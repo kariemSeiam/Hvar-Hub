@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import OrderManagementPage from './pages/OrderManagementPage';
 import NotFoundPage from './pages/NotFoundPage';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, ToastBar, toast } from 'react-hot-toast';
 
 function App() {
   return (
@@ -19,24 +19,47 @@ function App() {
         <Toaster
           position="top-center"
           reverseOrder={false}
-          gutter={8}
           containerClassName=""
           containerStyle={{}}
           toastOptions={{
             className: '',
-            duration: 4000,
+            duration: 3000,
             style: {
-              background: '#363636',
-              color: '#fff',
+              background: '#ffffff',
+              color: '#111827',
+              border: '1px solid #e5e7eb',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+              whiteSpace: 'nowrap',
+              display: 'inline-flex',
+              alignItems: 'center',
+              maxWidth: '90vw',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              direction: 'rtl'
             },
             success: {
-              duration: 3000,
-              theme: {
-                primary: '#4aed88',
-              },
+              duration: 2500,
             },
           }}
-        />
+        >
+          {(t) => (
+            <ToastBar toast={t}>
+              {({ icon, message }) => (
+                <div className="flex items-center gap-3">
+                  {icon}
+                  <div className="truncate" dir="rtl">{message}</div>
+                  <button
+                    aria-label="إغلاق"
+                    onClick={() => toast.dismiss(t.id)}
+                    className="ml-2 rounded p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </ToastBar>
+          )}
+        </Toaster>
       </Router>
     </ThemeProvider>
   );

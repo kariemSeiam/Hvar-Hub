@@ -30,6 +30,13 @@
 
 /* Custom utility styles */
 @layer utilities {
+  /* Prevent column-based masonry items from breaking across columns */
+  .break-inside-avoid {
+    break-inside: avoid;
+    -moz-column-break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+    page-break-inside: avoid;
+  }
   .text-gradient {
     @apply bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent;
   }

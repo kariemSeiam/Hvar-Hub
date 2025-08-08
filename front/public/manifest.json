@@ -37,8 +37,7 @@
           "sizes": "192x192"
         }
       ]
-    },
-
+    }
   ],
   "permissions": [
     "camera",

@@ -1,690 +1,382 @@
-# 🚀 HVAR Hub - Order Management System
+## 🚀 HVAR Hub — Full‑Stack Order Management (Flask + React)
 
-> **A full-stack order management platform with React frontend and Flask backend, featuring Arabic RTL support and real-time order tracking.**
+Built for fast, Arabic-first operations with QR scanning, returns handling, and end-to-end order lifecycle. Frontend: React 18 + Vite + Tailwind (RTL). Backend: Flask 3 + SQLAlchemy, with auto DB initialization and Bosta integration.
 
-[![HVAR Hub](https://img.shields.io/badge/HVAR-Hub-blue?style=for-the-badge&logo=react)](https://github.com/kariemSeiam/Hvar-Hub)
-[![React](https://img.shields.io/badge/React-18.3.1-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Flask](https://img.shields.io/badge/Flask-3.0.3-000000?style=for-the-badge&logo=flask)](https://flask.palletsprojects.com/)
-[![Tailwind](https://img.shields.io/badge/Tailwind-3.4.17-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-[![PWA](https://img.shields.io/badge/PWA-Ready-5A0FC8?style=for-the-badge&logo=pwa)](https://web.dev/progressive-web-apps/)
+Badges: React 18 • Flask 3 • Tailwind 3 • PWA • RTL
 
-## 🔄 Complete System Flow
-
-### 📊 **Bosta → HVAR Hub Integration Cycle**
-
-```mermaid
-graph TB
-    %% External Systems
-    BOSTA[Bosta API<br/>📦 Delivery Platform] --> |API Calls| AUTH[Authentication<br/>🔐 JWT Token]
-    
-    %% Frontend Layer
-    USER[👤 User<br/>QR Scanner/Camera] --> |Scan Tracking#| FRONT[React Frontend<br/>📱 PWA Interface]
-    FRONT --> |HTTP Request| BACK[Flask Backend<br/>🔧 API Gateway]
-    
-    %% Backend Processing
-    BACK --> |API Call| BOSTA_SERVICE[Bosta Service<br/>🔄 Data Integration]
-    BOSTA_SERVICE --> |Fetch Data| BOSTA
-    
-    %% Data Processing
-    BOSTA_SERVICE --> |Transform| TRANSFORM[Data Transformer<br/>🔄 Format Conversion]
-    TRANSFORM --> |Store| DB[(SQLite Database<br/>🗄️ Local Storage)]
-    
-    %% Order Management
-    DB --> |Query| ORDER_SERVICE[Order Service<br/>📋 Business Logic]
-    ORDER_SERVICE --> |Update| MAINTENANCE[Maintenance History<br/>📈 Status Tracking]
-    
-    %% Real-time Updates
-    MAINTENANCE --> |Notify| FRONT
-    FRONT --> |Display| UI[User Interface<br/>🎨 RTL Components]
-    
-    %% Performance & Caching
-    FRONT --> |Cache| PWA[Progressive Web App<br/>📱 Offline Support]
-    PWA --> |Service Worker| CACHE[Intelligent Caching<br/>⚡ Performance]
-    
-    %% Monitoring & Analytics
-    BACK --> |Log| MONITOR[Performance Monitoring<br/>📊 Analytics]
-    MONITOR --> |Metrics| ANALYTICS[Business Intelligence<br/>📈 Insights]
-    
-    %% Security Layer
-    AUTH --> |Validate| SECURITY[Security Layer<br/>🛡️ CORS & Validation]
-    SECURITY --> |Protect| BACK
-    
-    %% Styling with transparent backgrounds
-    classDef external fill:#ffe6e6,stroke:#333,stroke-width:1px
-    classDef frontend fill:#e6f3ff,stroke:#333,stroke-width:1px
-    classDef backend fill:#e6ffe6,stroke:#333,stroke-width:1px
-    classDef database fill:#fff2e6,stroke:#333,stroke-width:1px
-    classDef service fill:#f0e6ff,stroke:#333,stroke-width:1px
-    
-    class BOSTA,AUTH external
-    class USER,FRONT,UI,PWA,CACHE frontend
-    class BACK,SECURITY,TRANSFORM,ORDER_SERVICE,MAINTENANCE,MONITOR,ANALYTICS backend
-    class DB database
-    class BOSTA_SERVICE service
-```
-
-### 🔄 **Detailed Data Flow Cycle**
+### 🔄 High‑level Flow
 
 ```mermaid
 sequenceDiagram
-    participant U as 👤 User
-    participant F as 📱 Frontend
-    participant B as 🔧 Backend
-    participant BS as 🔄 Bosta Service
-    participant BO as 📦 Bosta API
-    participant DB as 🗄️ Database
-    participant UI as 🎨 UI Components
+    participant U as User
+    participant FE as Frontend (React)
+    participant BE as Backend (Flask)
+    participant BOS as Bosta API
+    participant DB as Database
 
-    %% Initial Scan
-    U->>F: Scan QR Code
-    F->>B: POST /api/orders/scan
-    B->>BS: Fetch Order Data
-    BS->>BO: GET /deliveries/business/{tracking}
-    
-    %% Data Processing
-    BO-->>BS: Return Order Data
-    BS->>BS: Transform Bosta Format
-    BS-->>B: Transformed Order Data
-    B->>DB: Store/Update Order
-    DB-->>B: Confirmation
-    
-    %% Response & UI Update
-    B-->>F: Order Data + Status
-    F->>UI: Update Order Card
-    UI-->>U: Display Order Info
-    
-    %% User Actions
-    U->>F: Perform Action (Update Status)
-    F->>B: PUT /api/orders/{id}/action
-    B->>DB: Update Maintenance History
-    DB-->>B: Updated Data
-    B-->>F: Success Response
-    F->>UI: Refresh Order Display
-    UI-->>U: Show Updated Status
-    
-    %% Real-time Features
-    F->>F: Service Worker Cache
-    F->>F: Offline Support
-    F->>F: PWA Features
+    U->>FE: Scan QR / Enter Tracking
+    FE->>BE: POST /api/orders/scan
+    BE->>BOS: GET /deliveries/business/{tracking}
+    BOS-->>BE: Order payload
+    BE->>DB: Transform + Upsert Order + History
+    DB-->>BE: OK
+    BE-->>FE: { order, status, is_existing }
+    U->>FE: Perform Action (e.g. start_maintenance)
+    FE->>BE: POST /api/orders/{id}/action
+    BE->>DB: Update order + history
+    DB-->>BE: OK
+    BE-->>FE: Updated order
 ```
 
-### 🏗️ **System Architecture Flow**
-
-```mermaid
-graph LR
-    subgraph "🌐 External Systems"
-        BOSTA[Bosta API<br/>📦 Delivery Platform]
-        AUTH[JWT Authentication<br/>🔐 Secure Access]
-    end
-    
-    subgraph "📱 Frontend Layer"
-        REACT[React 18<br/>⚛️ Component Library]
-        VITE[Vite Build<br/>🚀 Fast Development]
-        TAILWIND[Tailwind CSS<br/>🎨 Styling System]
-        PWA[Progressive Web App<br/>📱 Native Experience]
-    end
-    
-    subgraph "🔧 Backend Layer"
-        FLASK[Flask Framework<br/>🐍 Python Backend]
-        SQLALCHEMY[SQLAlchemy<br/>🗄️ ORM Layer]
-        CORS[CORS Configuration<br/>🛡️ Security]
-    end
-    
-    subgraph "🗄️ Data Layer"
-        SQLITE[SQLite Database<br/>💾 Local Storage]
-        MODELS[Data Models<br/>📋 Order & History]
-        AUTO_INIT[Auto-initialization<br/>🔄 Smart Setup]
-    end
-    
-    subgraph "🔄 Integration Layer"
-        BOSTA_SERVICE[Bosta Service<br/>🔄 API Integration]
-        TRANSFORM[Data Transformer<br/>🔄 Format Conversion]
-        ORDER_SERVICE[Order Service<br/>📋 Business Logic]
-    end
-    
-    subgraph "📊 Monitoring Layer"
-        PERFORMANCE[Performance Monitoring<br/>⚡ Optimization]
-        ANALYTICS[Business Analytics<br/>📈 Insights]
-        ERROR_TRACKING[Error Tracking<br/>🐛 Debugging]
-    end
-    
-    %% Connections
-    BOSTA --> BOSTA_SERVICE
-    AUTH --> FLASK
-    REACT --> FLASK
-    VITE --> REACT
-    TAILWIND --> REACT
-    PWA --> REACT
-    FLASK --> SQLALCHEMY
-    SQLALCHEMY --> SQLITE
-    MODELS --> SQLITE
-    AUTO_INIT --> SQLITE
-    BOSTA_SERVICE --> TRANSFORM
-    TRANSFORM --> ORDER_SERVICE
-    ORDER_SERVICE --> MODELS
-    FLASK --> PERFORMANCE
-    PERFORMANCE --> ANALYTICS
-    ANALYTICS --> ERROR_TRACKING
-    
-    %% Styling with transparent backgrounds
-    classDef external fill:#ffe6e6,stroke:#333,stroke-width:1px
-    classDef frontend fill:#e6f3ff,stroke:#333,stroke-width:1px
-    classDef backend fill:#e6ffe6,stroke:#333,stroke-width:1px
-    classDef data fill:#fff2e6,stroke:#333,stroke-width:1px
-    classDef integration fill:#f0e6ff,stroke:#333,stroke-width:1px
-    classDef monitoring fill:#e6ffff,stroke:#333,stroke-width:1px
-    
-    class BOSTA,AUTH external
-    class REACT,VITE,TAILWIND,PWA frontend
-    class FLASK,SQLALCHEMY,CORS backend
-    class SQLITE,MODELS,AUTO_INIT data
-    class BOSTA_SERVICE,TRANSFORM,ORDER_SERVICE integration
-    class PERFORMANCE,ANALYTICS,ERROR_TRACKING monitoring
-```
-
-### 🎯 **Order Processing Cycle**
-
-```mermaid
-flowchart TD
-    START([🎯 Start Order Processing]) --> SCAN{📱 Scan QR Code}
-    
-    SCAN -->|Valid Tracking#| FETCH[🔄 Fetch from Bosta API]
-    SCAN -->|Invalid| ERROR[❌ Invalid Tracking Number]
-    
-    FETCH -->|Success| TRANSFORM[🔄 Transform Data Format]
-    FETCH -->|Failed| BOSTA_ERROR[❌ Bosta API Error]
-    
-    TRANSFORM --> VALIDATE{🔍 Validate Order Data}
-    VALIDATE -->|Valid| STORE[💾 Store in Database]
-    VALIDATE -->|Invalid| DATA_ERROR[❌ Data Validation Error]
-    
-    STORE -->|Success| CREATE_HISTORY[📈 Create Maintenance History]
-    STORE -->|Failed| DB_ERROR[❌ Database Error]
-    
-    CREATE_HISTORY --> UPDATE_UI[🎨 Update User Interface]
-    UPDATE_UI --> DISPLAY[📱 Display Order Card]
-    
-    DISPLAY --> USER_ACTION{👤 User Action?}
-    USER_ACTION -->|Update Status| PERFORM_ACTION[⚡ Perform Order Action]
-    USER_ACTION -->|View Details| SHOW_DETAILS[📋 Show Order Details]
-    USER_ACTION -->|No Action| WAIT[⏳ Wait for Action]
-    
-    PERFORM_ACTION --> UPDATE_DB[💾 Update Database]
-    UPDATE_DB --> UPDATE_HISTORY[📈 Update Maintenance History]
-    UPDATE_HISTORY --> REFRESH_UI[🔄 Refresh UI]
-    REFRESH_UI --> DISPLAY
-    
-    SHOW_DETAILS --> DISPLAY
-    WAIT --> USER_ACTION
-    
-    %% Error Handling
-    ERROR --> RETRY{🔄 Retry?}
-    BOSTA_ERROR --> RETRY
-    DATA_ERROR --> RETRY
-    DB_ERROR --> RETRY
-    
-    RETRY -->|Yes| SCAN
-    RETRY -->|No| END([🏁 End Process])
-    
-    %% Styling with transparent backgrounds
-    classDef start fill:#e6ffe6,stroke:#333,stroke-width:2px
-    classDef process fill:#e6f3ff,stroke:#333,stroke-width:1px
-    classDef decision fill:#fff2e6,stroke:#333,stroke-width:1px
-    classDef error fill:#ffe6e6,stroke:#333,stroke-width:1px
-    classDef endNode fill:#ffe6f2,stroke:#333,stroke-width:2px
-    
-    class START,END start
-    class FETCH,TRANSFORM,STORE,CREATE_HISTORY,UPDATE_UI,DISPLAY,PERFORM_ACTION,UPDATE_DB,UPDATE_HISTORY,REFRESH_UI,SHOW_DETAILS process
-    class SCAN,VALIDATE,USER_ACTION,RETRY decision
-    class ERROR,BOSTA_ERROR,DATA_ERROR,DB_ERROR error
-    class END endNode
-```
-
-## ✨ Core Features
-
-### 🎯 **Order Management**
-- Real-time order tracking with status updates
-- QR code scanning for instant order lookup
-- Advanced order filtering and search
-- Order history with detailed timeline
-- Bulk order operations
-
-### 🌍 **Arabic RTL Support**
-- Complete right-to-left language support
-- Cultural UX considerations
-- RTL-aware component layouts
-- Arabic date formatting
-- Localized user interface
-
-### 📱 **Progressive Web App**
-- Install as native app
-- Offline functionality
-- Background sync
-- Push notifications
-- App-like experience
-
-### ⚡ **Performance**
-- Sub-second load times
-- Intelligent caching
-- Code splitting
-- Optimized bundle size
-- Responsive design
-
-## 🏗️ Architecture
+### 🧭 Repo Structure
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    HVAR Hub Architecture                    │
-├─────────────────────────────────────────────────────────────┤
-│  🎨 Frontend (React + Vite)                              │
-│  ├── 📱 Responsive Components                             │
-│  ├── 🎯 State Management                                  │
-│  ├── 🚀 Performance Optimizations                         │
-│  └── 📱 PWA Features                                      │
-├─────────────────────────────────────────────────────────────┤
-│  🔧 Backend (Flask + SQLAlchemy)                         │
-│  ├── 🛡️ RESTful API                                      │
-│  ├── 🗄️ Database Management                              │
-│  ├── 🔄 Auto-initialization                              │
-│  └── 🚀 Performance Monitoring                            │
-├─────────────────────────────────────────────────────────────┤
-│  📊 Data Layer (SQLite)                                   │
-│  ├── 📋 Order Management                                  │
-│  ├── 📈 Maintenance History                               │
-│  ├── 🎯 Action Tracking                                   │
-│  └── 🔍 Analytics                                         │
-└─────────────────────────────────────────────────────────────┘
+Hvar-Hub/
+  back/                 # Flask API
+  front/                # React app (Vite)
+  run.py                # Dev runner (Windows-friendly)
+  passenger_wsgi.py     # Production (Passenger/CyberPanel)
+  VPS_DEPLOYMENT_GUIDE.md
 ```
 
-## 🚀 Development Cycle
+## ⚙️ Quick Start (Windows/macOS/Linux)
 
-### 📋 **Phase 1: Setup & Initialization**
+1) Clone
 
 ```bash
-# Clone Repository
 git clone https://github.com/kariemSeiam/Hvar-Hub.git
 cd Hvar-Hub
+```
 
-# Frontend Setup
+2) Backend
+
+```bash
+cd back
+python -m venv .venv && source .venv/bin/activate   # PowerShell: .venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+# Development defaults to SQLite; MySQL used in production if configured
+python - <<"PY"
+from app import create_app
+app = create_app('development')
+app.run(host='0.0.0.0', port=5000, debug=True)
+PY
+```
+
+3) Frontend (new terminal)
+
+```bash
 cd front
 npm install
 npm run dev
-
-# Backend Setup
-cd ../back
-pip install -r requirements.txt
-python app.py
-
-# Full Stack Development
-cd ..
-python run.py --dev
+# Vite proxies /api → http://localhost:5000
 ```
 
-### 🔧 **Phase 2: Development Workflow**
+Or run both automatically:
 
-#### **Frontend Development**
 ```bash
-# Development Server
-npm run dev          # Hot reload development
-npm run build        # Production build
-npm run preview      # Preview production build
-npm run lint         # Code quality check
+python run.py --dev     # starts Vite + Flask together
 ```
 
-#### **Backend Development**
-```bash
-# Flask Development
-python app.py        # Development server
-python -m flask run  # Alternative start
-```
+## 🗃️ Backend (Flask)
 
-#### **Full Stack Development**
-```bash
-# Complete Environment
-python run.py --dev      # Both frontend & backend
-python run.py --server   # Backend only
-python run.py --full     # Build + Deploy
-```
+### Tech
+- Flask, Flask‑CORS, Flask‑SQLAlchemy, Flask‑Migrate
+- SQLite in dev with auto‑init; MySQL in production
 
-### 🚀 **Phase 3: Deployment**
+### Configuration (env)
+- FLASK_ENV: development | production | testing
+- SECRET_KEY: app secret
+- MySQL (production): MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE
 
-#### **Frontend Deployment**
-```bash
-# Build for Production
-npm run build
+Notes:
+- In development, backend falls back to SQLite automatically.
+- On first boot, DB and indexes are auto‑created and schema is self‑healed when safe.
+- CORS origins include localhost and `https://mcrm.hvarstore.com` by default.
 
-# Deploy Options
-# - Vercel: vercel --prod
-# - Netlify: netlify deploy --prod
-# - GitHub Pages: npm run deploy
-# - AWS S3: aws s3 sync dist/ s3://your-bucket
-```
+### Data Models (key fields)
 
-#### **Backend Deployment**
-```bash
-# Production Environment
-export FLASK_ENV=production
-export DATABASE_URL=your-production-db-url
+Orders
+- tracking_number, status: received | in_maintenance | completed | failed | sending | returned
+- customer_name, phones, address, city/zone
+- cod_amount, bosta_fees, new_cod_amount
+- package_description, weight, items_count
+- timestamps: scanned_at, maintenance_started_at, completed_at, returned_at, …
+- return_condition: valid | damaged (for returned)
+- bosta_data, timeline_data, bosta_proof_images, return_specs_data
 
-# Deploy Options
-# - Heroku: git push heroku main
-# - AWS EC2: docker-compose up -d
-# - Google Cloud: gcloud app deploy
-# - DigitalOcean: doctl apps create --spec app.yaml
-```
+MaintenanceHistory
+- order_id, action, notes, user_name, action_data, timestamp
 
-### 📊 **Phase 4: Monitoring**
+ProofImage
+- order_id, image_url, image_type, uploaded_by
 
-#### **Performance Monitoring**
-- Frontend: Web Vitals tracking
-- Backend: API response times
-- Database: Query performance
-- User Experience: Real user monitoring
+### Workflow Logic
 
-#### **Error Tracking**
-- Frontend: Error boundary implementation
-- Backend: Logging and error reporting
-- Database: Connection monitoring
-- API: Rate limiting and security
+Actions → Status mapping
+- received → received
+- start_maintenance → in_maintenance
+- complete_maintenance → completed
+- fail_maintenance → failed
+- reschedule → in_maintenance
+- send_order / confirm_send → sending
+- return_order / move_to_returns → returned
+- refund_or_replace → completed
+- set_return_condition → does not change status (only updates return_condition)
 
-## 🎨 UI/UX Design
+Valid transitions are enforced (e.g., you cannot jump to an invalid status).
 
-### **Design Philosophy**
-- Mobile-first responsive design
-- Arabic RTL support
-- Accessibility compliance
-- Performance optimization
-- User-centric interfaces
+### API Reference (current)
 
-### **Component Library**
-```jsx
-// Modern Component Architecture
-<OrderCard 
-  order={orderData}
-  onAction={handleOrderAction}
-  theme="dark"
-  rtl={true}
-  performance="optimized"
-/>
-```
+- Health
+  - GET `/api/v1/health`
 
-### **Theme System**
-```css
-/* Tailwind Configuration */
-:root {
-  --hvar-primary: #3B82F6;
-  --hvar-secondary: #10B981;
-  --hvar-accent: #F59E0B;
-  --hvar-dark: #1F2937;
-  --hvar-light: #F9FAFB;
-}
-```
+- Orders
+  - POST `/api/orders/scan`
+    - body: { tracking_number, user_name?, force_create? }
+    - returns: { success, data: { order, is_existing, bosta_data }, message }
+  - GET `/api/orders`
+    - query: `status?` one of [received, in_maintenance, completed, failed, sending, returned]
+    - query: `page?`, `limit?` (max 100), `search?`, `return_condition?` (valid|damaged when status=returned)
+    - returns: { success, data: { orders, pagination } }
+  - GET `/api/orders/{id}`
+  - POST `/api/orders/{id}/action`
+    - body: { action, notes?, user_name?, action_data? }
+    - returns: { success, data: { order, history_entry }, message }
+  - GET `/api/orders/summary`
+    - returns: counts per status + total
+  - GET `/api/orders/recent-scans?limit=10`
+  - POST `/api/orders/refresh/{tracking_number}` (also accepts GET)
+  - GET `/api/orders/tracking/{tracking_number}`
 
-## 🔌 API Architecture
+Response shape (example)
 
-### **RESTful Endpoints**
-
-#### **Orders Management**
-```http
-GET    /api/orders              # Get all orders with pagination
-GET    /api/orders/:id          # Get specific order details
-POST   /api/orders              # Create new order
-PUT    /api/orders/:id          # Update order status
-DELETE /api/orders/:id          # Delete order
-PATCH  /api/orders/:id/status   # Update order status only
-```
-
-#### **Analytics & Reporting**
-```http
-GET    /api/analytics/orders    # Order analytics
-GET    /api/analytics/status    # Status distribution
-GET    /api/analytics/trends    # Time-based trends
-GET    /api/analytics/performance # System performance
-```
-
-#### **System Health**
-```http
-GET    /api/health              # System health check
-GET    /api/health/database     # Database connectivity
-GET    /api/health/performance  # Performance metrics
-```
-
-### **Response Format**
 ```json
 {
   "success": true,
-  "data": {
-    "orders": [...],
-    "pagination": {
-      "page": 1,
-      "limit": 20,
-      "total": 150
-    }
-  },
-  "meta": {
-    "timestamp": "2024-01-15T10:30:00Z",
-    "version": "1.0.0"
-  }
+  "data": { "order": { "id": 1, "tracking_number": "...", "status": "received" } },
+  "message": "تم معالجة الطلب بنجاح"
 }
 ```
 
-## 🗄️ Database Architecture
+Security
+- Do not hardcode third‑party tokens. Move secrets to server‑side env and never expose them to the browser.
 
-### **Auto-Initialization System**
-```python
-# Intelligent Database Setup
-def init_database():
-    """Auto-initialize database with smart defaults"""
-    create_tables()
-    populate_sample_data()
-    optimize_indexes()
-    validate_schema()
-```
+## 🎨 Frontend (React + Vite)
 
-### **Data Models**
-```python
-# Order Management
-class Order(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    tracking_number = db.Column(db.String(50), unique=True)
-    status = db.Column(db.String(20), default='pending')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+### Tech
+- React 18, Vite 6, Tailwind 3, react‑hot‑toast, qr‑scanner
+- Arabic RTL UI/UX, PWA manifest, service worker
 
-# Maintenance History
-class MaintenanceHistory(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'))
-    action = db.Column(db.String(100))
-    action_data = db.Column(db.JSON)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-```
+### Local config
+- `front/src/config/environment.js` selects baseURL: dev uses `http://127.0.0.1:5000`, prod uses `window.location.origin`.
+- Vite dev proxy forwards `/api` → `http://localhost:5000`.
 
-## 📱 Progressive Web App Features
+### Scripts
 
-### **PWA Capabilities**
-- Offline functionality with service worker caching
-- Install prompt for home screen
-- Background sync for data synchronization
-- Push notifications for real-time updates
-- App-like native experience
-
-### **Service Worker Strategy**
-```javascript
-// Intelligent Caching
-const CACHE_STRATEGIES = {
-  'api': 'network-first',
-  'static': 'cache-first',
-  'images': 'stale-while-revalidate',
-  'critical': 'cache-first'
-};
-```
-
-## 🔧 Configuration Management
-
-### **Environment Variables**
 ```bash
-# Development
-FLASK_ENV=development
-DATABASE_URL=sqlite:///hvar_hub.db
-VITE_API_BASE_URL=http://localhost:5000
-
-# Production
-FLASK_ENV=production
-DATABASE_URL=postgresql://user:pass@host:port/db
-VITE_API_BASE_URL=https://api.hvarhub.com
+npm run dev      # hot reload
+npm run build    # production build → front/dist
+npm run preview  # preview build
+npm run lint
 ```
 
-### **Feature Flags**
-```javascript
-// Dynamic Feature Management
-const FEATURES = {
-  'qr-scanner': true,
-  'offline-mode': true,
-  'analytics': true,
-  'notifications': true,
-  'advanced-search': false
-};
-```
+### Key UI features
+- QR camera scanner with permission checks, debounce, and error handling
+- Manual entry and hardware scanner input buffer
+- Status tabs: received, in maintenance, completed, failed, sending, returns (sub‑tabs: valid|damaged)
+- Order actions trigger backend transitions and update summaries
+- Recent scans panel and highlights
 
-## 🚀 Performance Optimization
+PWA
+- `front/public/manifest.json` includes Arabic, RTL, icons, and shortcuts.
 
-### **Frontend Optimizations**
-- Code splitting with lazy loading
-- Bundle optimization with vendor chunk separation
-- Image optimization with WebP format
-- Intelligent service worker caching
-- Critical CSS inlining
+## 🔐 Environment & Secrets
 
-### **Backend Optimizations**
-- Database indexing for query performance
-- Connection pooling for efficient database connections
-- Caching layer with Redis integration
-- API rate limiting for abuse protection
-- Gzip compression for responses
+- Backend env goes in server environment (not committed):
+  - FLASK_ENV, SECRET_KEY, MySQL credentials
+- Third‑party tokens (e.g., Bosta) must be server‑side only. Exposing tokens in frontend leaks secrets.
 
-## 🔒 Security Implementation
+## 🛫 Deployment
 
-### **Frontend Security**
-- Content Security Policy for XSS protection
-- HTTPS enforcement for secure connections
-- Input validation for client-side security
-- Secure error handling
+- Production entry: `passenger_wsgi.py` (CyberPanel/Passenger).
+- Build frontend: `cd front && npm run build` (outputs `front/dist`).
+- Place `back/` and `front/dist/` under your web root per VPS guide.
+- See `VPS_DEPLOYMENT_GUIDE.md` for tested CyberPanel / .htaccess setup, permissions, and checklist.
 
-### **Backend Security**
-- CORS configuration for cross-origin protection
-- Input sanitization for SQL injection prevention
-- JWT token authentication system
-- Rate limiting for API abuse prevention
+## 🧩 Dev Tips & Troubleshooting
 
-## 📊 Analytics & Monitoring
+- Camera requires HTTPS in production; HTTP allowed locally.
+- If SQLite file path is relative, it is created under the Flask app root automatically.
+- Missing column `orders.return_condition` is auto‑added when safe.
+- Windows: if `npm` is not found, `run.py` tries common install paths.
+- CORS: allowed origins include local dev and `https://mcrm.hvarstore.com` by default (see `back/app.py`).
 
-### **Performance Metrics**
-- Core Web Vitals: LCP, FID, CLS
-- API response times and percentiles
-- Database query execution times
-- Real user monitoring
+## 📈 Roadmap (nice‑to‑have)
 
-### **Business Metrics**
-- Order processing volume and efficiency
-- User engagement and session duration
-- Error rates and system reliability
-- Feature usage and adoption analytics
-
-## 🤝 Contributing
-
-### **Development Workflow**
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Develop with best practices
-4. Commit with clear messages (`git commit -m 'feat: add amazing feature'`)
-5. Push to branch (`git push origin feature/amazing-feature`)
-6. Create Pull Request with detailed description
-
-### **Code Standards**
-- Frontend: ESLint + Prettier configuration
-- Backend: Black + Flake8 formatting
-- Git: Conventional commits
-- Documentation: JSDoc + Python docstrings
-
-### **Review Process**
-- Code review required
-- All tests must pass
-- Documentation updated
-- No performance regressions
-
-## 🚀 Deployment Strategies
-
-### **Frontend Deployment Options**
-```bash
-# Vercel (Recommended)
-vercel --prod
-
-# Netlify
-netlify deploy --prod
-
-# GitHub Pages
-npm run deploy
-
-# AWS S3 + CloudFront
-aws s3 sync dist/ s3://your-bucket
-aws cloudfront create-invalidation --distribution-id E123456789 --paths "/*"
-```
-
-### **Backend Deployment Options**
-```bash
-# Heroku
-git push heroku main
-
-# AWS EC2
-docker-compose up -d
-
-# Google Cloud Run
-gcloud run deploy hvar-backend
-
-# DigitalOcean App Platform
-doctl apps create --spec app.yaml
-```
-
-## 📈 Scaling Strategy
-
-### **Horizontal Scaling**
-- Load balancing with multiple server instances
-- Database sharding for distributed data storage
-- CDN integration for global content delivery
-- Microservices architecture
-
-### **Vertical Scaling**
-- Resource optimization for CPU and memory
-- Database optimization with query and index tuning
-- Multi-layer caching strategy
-- Continuous performance monitoring
-
-## 📞 Support & Community
-
-### **Getting Help**
-- 📖 **Documentation**: Comprehensive guides and tutorials
-- 🐛 **Issues**: GitHub issue tracker
-- 💬 **Discussions**: Community forum
-- 📧 **Email**: support@hvarhub.com
-
-### **Community Guidelines**
-- Respect: Be kind and constructive
-- Inclusion: Welcome all contributors
-- Learning: Share knowledge and experiences
-- Innovation: Encourage new ideas and approaches
+- Move third‑party tokens to backend env and proxy all external calls server‑side
+- Add authentication/authorization for actions
+- Add background jobs for periodic refresh from Bosta
+- Add tests and CI
 
 ---
 
-## 🏆 Repository Stats
+Built with ❤️ for high‑speed warehouse operations. PRs welcome.
 
-![GitHub Stars](https://img.shields.io/github/stars/kariemSeiam/Hvar-Hub?style=social)
-![GitHub Forks](https://img.shields.io/github/forks/kariemSeiam/Hvar-Hub?style=social)
-![GitHub Issues](https://img.shields.io/github/issues/kariemSeiam/Hvar-Hub)
-![GitHub Pull Requests](https://img.shields.io/github/issues-pr/kariemSeiam/Hvar-Hub)
+## 🧑‍💻 Developer Excellence Toolkit
+
+### Commands you’ll use daily
+
+- Run both apps together: `python run.py --dev`
+- Backend only (dev, SQLite): `python run.py --server`
+- Build frontend for prod: `cd front && npm run build`
+- Initialize/repair DB (server-safe): `cd back && python init_db.py`
+- Frontend lint: `cd front && npm run lint`
+
+### API quick recipes (copy/paste ready)
+
+```bash
+# Health
+curl -s http://127.0.0.1:5000/api/v1/health | jq
+
+# Scan (create if not exists via Bosta)
+curl -sX POST http://127.0.0.1:5000/api/orders/scan \
+  -H 'Content-Type: application/json' \
+  -d '{"tracking_number":"TEST123","user_name":"فني الصيانة"}' | jq
+
+# List by status
+curl -s 'http://127.0.0.1:5000/api/orders?status=received&page=1&limit=20' | jq
+
+# Search
+curl -s 'http://127.0.0.1:5000/api/orders?search=TEST' | jq
+
+# Summary
+curl -s http://127.0.0.1:5000/api/orders/summary | jq
+
+# Recent scans
+curl -s 'http://127.0.0.1:5000/api/orders/recent-scans?limit=10' | jq
+
+# Order by tracking (fetch if missing)
+curl -s 'http://127.0.0.1:5000/api/orders/tracking/TEST123' | jq
+
+# Perform an action (start maintenance)
+curl -sX POST http://127.0.0.1:5000/api/orders/1/action \
+  -H 'Content-Type: application/json' \
+  -d '{"action":"start_maintenance","user_name":"فني الصيانة"}' | jq
+```
+
+### Data model (ER diagram)
+
+```mermaid
+erDiagram
+  ORDERS ||--o{ MAINTENANCE_HISTORY : has
+  ORDERS ||--o{ PROOF_IMAGES : has
+
+  ORDERS {
+    int id PK
+    string tracking_number UK
+    enum status "received|in_maintenance|completed|failed|sending|returned"
+    bool is_return_order
+    decimal cod_amount
+    decimal bosta_fees
+    decimal new_cod_amount
+    string customer_name
+    string customer_phone
+    string customer_second_phone
+    text pickup_address
+    text dropoff_address
+    string city
+    string zone
+    string building_number
+    string floor
+    string apartment
+    string order_type
+    string shipping_state
+    string masked_state
+    enum return_condition "valid|damaged|null"
+    json bosta_data
+    json timeline_data
+    json bosta_proof_images
+    json return_specs_data
+    string new_tracking_number
+    datetime scanned_at
+    datetime returned_at
+    datetime maintenance_started_at
+    datetime maintenance_completed_at
+    datetime created_at
+    datetime updated_at
+  }
+
+  MAINTENANCE_HISTORY {
+    int id PK
+    int order_id FK
+    enum action
+    text notes
+    string user_name
+    json action_data
+    datetime timestamp
+  }
+
+  PROOF_IMAGES {
+    int id PK
+    int order_id FK
+    text image_url
+    string image_type
+    string uploaded_by
+  }
+```
+
+### Techniques and patterns used (what makes it fast and robust)
+
+- Frontend
+  - Lazy-loaded heavy components and Suspense to keep TTI low
+  - Debounced QR processing and duplicate-scan suppression
+  - Local API/cache layer with TTL (see `front/src/api/orderAPI.js`)
+  - RTL-first design and Arabic typography; PWA manifest for installability
+  - Vite dev proxy for zero CORS pain in development
+- Backend
+  - Auto DB initialization and self-healing schema (adds missing columns safely)
+  - Defensive serialization with per-order try/catch to avoid list failures
+  - Pagination + indexes for predictable performance under load
+  - Explicit status machine and action→status mapping, with validation
+  - Bosta data transformer normalizes nested structures and Arabic names
+
+### Debugging playbook
+
+- Backend
+  - Run in dev with verbose logs: `python run.py --server`
+  - Inspect DB via Flask shell:
+    ```python
+    from app import create_app
+    from db import db
+    from db.auto_init import Order
+    app = create_app('development')
+    ctx = app.app_context(); ctx.push()
+    db.session.query(Order).count()
+    ```
+  - If MySQL credentials are wrong in production, app falls back to SQLite in dev; fix env in Passenger.
+- Frontend
+  - Network tab: all `/api` go to backend; dev proxy is configured in `front/vite.config.js`.
+  - Toasts show concise Arabic messages for success/error paths.
+  - If camera fails: ensure HTTPS in prod, or grant camera permission locally.
+
+### Quality & collaboration
+
+- Git: prefer small PRs with descriptive titles and checklists
+- Commits: use conventional style (feat/fix/refactor/docs/chore)
+- Lint: `npm run lint` (React/ESLint 9)
+- Migrations (optional): project includes Flask‑Migrate; you can initialize if needed:
+  ```bash
+  cd back
+  flask db init && flask db migrate -m "init" && flask db upgrade
+  ```
+
+### Security best practices
+
+- Do not expose third‑party access tokens in the frontend; keep them server‑side in env
+- Restrict CORS origins in `back/app.py` for your domains
+- Use strong `SECRET_KEY` in production
+- Review Passenger `.env` and filesystem permissions per `VPS_DEPLOYMENT_GUIDE.md`
 
 ---
 
-**Built with ❤️ by [kariemSeiam](https://github.com/kariemSeiam) | [Repository](https://github.com/kariemSeiam/Hvar-Hub) | [Issues](https://github.com/kariemSeiam/Hvar-Hub/issues) | [Pull Requests](https://github.com/kariemSeiam/Hvar-Hub/pulls)**
-
-*"Empowering the future of order management, one innovation at a time."* 🚀 
+Built with ❤️ by [kariemSeiam](https://github.com/kariemSeiam) | [Repository](https://github.com/kariemSeiam/Hvar-Hub) | [Issues](https://github.com/kariemSeiam/Hvar-Hub/issues) | [Pull Requests](https://github.com/kariemSeiam/Hvar-Hub/pulls)

@@ -23,6 +23,9 @@ class Config:
     MYSQL_USER = os.environ.get('MYSQL_USER') or 'root'
     MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD') or ''
     MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE') or 'hvar_hub'
+    # Optional admin credentials for bootstrap/DDL (ALTER DATABASE/TABLE)
+    MYSQL_ADMIN_USER = os.environ.get('MYSQL_ADMIN_USER') or MYSQL_USER
+    MYSQL_ADMIN_PASSWORD = os.environ.get('MYSQL_ADMIN_PASSWORD') or MYSQL_PASSWORD
     
     SQLALCHEMY_DATABASE_URI = (
         f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@"

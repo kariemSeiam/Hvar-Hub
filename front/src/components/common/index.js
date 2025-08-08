@@ -15,3 +15,5 @@ export { default as OrderList } from '../order/OrderList';
 export { default as TabNavigation } from '../order/TabNavigation';
 export { default as RecentScans } from '../order/RecentScans';
 export { default as ConfirmationPanel } from '../order/ConfirmationPanel'; 
+export { default as ShippingInfoPanel } from '../order/ShippingInfoPanel';
+export { default as SendDataPanel } from '../order/SendDataPanel';

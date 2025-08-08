@@ -93,6 +93,9 @@ const transformBackendOrder = (backendOrder) => {
       code: getStatusCode(backendOrder.status),
       deliveryTime: backendOrder.updated_at
     },
+    // uiStatus is provided by backend for direct mapping to tabs when available
+    uiStatus: backendOrder.ui_status || (backendOrder.status === 'in_maintenance' ? 'inMaintenance' : (backendOrder.status === 'returned' ? 'returns' : backendOrder.status)),
+    returnCondition: backendOrder.return_condition || null,
     receiver: {
       fullName: backendOrder.customer_name || '',
       phone: backendOrder.customer_phone || '',
@@ -197,9 +200,12 @@ export const orderAPI = {
    * Backend: GET /api/orders?status=X&page=Y&limit=Z
    * Response: { success, data: { orders, total, page, per_page } }
    */
-  async getOrdersByStatus(status, page = 1, limit = 20) {
+  async getOrdersByStatus(status, page = 1, limit = 20, options = {}) {
     const params = { page, limit };
     if (status) params.status = status;
+    if (status === 'returned' && options.returnCondition) {
+      params.return_condition = options.returnCondition; // 'valid' | 'damaged'
+    }
 
     const cacheKey = getCacheKey('/orders', params);
     const cached = getCachedData(cacheKey);
@@ -211,10 +217,10 @@ export const orderAPI = {
     try {
       const response = await backendApi.get('/orders', { params });
 
-      // Backend returns: { success, data: { orders, total, page, per_page } }
+      // Backend returns: { success, data: { orders, pagination } }
       const result = {
         success: response.data.success,
-        data: response.data.data, // Contains { orders, total, page, per_page }
+        data: response.data.data,
         message: 'تم جلب البيانات بنجاح'
       };
 
@@ -338,6 +344,32 @@ export const orderAPI = {
         success: false,
         data: [],
         message: getErrorMessage(error)
+      };
+    }
+  },
+
+  /**
+   * Refresh order data from Bosta via backend (updates proof image URLs, timeline, etc.)
+   * Backend: POST /api/orders/refresh/{trackingNumber}
+   * Response: { success, data: { order }, message }
+   */
+  async refreshOrderFromBosta(trackingNumber) {
+    try {
+      const response = await backendApi.post(`/orders/refresh/${trackingNumber}`);
+      // Bust any caches for this order
+      cache.clear();
+      transformCache.clear();
+      return {
+        success: response.data.success,
+        data: response.data.data,
+        message: response.data.message,
+      };
+    } catch (error) {
+      console.error('Error refreshing order from Bosta:', error);
+      return {
+        success: false,
+        data: null,
+        message: getErrorMessage(error),
       };
     }
   },

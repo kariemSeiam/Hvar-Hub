@@ -86,6 +86,7 @@ def get_orders():
         page = int(request.args.get('page', 1))
         per_page = min(int(request.args.get('limit', 20)), 100)  # Max 100 per page
         search = request.args.get('search', '').strip()
+        return_condition = request.args.get('return_condition', None)
         
         if search:
             # Search functionality
@@ -103,7 +104,9 @@ def get_orders():
             # Filter by status
             try:
                 status_enum = OrderStatus(status)
-                result = OrderService.get_orders_by_status(status_enum, page, per_page)
+                # Pass through return_condition for returned status
+                rc = return_condition if status_enum == OrderStatus.RETURNED else None
+                result = OrderService.get_orders_by_status(status_enum, page, per_page, rc)
                 
                 if 'error' in result:
                     return jsonify({
@@ -111,6 +114,7 @@ def get_orders():
                         'message': result['error']
                     }), 400
                 
+                # Normalize payload for frontend (provide ui_status on each order)
                 return jsonify({
                     'success': True,
                     'data': result
@@ -273,6 +277,31 @@ def get_recent_scans():
         print(f"Error in get_recent_scans API: {str(e)}")
         import traceback
         traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'خطأ في الخادم: {str(e)}'
+        }), 500
+
+
+@orders_bp.route('/refresh/<tracking_number>', methods=['POST', 'GET'])
+def refresh_order_from_bosta(tracking_number):
+    """Refresh an existing order's data from Bosta (images, timeline, etc.)."""
+    try:
+        success, order, error = OrderService.refresh_from_bosta(tracking_number)
+        if success:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'order': order.to_dict()
+                },
+                'message': 'تم تحديث بيانات الطلب من Bosta'
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'message': error
+            }), 400
+    except Exception as e:
         return jsonify({
             'success': False,
             'message': f'خطأ في الخادم: {str(e)}'
