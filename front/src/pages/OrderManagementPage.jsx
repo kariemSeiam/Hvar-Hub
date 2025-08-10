@@ -60,6 +60,7 @@ const OrderManagementPage = () => {
     returned: 0,
     total: 0
   });
+  const [returnsCounts, setReturnsCounts] = useState({ valid: 0, damaged: 0 });
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(null);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
@@ -144,6 +145,20 @@ const OrderManagementPage = () => {
             [stateKey]: combinedOrders
           };
         });
+
+        // If we're dealing with returns, also refresh aggregated counts for both sub-tabs
+        if (status === 'returned') {
+          try {
+            const [validRes, damagedRes] = await Promise.all([
+              orderAPI.getOrdersByStatus('returned', 1, 1, { returnCondition: 'valid' }),
+              orderAPI.getOrdersByStatus('returned', 1, 1, { returnCondition: 'damaged' })
+            ]);
+            setReturnsCounts({
+              valid: validRes.success ? (validRes.data?.pagination?.total || validRes.data?.total || 0) : 0,
+              damaged: damagedRes.success ? (damagedRes.data?.pagination?.total || damagedRes.data?.total || 0) : 0
+            });
+          } catch (_) {}
+        }
       } else {
         console.warn(`Failed to load ${status} orders:`, result.message);
         // Show user-friendly error message
@@ -187,6 +202,25 @@ const OrderManagementPage = () => {
       });
     }
   }, []);
+
+  // Keep returns sub-tab counters in sync when visiting the returns tab
+  useEffect(() => {
+    const refreshReturnsCounters = async () => {
+      try {
+        const [validRes, damagedRes] = await Promise.all([
+          orderAPI.getOrdersByStatus('returned', 1, 1, { returnCondition: 'valid' }),
+          orderAPI.getOrdersByStatus('returned', 1, 1, { returnCondition: 'damaged' })
+        ]);
+        setReturnsCounts({
+          valid: validRes.success ? (validRes.data?.pagination?.total || validRes.data?.total || 0) : 0,
+          damaged: damagedRes.success ? (damagedRes.data?.pagination?.total || damagedRes.data?.total || 0) : 0
+        });
+      } catch (_) {}
+    };
+    if (activeTab === 'returns') {
+      refreshReturnsCounters();
+    }
+  }, [activeTab]);
 
   // Optimized refresh with parallel loading and error handling
   const refreshActiveTabOrders = useCallback(async () => {
@@ -540,15 +574,8 @@ const OrderManagementPage = () => {
             return newState;
           });
 
-          // Update summary count
-          setOrdersSummary(prev => {
-            const newSummary = { ...prev };
-            const summaryKey = orderData.status === 'in_maintenance' ? 'in_maintenance' :
-              orderData.status === 'returned' ? 'returned' : orderData.status;
-            newSummary[summaryKey] = (newSummary[summaryKey] || 0) + 1;
-            newSummary.total = (newSummary.total || 0) + 1;
-            return newSummary;
-          });
+          // Refresh summary from backend to avoid duplicate local increments
+          await loadOrdersSummary();
 
           // Force re-render
           setForceUpdate(prev => prev + 1);
@@ -653,15 +680,8 @@ const OrderManagementPage = () => {
           return newState;
         });
 
-        // Update summary count
-        setOrdersSummary(prev => {
-          const newSummary = { ...prev };
-          const summaryKey = orderData.status === 'in_maintenance' ? 'in_maintenance' :
-            orderData.status === 'returned' ? 'returned' : orderData.status;
-          newSummary[summaryKey] = (newSummary[summaryKey] || 0) + 1;
-          newSummary.total = (newSummary.total || 0) + 1;
-          return newSummary;
-        });
+        // Refresh summary from backend to avoid duplicate local increments
+        await loadOrdersSummary();
 
         setScannedOrder(orderData);
         setAwaitingConfirmation(true);
@@ -956,16 +976,8 @@ const OrderManagementPage = () => {
         return newState;
       });
 
-      // Update summary count
-      setOrdersSummary(prev => {
-        const newSummary = { ...prev };
-        const summaryKey = transformedOrder.status === 'in_maintenance' ? 'in_maintenance' :
-          transformedOrder.status === 'returned' ? 'returned' : transformedOrder.status;
-        newSummary[summaryKey] = (newSummary[summaryKey] || 0) + 1;
-        newSummary.total = (newSummary.total || 0) + 1;
-        console.log('Updated summary state:', newSummary);
-        return newSummary;
-      });
+      // Refresh summary from backend to avoid duplicate local increments
+      await loadOrdersSummary();
 
       // Force re-render
       setForceUpdate(prev => prev + 1);
@@ -1056,27 +1068,23 @@ const OrderManagementPage = () => {
           return newState;
         });
 
-        // Update summary counts
-        setOrdersSummary(prev => {
-          const newSummary = { ...prev };
-          
-          if (targetTab) {
-            // Decrease count for current tab
-            const currentSummaryKey = activeTab === 'inMaintenance' ? 'in_maintenance' : 
-              activeTab === 'returns' ? 'returned' : activeTab;
-            if (newSummary[currentSummaryKey] > 0) {
-              newSummary[currentSummaryKey] = Math.max(0, newSummary[currentSummaryKey] - 1);
-            }
-            // Increase for target tab
-            if (targetTab && targetTab !== activeTab) {
-              const targetSummaryKey = targetStatus === 'inMaintenance' ? 'in_maintenance' : 
-                targetStatus === 'returns' ? 'returned' : targetStatus;
-              newSummary[targetSummaryKey] = (newSummary[targetSummaryKey] || 0) + 1;
-            }
+        // Refresh summary from backend to keep counts accurate
+        await loadOrdersSummary();
+
+        // If action affected returns, refresh sub-tab counters too
+        try {
+          const affectsReturns = (activeTab === 'returns') || (targetStatus === 'returns');
+          if (affectsReturns) {
+            const [validRes, damagedRes] = await Promise.all([
+              orderAPI.getOrdersByStatus('returned', 1, 1, { returnCondition: 'valid' }),
+              orderAPI.getOrdersByStatus('returned', 1, 1, { returnCondition: 'damaged' })
+            ]);
+            setReturnsCounts({
+              valid: validRes.success ? (validRes.data?.pagination?.total || validRes.data?.total || 0) : 0,
+              damaged: damagedRes.success ? (damagedRes.data?.pagination?.total || damagedRes.data?.total || 0) : 0
+            });
           }
-          
-          return newSummary;
-        });
+        } catch (_) {}
 
         // Force re-render
         setForceUpdate(prev => prev + 1);
@@ -1632,22 +1640,28 @@ const OrderManagementPage = () => {
                   <div className="flex items-center space-x-2 space-x-reverse">
                     <button
                       onClick={() => setReturnsSubTab('valid')}
-                      className={`px-3 py-1 rounded-full text-xs font-cairo ${returnsSubTab === 'valid' ? 'bg-green-100 text-green-800 border border-green-300' : 'text-green-700 hover:bg-green-50 border border-transparent'}`}
+                      className={`px-3 py-1 rounded-full text-xs font-cairo flex items-center gap-2 ${returnsSubTab === 'valid' ? 'bg-green-100 text-green-800 border border-green-300' : 'text-green-700 hover:bg-green-50 border border-transparent'}`}
                     >
-                      سليمة
+                      <span>سليمة</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold transition-colors font-cairo ${returnsSubTab === 'valid' ? 'bg-green-300 text-green-900' : 'bg-green-200 text-green-900'}`}>
+                        {returnsCounts.valid}
+                      </span>
                     </button>
                     <button
                       onClick={() => setReturnsSubTab('damaged')}
-                      className={`px-3 py-1 rounded-full text-xs font-cairo ${returnsSubTab === 'damaged' ? 'bg-red-100 text-red-800 border border-red-300' : 'text-red-700 hover:bg-red-50 border border-transparent'}`}
+                      className={`px-3 py-1 rounded-full text-xs font-cairo flex items-center gap-2 ${returnsSubTab === 'damaged' ? 'bg-red-100 text-red-800 border border-red-300' : 'text-red-700 hover:bg-red-50 border border-transparent'}`}
                     >
-                      تالفة
+                      <span>تالفة</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold transition-colors font-cairo ${returnsSubTab === 'damaged' ? 'bg-red-300 text-red-900' : 'bg-red-200 text-red-900'}`}>
+                        {returnsCounts.damaged}
+                      </span>
                     </button>
                   </div>
                 )}
               </div>
               <span className="text-sm text-gray-600 font-cairo-play">
                 {activeTab === 'returns' 
-                  ? ((orders.returns || []).filter(o => (o.returnCondition || 'valid') === returnsSubTab).length) 
+                  ? (returnsSubTab === 'valid' ? returnsCounts.valid : returnsCounts.damaged)
                   : (orders[activeTab]?.length || 0)} طلب
               </span>
             </div>
