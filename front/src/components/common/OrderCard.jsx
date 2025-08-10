@@ -357,7 +357,7 @@ const OrderCard = ({
     if (order.status === 'returned' && order.returnCondition) {
       return {
         label: order.returnCondition === 'valid' ? 'مرتجع سليم' : 'مرتجع تالف',
-        variant: order.returnCondition === 'valid' ? 'info' : 'danger',
+        variant: order.returnCondition === 'valid' ? 'success' : 'danger',
         icon: 'return'
       };
     }
@@ -445,7 +445,7 @@ const OrderCard = ({
           {
             type: 'move_to_returns',
             label: 'نقل للمرتجعات (سليم)',
-            className: 'bg-orange-600 hover:bg-orange-700 text-white',
+            className: 'bg-green-600 hover:bg-green-700 text-white',
             priority: 'secondary',
             return_condition: 'valid'
           },
@@ -551,7 +551,7 @@ const OrderCard = ({
           baseActions.push({
             type: 'set_return_condition',
             label: 'نقل للمرتجعات (سليم)',
-            className: 'bg-blue-600 hover:bg-blue-700 text-white',
+            className: 'bg-green-600 hover:bg-green-700 text-white',
             priority: 'primary',
             return_condition: 'valid'
           });
@@ -561,7 +561,7 @@ const OrderCard = ({
             {
               type: 'set_return_condition',
               label: 'نقل للمرتجعات (سليم)',
-              className: 'bg-blue-600 hover:bg-blue-700 text-white',
+              className: 'bg-green-600 hover:bg-green-700 text-white',
               priority: 'primary',
               return_condition: 'valid'
             },

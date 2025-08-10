@@ -1632,7 +1632,7 @@ const OrderManagementPage = () => {
                   <div className="flex items-center space-x-2 space-x-reverse">
                     <button
                       onClick={() => setReturnsSubTab('valid')}
-                      className={`px-3 py-1 rounded-full text-xs font-cairo ${returnsSubTab === 'valid' ? 'bg-blue-100 text-blue-800 border border-blue-300' : 'text-blue-700 hover:bg-blue-50 border border-transparent'}`}
+                      className={`px-3 py-1 rounded-full text-xs font-cairo ${returnsSubTab === 'valid' ? 'bg-green-100 text-green-800 border border-green-300' : 'text-green-700 hover:bg-green-50 border border-transparent'}`}
                     >
                       سليمة
                     </button>
