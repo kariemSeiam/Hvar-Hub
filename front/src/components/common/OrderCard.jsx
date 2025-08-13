@@ -1022,9 +1022,9 @@ const OrderCard = ({
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-md border-2 border-gray-200 hover:shadow-lg hover:border-gray-300 transition-all duration-300 ${className}`} {...props}>
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border-2 border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-500 transition-all duration-300 ${className}`} {...props}>
       {/* Compact Header with State Badge */}
-              <div className="p-3 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+              <div className="p-3 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 space-x-reverse">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${
@@ -1042,7 +1042,7 @@ const OrderCard = ({
               </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2 space-x-reverse">
-                <h3 className="text-sm font-cairo font-bold text-gray-900">
+                <h3 className="text-sm font-cairo font-bold text-gray-900 dark:text-gray-100">
                   <a 
                     href={`https://business.bosta.co/orders/${bostaData.trackingNumber}`}
                     target="_blank"
@@ -1131,7 +1131,7 @@ const OrderCard = ({
       </div>
 
       {/* Enhanced Info Section */}
-      <div className="px-3 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+      <div className="px-3 py-3 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700 border-b border-gray-100 dark:border-gray-700">
         {/* Description */}
         {bostaData.description && bostaData.description !== 'لا يوجد وصف' && (
           <div className="mb-2">
@@ -1149,7 +1149,7 @@ const OrderCard = ({
                 </div>
               )}
             </div>
-            <p className="font-cairo text-xs text-gray-900 leading-relaxed bg-white rounded-lg p-3 border-2 border-gray-200 shadow-sm">{bostaData.description}</p>
+            <p className="font-cairo text-xs text-gray-900 dark:text-gray-100 leading-relaxed bg-white dark:bg-gray-800 rounded-lg p-3 border-2 border-gray-200 dark:border-gray-700 shadow-sm">{bostaData.description}</p>
           </div>
         )}
 
@@ -1180,7 +1180,7 @@ const OrderCard = ({
                   {hoveredAction === entry && (
                     <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-0.5 z-[99999]" onMouseEnter={() => setHoveredAction(entry)} onMouseLeave={() => setHoveredAction(null)}>
                       <div className="absolute -top-0.5 left-0 right-0 h-1"></div>
-                      <div className="bg-white text-gray-900 rounded-lg p-3 shadow-xl border border-gray-200 min-w-[240px] max-w-[320px] max-h-[70vh] overflow-auto scrollbar-hide">
+                      <div className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg p-3 shadow-xl border border-gray-200 dark:border-gray-700 min-w-[240px] max-w-[320px] max-h-[70vh] overflow-auto scrollbar-hide">
                         {/* Tooltip Arrow */}
                         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-white"></div>
 
@@ -1189,7 +1189,7 @@ const OrderCard = ({
                           <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
                             {getTimelineIcon(entry.action)}
                           </div>
-                          <h4 className="font-cairo font-semibold text-sm text-gray-900">
+                          <h4 className="font-cairo font-semibold text-sm text-gray-900 dark:text-gray-100">
                             {getArabicActionTitle(entry.action, entry.action_data || entry.actionData)}
                           </h4>
                         </div>
@@ -1204,7 +1204,7 @@ const OrderCard = ({
                         </div>
 
                         {/* Step Indicator - RTL Order */}
-                        <div className="mt-2 pt-2 border-t border-gray-100">
+                        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-gray-500 font-cairo">الخطوة {order.maintenanceHistory.length - index} من {order.maintenanceHistory.length}</span>
                             <div className="flex space-x-1 space-x-reverse">
@@ -1777,7 +1777,7 @@ const OrderCard = ({
 
       {/* Expanded Content - Only when needed */}
       {isExpanded && (
-        <div className="p-3 space-y-3 border-t border-gray-100">
+        <div className="p-3 space-y-3 border-t border-gray-100 dark:border-gray-700">
           {/* Enhanced Order Details */}
           <div className="bg-gray-50 rounded-md p-3">
             <h4 className="font-cairo font-semibold text-gray-900 mb-2 text-sm">تفاصيل الطلب والشحن</h4>

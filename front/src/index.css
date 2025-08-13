@@ -5,7 +5,7 @@
 /* Custom base styles */
 @layer base {
   html {
-    font-family: 'Cairo Play', 'Roboto', system-ui, sans-serif;
+    font-family: 'Cairo', system-ui, sans-serif;
   }
   
   body {

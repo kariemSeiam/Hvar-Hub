@@ -1,0 +1,21 @@
+---
+description: Dependency management and build/run conventions for backend and frontend
+globs: ["back/**", "front/**"]
+alwaysApply: false
+---
+
+- Backend (Flask)
+  - Add Python deps to `back/requirements.txt` with pinned versions when possible.
+  - Use `FLASK_ENV` to select config (`development`/`production`/`testing`). MySQL preferred; SQLite fallback in development.
+  - Initialize DB via `back/init_db.py` or auto-init on app start (`db/auto_init.py`).
+
+- Frontend (Vite/Tailwind)
+  - Manage deps via `front/package.json`. Keep Tailwind and PostCSS configs minimal.
+  - Service worker is registered in `front/src/main.jsx`; ensure `front/public/sw.js` exists and stays lean.
+
+- Local development
+  - Backend: `python run.py` (or WSGI via `passenger_wsgi.py` for prod).
+  - Frontend: `npm run dev` in `front/` (Vite). Ensure `CORS` origins include dev ports.
+
+These rules keep environments reproducible and builds fast.
+

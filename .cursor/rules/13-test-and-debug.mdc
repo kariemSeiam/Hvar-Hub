@@ -1,0 +1,26 @@
+---
+description: Temporary test and debug file isolation with auto-cleanup
+globs: ["**/*"]
+alwaysApply: true
+---
+
+- Isolation
+  - Place any temporary tests or debug scripts in top-level directories:
+    - `/temp-tests/` for throwaway tests (frontend or backend).
+    - `/debug-scripts/` for ad-hoc scripts.
+  - Never put these files under `back/` or `front/` main source trees.
+
+- Conventions
+  - Name files clearly, e.g., `temp-tests/backend/test_orders_flow.py`, `temp-tests/frontend/TestOrdersList.jsx`.
+  - Avoid importing temp modules from production code. Keep them self-contained.
+
+- Cleanup
+  - After resolving the issue, delete the entire directories:
+    - Windows: `rmdir /S /Q temp-tests` and `rmdir /S /Q debug-scripts`.
+    - Unix: `rm -rf temp-tests debug-scripts`.
+
+- Non-intrusive
+  - Do not alter configs to include these directories in builds or content globs. Ensure linters/builds ignore them if needed.
+
+These rules enable safe experimentation without polluting the main codebase.
+

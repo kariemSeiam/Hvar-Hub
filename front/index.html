@@ -40,7 +40,7 @@
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="/icon-192x192.png" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
     <link rel="mask-icon" href="/icon.svg" color="#F43F5E" />
     
     <!-- PWA Installation Prompt -->
@@ -92,151 +92,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cairo+Play:wght@300;400;500;600;700;800&family=Cairo:wght@200;300;400;500;600;700;800;900&family=Tajawal:wght@200;300;400;500;700;800;900&family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
-    <!-- Arabic Font Optimization -->
-    <style>
-      /* Font loading optimization for Arabic */
-      @font-face {
-        font-family: 'Cairo Play';
-        font-display: swap;
-        font-weight: 400;
-        src: url('https://fonts.googleapis.com/css2?family=Cairo+Play:wght@400&display=swap');
-      }
-      
-      /* RTL optimization */
-      html[dir="rtl"] {
-        text-align: right;
-      }
-      
-      /* Arabic text optimization */
-      .arabic-text {
-        font-family: 'Cairo Play', 'Cairo', sans-serif;
-        text-align: right;
-        direction: rtl;
-      }
-      
-      /* Numbers in LTR */
-      .arabic-number {
-        font-family: 'Roboto', sans-serif;
-        direction: ltr;
-        unicode-bidi: embed;
-      }
-      
-      /* Loading animation */
-      .loading-pulse {
-        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-      }
-      
-      @keyframes pulse {
-        0%, 100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: .5;
-        }
-      }
-      
-      /* CAMERA OPTIMIZATION STYLES */
-      /* Video element optimizations */
-      video {
-        -webkit-transform: translate3d(0, 0, 0);
-        transform: translate3d(0, 0, 0);
-        -webkit-backface-visibility: hidden;
-        backface-visibility: hidden;
-        -webkit-perspective: 1000;
-        perspective: 1000;
-        will-change: transform;
-      }
-      
-      /* Camera permission states */
-      .camera-granted {
-        --camera-status: #10b981;
-        --camera-bg: rgba(16, 185, 129, 0.1);
-      }
-      
-      .camera-denied {
-        --camera-status: #ef4444;
-        --camera-bg: rgba(239, 68, 68, 0.1);
-      }
-      
-      .camera-pending {
-        --camera-status: #f59e0b;
-        --camera-bg: rgba(245, 158, 11, 0.1);
-      }
-      
-      /* Camera UI animations */
-      .camera-scan-line {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, #10b981, transparent);
-        animation: camera-scan 2s linear infinite;
-      }
-      
-      @keyframes camera-scan {
-        0% { transform: translateY(0); opacity: 1; }
-        100% { transform: translateY(400px); opacity: 0; }
-      }
-      
-      /* Mobile camera optimizations */
-      @media (max-width: 768px) {
-        video {
-          -webkit-transform: translate3d(0, 0, 0) scale(1.001);
-          transform: translate3d(0, 0, 0) scale(1.001);
-        }
-      }
-      
-      /* iOS specific camera fixes */
-      @supports (-webkit-touch-callout: none) {
-        video {
-          -webkit-playsinline: true;
-          -webkit-user-select: none;
-          user-select: none;
-          -webkit-tap-highlight-color: transparent;
-        }
-      }
-      
-      /* Android specific camera fixes */
-      @media screen and (-webkit-min-device-pixel-ratio: 0) {
-        video::-webkit-media-controls {
-          display: none !important;
-        }
-        
-        video::-webkit-media-controls-enclosure {
-          display: none !important;
-        }
-      }
-      
-      /* High DPI camera optimization */
-      @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-        video {
-          image-rendering: optimizeQuality;
-          -webkit-image-rendering: optimizeQuality;
-        }
-      }
-      
-      /* Camera permission indicator */
-      .camera-status-indicator {
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: var(--camera-status, #6b7280);
-        z-index: 9999;
-        animation: pulse 1s ease-in-out infinite;
-      }
-      
-      /* Reduce motion for accessibility */
-      @media (prefers-reduced-motion: reduce) {
-        .camera-scan-line,
-        .camera-status-indicator {
-          animation: none;
-        }
-      }
-    </style>
+    
 
     <script>
       (function() {
@@ -579,7 +435,7 @@
     </script>
 
   </head>
-  <body class="arabic-text">
+  <body class="font-cairo" dir="rtl">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     

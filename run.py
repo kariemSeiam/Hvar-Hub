@@ -125,13 +125,13 @@ def run_backend():
         app = create_app('development')
         
         # Run the app
-        print("✅ Backend server starting on http://localhost:5000")
-        print("📡 API available at http://localhost:5000/api/v1/")
-        print("🌐 Frontend served at http://localhost:5000/")
+        print("✅ Backend server starting on http://localhost:5001")
+        print("📡 API available at http://localhost:5001/api/v1/")
+        print("🌐 Frontend served at http://localhost:5001/")
         
         app.run(
             host='0.0.0.0',
-            port=5000,
+            port=5001,
             debug=True,
             use_reloader=False  # Disable reloader to avoid issues with threading
         )

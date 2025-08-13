@@ -1,0 +1,28 @@
+---
+description: API route patterns for requests, responses, errors, and pagination
+globs: ["back/routes/**/*.py"]
+alwaysApply: true
+---
+
+- Request handling
+  - Parse JSON with `request.get_json()`; trim strings; coerce numeric params with bounds (e.g., `limit` ≤ 100).
+  - Validate enums via try/except and return 400 on invalid values with Arabic message.
+
+- Response shape
+  - Success: `{ success: true, data: {...}, message?: string }`.
+  - Error: `{ success: false, message: '...' }` with appropriate status.
+  - Collections: `{ success: true, data: { orders: [...], pagination: {...} } }`.
+
+- Errors
+  - Wrap body in try/except; log traceback server-side, but return safe user-facing Arabic error.
+  - Provide blueprint-level 400/404/500 handlers mirroring `orders_bp`.
+
+- Endpoints
+  - Mount under `/api/v1/*` for general APIs and `/api/orders/*` for order workflows.
+  - Keep verbs semantic: GET for reads, POST for actions/mutations (`/orders/{id}/action`).
+
+- SPA serving
+  - Unknown routes should serve `front/dist/index.html` to support client routing (`main_bp` and app-level 404 handler).
+
+These rules ensure consistent, predictable APIs and clean separation from service logic.
+

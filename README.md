@@ -58,7 +58,7 @@ pip install -r requirements.txt
 python - <<"PY"
 from app import create_app
 app = create_app('development')
-app.run(host='0.0.0.0', port=5000, debug=True)
+app.run(host='0.0.0.0', port=5001, debug=True)
 PY
 ```
 
@@ -68,7 +68,7 @@ PY
 cd front
 npm install
 npm run dev
-# Vite proxies /api → http://localhost:5000
+# Vite proxies /api → http://localhost:5001
 ```
 
 Or run both automatically:
@@ -168,8 +168,8 @@ Security
 - Arabic RTL UI/UX, PWA manifest, service worker
 
 ### Local config
-- `front/src/config/environment.js` selects baseURL: dev uses `http://127.0.0.1:5000`, prod uses `window.location.origin`.
-- Vite dev proxy forwards `/api` → `http://localhost:5000`.
+- `front/src/config/environment.js` selects baseURL: dev uses `http://127.0.0.1:5001`, prod uses `window.location.origin`.
+- Vite dev proxy forwards `/api` → `http://localhost:5001`.
 
 ### Scripts
 
@@ -236,30 +236,30 @@ Built with ❤️ for high‑speed warehouse operations. PRs welcome.
 
 ```bash
 # Health
-curl -s http://127.0.0.1:5000/api/v1/health | jq
+curl -s http://127.0.0.1:5001/api/v1/health | jq
 
 # Scan (create if not exists via Bosta)
-curl -sX POST http://127.0.0.1:5000/api/orders/scan \
+curl -sX POST http://127.0.0.1:5001/api/orders/scan \
   -H 'Content-Type: application/json' \
   -d '{"tracking_number":"TEST123","user_name":"فني الصيانة"}' | jq
 
 # List by status
-curl -s 'http://127.0.0.1:5000/api/orders?status=received&page=1&limit=20' | jq
+curl -s 'http://127.0.0.1:5001/api/orders?status=received&page=1&limit=20' | jq
 
 # Search
-curl -s 'http://127.0.0.1:5000/api/orders?search=TEST' | jq
+curl -s 'http://127.0.0.1:5001/api/orders?search=TEST' | jq
 
 # Summary
-curl -s http://127.0.0.1:5000/api/orders/summary | jq
+curl -s http://127.0.0.1:5001/api/orders/summary | jq
 
 # Recent scans
-curl -s 'http://127.0.0.1:5000/api/orders/recent-scans?limit=10' | jq
+curl -s 'http://127.0.0.1:5001/api/orders/recent-scans?limit=10' | jq
 
 # Order by tracking (fetch if missing)
-curl -s 'http://127.0.0.1:5000/api/orders/tracking/TEST123' | jq
+curl -s 'http://127.0.0.1:5001/api/orders/tracking/TEST123' | jq
 
 # Perform an action (start maintenance)
-curl -sX POST http://127.0.0.1:5000/api/orders/1/action \
+curl -sX POST http://127.0.0.1:5001/api/orders/1/action \
   -H 'Content-Type: application/json' \
   -d '{"action":"start_maintenance","user_name":"فني الصيانة"}' | jq
 ```

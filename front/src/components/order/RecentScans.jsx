@@ -4,7 +4,7 @@ import { formatTimeOnly } from '../../utils/dateUtils';
 const RecentScans = ({ recentScans = [], className = "" }) => {
   return (
     <div className={`flex-1 p-4 overflow-y-auto scrollbar-hide ${className}`}>
-      <h4 className="text-sm font-semibold text-gray-900 mb-3 font-cairo-play">
+      <h4 className="text-sm font-semibold text-gray-900 mb-3 font-cairo">
         آخر المسح ({recentScans.length})
       </h4>
       <div className="space-y-2">
@@ -21,20 +21,20 @@ const RecentScans = ({ recentScans = [], className = "" }) => {
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 text-xs font-cairo-play truncate mb-1">
+                  <p className="font-medium text-gray-900 text-xs font-cairo truncate mb-1">
                     {scan.trackingNumber}
                   </p>
-                  <p className="text-gray-600 text-xs font-cairo-play truncate">
+                  <p className="text-gray-600 text-xs font-cairo truncate">
                     {scan.receiver?.fullName || 'غير محدد'}
                   </p>
                   {scan.specs?.packageDetails?.description && (
-                    <p className="text-gray-500 text-xs font-cairo-play truncate max-w-xs">
+                    <p className="text-gray-500 text-xs font-cairo truncate max-w-xs">
                       {scan.specs.packageDetails.description}
                     </p>
                   )}
                 </div>
               </div>
-              <span className="text-xs text-gray-500 font-cairo-play flex-shrink-0 mr-2">
+              <span className="text-xs text-gray-500 font-cairo flex-shrink-0 mr-2">
                 {scan.scannedAt ? formatTimeOnly(scan.scannedAt) : 'لا يوجد وقت'}
               </span>
             </div>
@@ -46,7 +46,7 @@ const RecentScans = ({ recentScans = [], className = "" }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </div>
-            <p className="text-gray-500 text-sm font-cairo-play">لا توجد عمليات مسح حديثة</p>
+            <p className="text-gray-500 text-sm font-cairo">لا توجد عمليات مسح حديثة</p>
           </div>
         )}
       </div>

@@ -322,13 +322,13 @@ const ScannerSection = ({
       {/* Scanner Header */}
       <div className="p-4 border-b border-gray-100">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-900 font-cairo-play">
+          <h3 className="text-sm font-semibold text-gray-900 font-cairo">
             مسح رمز التتبع
           </h3>
           <button
             onClick={toggleCamera}
             className={`
-              px-2 py-1 rounded text-xs font-cairo-play transition-colors
+              px-2 py-1 rounded text-xs font-cairo transition-colors
               ${scannerState.showCamera
                 ? 'bg-red-100 text-red-700 hover:bg-red-200'
                 : 'bg-green-100 text-green-700 hover:bg-green-200'
@@ -367,7 +367,7 @@ const ScannerSection = ({
                     {isProcessing && (
                       <div className="absolute inset-0 bg-green-400/20 border-2 border-green-400 rounded animate-pulse">
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="bg-green-500 text-white px-2 py-1 rounded text-xs font-cairo-play">
+                          <div className="bg-green-500 text-white px-2 py-1 rounded text-xs font-cairo">
                             ✓
                           </div>
                         </div>
@@ -375,13 +375,13 @@ const ScannerSection = ({
                     )}
 
                     {isProcessing && (
-                      <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-2 py-1 rounded text-xs font-cairo-play animate-pulse">
+                      <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-2 py-1 rounded text-xs font-cairo animate-pulse">
                         جاري المعالجة...
                       </div>
                     )}
 
                     {!isProcessing && scannerState.isScanning && (
-                      <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-2 py-1 rounded text-xs font-cairo-play">
+                      <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-2 py-1 rounded text-xs font-cairo">
                         جاهز للمسح
                       </div>
                     )}
@@ -393,7 +393,7 @@ const ScannerSection = ({
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                   <button
                     onClick={startCamera}
-                    className="px-3 py-1 bg-blue-600 text-white rounded text-xs font-cairo-play hover:bg-blue-700 transition-colors"
+                    className="px-3 py-1 bg-blue-600 text-white rounded text-xs font-cairo hover:bg-blue-700 transition-colors"
                   >
                     بدء المسح
                   </button>
@@ -404,7 +404,7 @@ const ScannerSection = ({
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                   <div className="flex items-center space-x-2 space-x-reverse">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span className="text-white text-xs font-cairo-play">
+                    <span className="text-white text-xs font-cairo">
                       جاري تشغيل الكاميرا...
                     </span>
                   </div>
@@ -414,7 +414,7 @@ const ScannerSection = ({
               {scannerState.isScanning && (
                 <div className="absolute bottom-2 left-2 right-2">
                   <div className="bg-black/70 rounded p-1 text-center">
-                    <p className="text-white text-xs font-cairo-play">
+                    <p className="text-white text-xs font-cairo">
                       {isProcessing ? 'جاري جلب البيانات من بوسطة...' : 'امسح رمز QR'}
                     </p>
                   </div>
@@ -438,7 +438,7 @@ const ScannerSection = ({
             <button
               type="submit"
               disabled={!manualInput.trim() || isManualSubmitting || isProcessing}
-              className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-cairo-play disabled:bg-gray-300"
+              className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-cairo disabled:bg-gray-300"
             >
               {isManualSubmitting ? 'جاري البحث...' : 'بحث عن الطلب'}
             </button>
@@ -446,10 +446,10 @@ const ScannerSection = ({
           
           {/* Scanner Input Indicator */}
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <span className="font-cairo-play">جهاز المسح الضوئي:</span>
+            <span className="font-cairo">جهاز المسح الضوئي:</span>
             <div className="flex items-center space-x-1 space-x-reverse">
               <div className={`w-2 h-2 rounded-full ${scannerBuffer ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></div>
-              <span className="font-cairo-play">
+              <span className="font-cairo">
                 {scannerBuffer ? 'نشط' : 'جاهز'}
               </span>
             </div>
@@ -462,13 +462,13 @@ const ScannerSection = ({
               <svg className="w-4 h-4 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-red-700 font-cairo-play text-right text-xs flex-1">{scannerState.error}</p>
+              <p className="text-red-700 font-cairo text-right text-xs flex-1">{scannerState.error}</p>
               <button
                 onClick={() => {
                   setScannerState(prev => ({ ...prev, error: null }));
                   resumeScanner();
                 }}
-                className="text-red-600 hover:text-red-800 text-xs font-cairo-play underline"
+                className="text-red-600 hover:text-red-800 text-xs font-cairo underline"
               >
                 إعادة المحاولة
               </button>

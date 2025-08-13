@@ -1,0 +1,40 @@
+---
+description: Flask backend structure, blueprints, response conventions, and SPA serving
+globs: ["back/**/*.py"]
+alwaysApply: true
+---
+
+- App factory and CORS
+  - Use `create_app` in `back/app.py`. Load config via `app.config.from_object(config[env])`.
+  - CORS: keep `allowed_origins` tight; when adding domains, update the list in `back/app.py`.
+
+- Blueprints
+  - Register in `back/routes/__init__.py` using `register_blueprints(app)`.
+  - Existing prefixes:
+    - `main_bp` (no prefix) serves SPA assets from `front/dist`.
+    - `api_bp` is mounted at `/api/v1` (see `back/routes/__init__.py`).
+    - `orders_bp` is mounted at `/api/orders`.
+  - When adding a new API family, create a `Blueprint` in `back/routes/api/your_feature.py`, import and register it in `register_blueprints` with an explicit `url_prefix`.
+
+- Routes and responses
+  - Pattern: validate → delegate to service → shape JSON.
+  - Always return `{ success, data?, message }` with Arabic `message` on error. See `back/routes/api/orders.py`.
+  - Enforce pagination limits (`limit` ≤ 100). Sanitize query params (`page`, `limit`, `status`, `search`).
+  - Health checks live under `/api/v1/health`.
+
+- Error handling
+  - Use blueprint-level handlers for 400, 404, 500 similar to `orders_bp`.
+  - App-level 404 should return SPA `index.html` if present to support client routing.
+
+- Input validation
+  - Validate enum inputs with `try/except ValueError` and return 400 with clear Arabic message.
+  - Normalize booleans and trim strings (`.strip()`).
+
+- Logging
+  - Prefer structured logging over `print` for production; keep debug prints lightweight and non-sensitive.
+
+- File organization
+  - Keep route files small and focused; extract business logic to `back/services/`. Avoid DB access from routes beyond simple lookups.
+
+These rules ensure consistent, maintainable APIs and correct SPA behavior across environments.
+

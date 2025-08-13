@@ -1,0 +1,29 @@
+---
+description: Service layer conventions, validation, and external API usage
+globs: ["back/services/**/*.py"]
+alwaysApply: true
+---
+
+- Responsibilities
+  - Encapsulate business logic and IO (DB queries, external APIs). Keep routes thin.
+  - Expose static/class methods for operations; avoid storing state on service instances.
+
+- Validation
+  - Validate inputs early; return `(success, data, error)` tuples from service methods to keep route handlers simple.
+  - Follow `OrderService.validate_action_data` patterns (length checks, numeric parsing, allowed enum values). Centralize validation here.
+
+- Transactions and errors
+  - On exceptions during writes, `db.session.rollback()` and return a safe Arabic error message. Avoid leaking internal errors.
+  - Use timezone helpers for timestamps. Never store naive datetimes.
+
+- External APIs
+  - Centralize third-party calls (e.g., Bosta) in a dedicated class like `BostaAPIService`.
+  - Do not hardcode tokens; load from environment/config and keep server-side.
+  - Transform external payloads to internal structure in transformer helpers before persisting.
+
+- Performance
+  - For list endpoints, build queries incrementally and paginate. Manually load lazy relationships when serializing collections to avoid N+1 with implicit access.
+  - Provide a UI-friendly `ui_status` in list responses for tab mapping (keep mapping in one place).
+
+These rules keep business logic testable, robust, and consistent across features.
+

@@ -1,0 +1,30 @@
+---
+description: Refactoring guidance and cross-cutting consistency rules
+globs: ["**/*"]
+alwaysApply: true
+---
+
+- Naming and formatting
+  - Python: snake_case for functions/vars, PascalCase for classes. 4-space indentation.
+  - JS/React: camelCase for vars/functions, PascalCase for components, kebab-case for file/directory names only when legacy demands.
+
+- Keep logic in the right layer
+  - Move DB and workflow logic to services. Keep routes as thin controllers.
+  - Frontend: network and data transforms live in `front/src/api/` and hooks; components stay presentational.
+
+- Statuses and transitions
+  - When adding a new status or action:
+    - Backend: update enums, `ACTION_STATUS_MAP`, `Order.can_transition_to`, list serializers (`ui_status`).
+    - Frontend: update `orderAPI` mappings, `STATUS_MAPPING` constants, tab configs in navigation and pages.
+
+- Responses and messages
+  - Maintain `{ success, data, message }` across new endpoints. Keep Arabic copy consistent and concise.
+
+- UI consistency
+  - Reuse tokens and utilities from Tailwind config. Keep returns sub-tabs styles ("سليمة" green, "تالفة" red).
+
+- Safe iterations
+  - After mutating workflows, ensure caches are invalidated in `orderAPI`. Verify tab counts update correctly.
+
+These rules help evolve the codebase without regressions or drift.
+

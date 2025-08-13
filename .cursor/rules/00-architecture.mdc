@@ -1,0 +1,48 @@
+---
+description: Global architecture and layering rules for HVAR Hub (Flask backend + React/Tailwind frontend)
+globs: ["**/*"]
+alwaysApply: true
+---
+
+Follow these guardrails to keep backend, frontend, and data flows consistent with the existing project.
+
+- Architecture overview
+  - Backend: Flask app factory in `back/app.py`, blueprints in `back/routes/`, services in `back/services/`, database models and enums in `back/db/auto_init.py`, configuration in `back/config/config.py`.
+  - Frontend: React (Vite) app under `front/` with Tailwind and RTL support. Components in `front/src/components/`, pages in `front/src/pages/`, API clients in `front/src/api/`, hooks in `front/src/hooks/`, configuration in `front/src/config/`.
+  - SPA routing: Backend serves `front/dist/index.html` for unknown paths via `back/routes/main.py` and 404 handler in `back/app.py`.
+
+- Layering and separation
+  - Business logic belongs in services (e.g., `back/services/order_service.py`), not in route handlers. Routes should validate, delegate, and shape responses.
+  - Data models and enums live in `back/db/auto_init.py`. Keep state transition logic centralized (`Order.can_transition_to`, `ACTION_STATUS_MAP`).
+  - Frontend calls backend only through `front/src/api/*.js` modules (e.g., `orderAPI.js`). UI components never call axios directly.
+
+- Response and payload shapes
+  - Backend JSON: `{ success: boolean, data?: any, message?: string }` plus specific fields. Keep Arabic messages consistent with current endpoints.
+  - Orders: When returning collections, include a `pagination` object. Include `ui_status` from backend for tab mapping.
+  - Frontend: Always run backend orders through `orderAPI.transformBackendOrder` to normalize.
+
+- Status mapping contract
+  - Backend statuses (snake_case) map to frontend tab ids (camelCase): `in_maintenance ↔ inMaintenance`, `returned ↔ returns`. Update both sides when adding statuses.
+  - Update locations: backend `OrderService.get_orders_by_status` (sets `ui_status`), frontend `orderAPI.js` (map functions, `STATUS_MAPPING` in `front/src/config/environment.js`).
+
+- Timezone and timestamps
+  - Always use Egypt timezone helpers from `back/utils/timezone.py` (`get_egypt_now`, converters). Do not use naive UTC datetimes in models or services.
+
+- Module integration
+  - New routes: create a blueprint in `back/routes/...`, register in `back/routes/__init__.py`.
+  - New service: create in `back/services/`, keep IO (DB/API) and domain logic here. Expose static/class methods.
+  - New frontend feature: add API method in `front/src/api/`, use in a custom hook under `front/src/hooks/`, render via page/components under `front/src/pages/` and `front/src/components/`.
+
+- Error handling
+  - Backend: use try/except, return Arabic messages, adopt blueprint error handlers as in `orders.py`.
+  - Frontend: surface via `react-hot-toast` and `ErrorBoundary`.
+
+- Performance
+  - Backend: paginate lists, create indexes via `create_indexes()` if you add new query patterns.
+  - Frontend: prefer `useOptimizedOrderAPI` for heavy flows, keep caches (`orderAPI` internal cache and `transformCache`) coherent; clear caches after mutating actions.
+
+- Security
+  - Do not hardcode external tokens in source. Move to environment variables and server-side calls. Ensure CORS stays restricted (`allowed_origins`).
+
+This rule ensures new code feels native, preserves the current development flow, and stays consistent across the stack.
+

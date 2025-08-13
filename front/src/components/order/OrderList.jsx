@@ -44,7 +44,7 @@ const OrderList = ({
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center space-x-3 space-x-reverse">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="text-gray-600 font-cairo-play">جاري تحميل الطلبات...</span>
+          <span className="text-gray-600 font-cairo">جاري تحميل الطلبات...</span>
         </div>
       </div>
     );
@@ -58,10 +58,10 @@ const OrderList = ({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2 font-cairo-play">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2 font-cairo">
           لا توجد طلبات
         </h3>
-        <p className="text-gray-600 font-cairo-play">
+        <p className="text-gray-600 font-cairo">
           لا توجد طلبات في هذه المرحلة حالياً
         </p>
       </div>

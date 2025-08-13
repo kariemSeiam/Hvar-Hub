@@ -62,11 +62,11 @@ class ErrorBoundary extends React.Component {
                 </svg>
               </div>
               
-              <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 font-cairo-play">
+              <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 font-cairo">
                 حدث خطأ غير متوقع
               </h2>
               
-              <p className="mt-2 text-center text-sm text-gray-600 font-cairo-play">
+              <p className="mt-2 text-center text-sm text-gray-600 font-cairo">
                 نعتذر، حدث خطأ في التطبيق. يرجى المحاولة مرة أخرى.
               </p>
 
@@ -88,14 +88,14 @@ class ErrorBoundary extends React.Component {
               <div className="mt-6 flex flex-col space-y-3">
                 <button
                   onClick={this.handleReset}
-                  className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-brand-red-600 hover:bg-brand-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-red-500 font-cairo-play"
+                  className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-brand-red-600 hover:bg-brand-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-red-500 font-cairo"
                 >
                   إعادة المحاولة
                 </button>
                 
                 <button
                   onClick={() => window.location.reload()}
-                  className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-red-500 font-cairo-play"
+                  className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-red-500 font-cairo"
                 >
                   إعادة تحميل الصفحة
                 </button>
@@ -103,7 +103,7 @@ class ErrorBoundary extends React.Component {
 
               {/* Contact support */}
               <div className="mt-6 text-center">
-                <p className="text-xs text-gray-500 font-cairo-play">
+                <p className="text-xs text-gray-500 font-cairo">
                   إذا استمر الخطأ، يرجى التواصل مع الدعم الفني
                 </p>
               </div>

@@ -3,16 +3,18 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import OrderManagementPage from './pages/OrderManagementPage';
 import NotFoundPage from './pages/NotFoundPage';
+import DemoPage from './pages/DemoPage';
 import { Toaster, ToastBar, toast } from 'react-hot-toast';
 
 function App() {
   return (
-    <ThemeProvider initialTheme="dark" initialRTL={true}>
+    <ThemeProvider initialTheme="light" initialRTL={true}>
       <Router>
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
           <Routes>
             <Route path="/" element={<OrderManagementPage />} />
             <Route path="/orders" element={<OrderManagementPage />} />
+            <Route path="/demo" element={<DemoPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </div>

@@ -7,7 +7,7 @@ import json
 from db.auto_init import Order, MaintenanceHistory, OrderStatus, MaintenanceAction, ACTION_STATUS_MAP, ReturnCondition
 from db import db
 from utils.timezone import get_egypt_now
-from sqlalchemy import text
+from sqlalchemy import text, or_
 from sqlalchemy.exc import OperationalError
 
 
@@ -391,7 +391,16 @@ class OrderService:
                 query = query.filter_by(status=status)
             if status == OrderStatus.RETURNED and return_condition in ['valid', 'damaged']:
                 rc_enum = ReturnCondition.VALID if return_condition == 'valid' else ReturnCondition.DAMAGED
-                query = query.filter(Order.return_condition == rc_enum)
+                # Treat NULL return_condition as 'valid' to avoid hiding legacy/unspecified returns
+                if rc_enum == ReturnCondition.VALID:
+                    query = query.filter(
+                        or_(
+                            Order.return_condition == ReturnCondition.VALID,
+                            Order.return_condition.is_(None)
+                        )
+                    )
+                else:
+                    query = query.filter(Order.return_condition == ReturnCondition.DAMAGED)
 
             # Use direct query to avoid relationship loading issues
             try:

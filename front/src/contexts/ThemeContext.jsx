@@ -5,7 +5,7 @@ import useRTL from '../hooks/useRTL';
 const ThemeContext = createContext(null);
 
 // Theme provider component
-export const ThemeProvider = ({ children, initialTheme = 'dark', initialRTL = true }) => {
+export const ThemeProvider = ({ children, initialTheme = 'light', initialRTL = true }) => {
   // Theme state (light/dark)
   const [theme, setTheme] = useState(initialTheme);
   

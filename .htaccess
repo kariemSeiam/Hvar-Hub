@@ -7,16 +7,17 @@ RewriteEngine On
     Header always set Access-Control-Allow-Methods "GET,POST,PUT,DELETE,OPTIONS"
     Header always set Access-Control-Allow-Headers "Content-Type,Authorization,X-Requested-With"
     Header always set Access-Control-Allow-Credentials "true"
+    Header always set Access-Control-Max-Age "86400"
 </IfModule>
 
 # Handle preflight OPTIONS requests
 RewriteCond %{REQUEST_METHOD} OPTIONS
-RewriteRule ^(.*)$ $1 [R=200,L]
+RewriteRule ^ - [R=204,L]
 
-# Redirect all requests to Flask backend
+# Proxy all non-static requests to Flask backend (preserve HTTP method)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ http://127.0.0.1:5000/$1 [R=302,L]
+RewriteRule ^(.*)$ http://127.0.0.1:5000/$1 [P,L]
 
 # Cache static assets
 <IfModule mod_expires.c>
@@ -34,7 +35,7 @@ RewriteRule ^(.*)$ http://127.0.0.1:5000/$1 [R=302,L]
 
 # Security headers
 <IfModule mod_headers.c>
-    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Frame-Options "SAMEORIGIN"  
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-XSS-Protection "1; mode=block"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"

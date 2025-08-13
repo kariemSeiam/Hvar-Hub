@@ -1,0 +1,21 @@
+---
+description: Tailwind configuration and RTL/dark-mode usage standards
+globs: ["front/tailwind.config.js", "front/src/index.css", "front/src/**/*.jsx"]
+alwaysApply: true
+---
+
+- Tailwind config
+  - Keep content globs tight to `./src/**/*.{js,jsx,ts,tsx}`.
+  - Extend theme via tokens already provided (colors, fonts, spacing, animations).
+  - Use the custom plugin to set `--start/--end` and RTL base rules; do not override in components.
+
+- Dark mode
+  - Controlled via `document.documentElement.classList.add('dark')` in `ThemeProvider`.
+  - Components should consume `isDark` from theme context if behavioral differences are needed; avoid querying DOM directly.
+
+- Utilities
+  - Reuse provided utilities: `.scrollbar-hide`, `.arabic-card`, `.arabic-button`, `.arabic-input`, `.glass-effect`, `.scan-frame`.
+  - For new animations, add keyframes in Tailwind config and reference via `animate-*`.
+
+These rules centralize theming and keep RTL behavior consistent.
+

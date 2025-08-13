@@ -12,7 +12,7 @@ const isTest = import.meta.env.MODE === 'test';
 export const API_CONFIG = {
   // Development: local backend
   development: {
-    baseURL: 'http://127.0.0.1:5000',
+    baseURL: 'http://127.0.0.1:5001',
     timeout: 10000,
     retryAttempts: 2,
     cacheDuration: 30000, // 30 seconds
@@ -30,7 +30,7 @@ export const API_CONFIG = {
   
   // Test environment
   test: {
-    baseURL: 'http://localhost:5000',
+    baseURL: 'http://localhost:5001',
     timeout: 5000,
     retryAttempts: 1,
     cacheDuration: 0, // No cache in tests

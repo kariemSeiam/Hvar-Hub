@@ -1,75 +1,54 @@
 #!/usr/bin/env python3
 """
-Passenger WSGI file for CyberPanel deployment
-This file tells Passenger how to run your Flask application
+WSGI entrypoint for production.
+
+Designed to work with a reverse proxy (e.g., OpenLiteSpeed/CyberPanel)
+that forwards requests to a WSGI server listening on 127.0.0.1:5001
+such as:
+
+    gunicorn -w 2 -b 127.0.0.1:5001 passenger_wsgi:application
+
+This file must expose a module-level variable named `application`.
+Environment variables (e.g., MySQL credentials) should be provided by the
+server environment; they are NOT hardcoded here.
 """
 
 import os
 import sys
 import logging
 
-# Set up logging for production debugging
+# Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Add the backend directory to Python path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-backend_dir = os.path.join(current_dir, 'back')
-sys.path.insert(0, backend_dir)
+# Resolve project paths and ensure backend is importable
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = os.path.join(CURRENT_DIR, 'back')
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
 
-# Set environment variables for production
-os.environ['FLASK_ENV'] = 'production'
-os.environ['FLASK_APP'] = 'app.py'
-
-# Production database settings (update these with your actual values)
-os.environ['MYSQL_HOST'] = 'localhost'
-os.environ['MYSQL_USER'] = 'mcrmh4534_hvar'  # Update with your actual username
-os.environ['MYSQL_PASSWORD'] = ''  # Update with your actual password
-os.environ['MYSQL_DATABASE'] = 'mcrmh4534_hvar_hub'  # Update with your actual database name
+# Ensure production environment unless explicitly overridden
+os.environ.setdefault('FLASK_ENV', 'production')
+os.environ.setdefault('FLASK_APP', 'app.py')
 
 try:
-    # Import and create the Flask app
     from app import create_app
-    
-    # Create the application instance
+
+    # Create the Flask WSGI application
     application = create_app('production')
-    
-    logger.info("Flask application initialized successfully")
-    
-    # Serve pre-built frontend files
-    @application.route('/', defaults={'path': ''})
-    @application.route('/<path:path>')
-    def serve_frontend(path):
-        """Serve pre-built frontend files or index.html for SPA routing"""
-        from flask import send_from_directory, send_file
-        
-        # Skip API routes - let them be handled by Flask
-        if path.startswith('api/'):
-            return None
-        
-        # Construct the path to the frontend dist directory
-        frontend_dist = os.path.join(current_dir, 'front', 'dist')
-        
-        # If specific file requested and exists, serve it
-        if path and os.path.exists(os.path.join(frontend_dist, path)):
-            return send_from_directory(frontend_dist, path)
-        
-        # For SPA routing, always return index.html for non-API routes
-        index_path = os.path.join(frontend_dist, 'index.html')
-        if os.path.exists(index_path):
-            return send_file(index_path)
-        else:
-            return {'error': 'Frontend dist files not found. Make sure frontend is built.'}, 404
+    logger.info('Flask application initialized successfully (production)')
 
 except Exception as e:
-    logger.error(f"Failed to initialize Flask app: {e}")
-    # Create a simple error application
-    def application(environ, start_response):
-        status = '500 Internal Server Error'
-        headers = [('Content-type', 'text/plain')]
-        start_response(status, headers)
-        return [f'Application failed to initialize: {str(e)}'.encode()]
+    logger.exception('Failed to initialize Flask app')
 
-# For debugging (optional)
+    # Fallback WSGI application to surface initialization errors
+    def application(environ, start_response):  # type: ignore
+        status = '500 Internal Server Error'
+        headers = [('Content-type', 'text/plain; charset=utf-8')]
+        start_response(status, headers)
+        return [f'Application failed to initialize: {str(e)}'.encode('utf-8')]
+
 if __name__ == '__main__':
-    application.run(debug=False) 
+    # For local ad-hoc debugging only. In production, run via gunicorn/uwsgi.
+    from werkzeug.serving import run_simple
+    run_simple('127.0.0.1', 5001, application, use_reloader=False, use_debugger=False)

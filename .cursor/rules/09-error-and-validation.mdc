@@ -1,0 +1,19 @@
+---
+description: Unified error handling and validation patterns (backend and frontend)
+globs: ["back/**/*.py", "front/src/**/*.{js,jsx}"]
+alwaysApply: true
+---
+
+- Backend
+  - Wrap handlers in try/except. On unexpected errors, log server-side and return 500 with Arabic message.
+  - Provide blueprint error handlers for 400/404/500 mirroring `orders_bp`.
+  - Validate inputs and enums; return 400 with clear Arabic messages for invalid values.
+  - Keep response JSON consistent (`success`, `data`, `message`).
+
+- Frontend
+  - Map network/timeout errors to `ERROR_MESSAGES` in `front/src/config/environment.js`.
+  - Surface runtime errors via `ErrorBoundary`; show friendly fallback in Arabic. Use `Toaster` for transient notifications.
+  - Validate tracking numbers and input patterns on client (see `OrderManagementPage` and `VALIDATION`).
+
+These rules produce predictable, user-friendly errors and reduce support load.
+

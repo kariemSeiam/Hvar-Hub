@@ -53,16 +53,16 @@ const Timeline = ({
           <div className={currentVariant.content}>
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h4 className="font-cairo-play font-semibold text-gray-900 mb-1">
+                <h4 className="font-cairo font-semibold text-gray-900 mb-1">
                   {item.title}
                 </h4>
                 {item.description && (
-                  <p className="text-gray-600 text-sm mb-2 font-roboto">
+                  <p className="text-gray-600 text-sm mb-2 font-cairo">
                     {item.description}
                   </p>
                 )}
                 {item.details && (
-                  <div className="text-xs text-gray-500 font-roboto">
+                  <div className="text-xs text-gray-500 font-cairo">
                     {item.details}
                   </div>
                 )}
@@ -70,12 +70,12 @@ const Timeline = ({
               <div className="text-right">
                 <div className="flex flex-col items-end gap-0.5">
                   {item.time && (
-                    <time className="text-[11px] text-gray-500 font-cairo-play">
+                    <time className="text-[11px] text-gray-500 font-cairo">
                       {item.time}
                     </time>
                   )}
                   {(item.date || item.timestamp) && (
-                    <span className="text-[11px] text-gray-600 font-cairo-play whitespace-nowrap">
+                    <span className="text-[11px] text-gray-600 font-cairo whitespace-nowrap">
                       {getRelativeTimeShort(item.timestamp || item.date)}
                     </span>
                   )}

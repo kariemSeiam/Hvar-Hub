@@ -43,7 +43,7 @@ const CompactProfile = ({
           {avatar ? (
             <img src={avatar} alt={name} className="w-full h-full rounded-full object-cover" />
           ) : (
-            <span className="text-sm font-cairo-play">
+            <span className="text-sm font-cairo">
               {name?.charAt(0)?.toUpperCase() || 'U'}
             </span>
           )}
@@ -54,11 +54,11 @@ const CompactProfile = ({
       {/* Details */}
       {showDetails && (
         <div className="flex-1 min-w-0">
-          <div className={`font-cairo-play font-medium text-gray-900 ${sizes[size].text}`}>
+          <div className={`font-cairo font-medium text-gray-900 ${sizes[size].text}`}>
             {name || 'اسم العميل'}
           </div>
           {phone && (
-            <div className="text-gray-500 text-sm font-roboto">
+            <div className="text-gray-500 text-sm font-cairo">
               {phone}
             </div>
           )}

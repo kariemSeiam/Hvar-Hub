@@ -13,6 +13,7 @@ import {
 } from '../utils/performance';
 import { orderAPI } from '../api/orderAPI';
 import { formatTimeOnly, formatGregorianDate, getRelativeTime } from '../utils/dateUtils';
+import ThemeToggle from '../components/common/ThemeToggle';
 
 const OrderManagementPage = () => {
   // Enhanced Scanning States with better organization
@@ -1256,40 +1257,40 @@ const OrderManagementPage = () => {
   const getTabColorClasses = (color, isActive) => {
     const colors = {
       blue: {
-        active: 'bg-blue-100 text-blue-800 border-2 border-blue-300 shadow-sm',
-        inactive: 'text-blue-600 hover:bg-blue-50 hover:border-blue-200 border-2 border-transparent hover:text-blue-700',
-        badge: 'bg-blue-200 text-blue-900',
-        badgeActive: 'bg-blue-300 text-blue-900'
+        active: 'bg-blue-100 text-blue-800 border-2 border-blue-300 shadow-sm dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700/60 dark:shadow-blue-900/20',
+        inactive: 'text-blue-600 hover:bg-blue-50 hover:border-blue-200 border-2 border-transparent hover:text-blue-700 dark:text-blue-300 dark:hover:bg-blue-900/20 dark:hover:border-blue-700/40',
+        badge: 'bg-blue-200 text-blue-900 dark:bg-blue-800 dark:text-blue-100',
+        badgeActive: 'bg-blue-300 text-blue-900 dark:bg-blue-700 dark:text-blue-100'
       },
       amber: {
-        active: 'bg-amber-100 text-amber-800 border-2 border-amber-300 shadow-sm',
-        inactive: 'text-amber-600 hover:bg-amber-50 hover:border-amber-200 border-2 border-transparent hover:text-amber-700',
-        badge: 'bg-amber-200 text-amber-900',
-        badgeActive: 'bg-amber-300 text-amber-900'
+        active: 'bg-amber-100 text-amber-800 border-2 border-amber-300 shadow-sm dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700/60 dark:shadow-amber-900/20',
+        inactive: 'text-amber-600 hover:bg-amber-50 hover:border-amber-200 border-2 border-transparent hover:text-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/20 dark:hover:border-amber-700/40',
+        badge: 'bg-amber-200 text-amber-900 dark:bg-amber-800 dark:text-amber-100',
+        badgeActive: 'bg-amber-300 text-amber-900 dark:bg-amber-700 dark:text-amber-100'
       },
       green: {
-        active: 'bg-green-100 text-green-800 border-2 border-green-300 shadow-sm',
-        inactive: 'text-green-600 hover:bg-green-50 hover:border-green-200 border-2 border-transparent hover:text-green-700',
-        badge: 'bg-green-200 text-green-900',
-        badgeActive: 'bg-green-300 text-green-900'
+        active: 'bg-green-100 text-green-800 border-2 border-green-300 shadow-sm dark:bg-green-900/30 dark:text-green-200 dark:border-green-700/60 dark:shadow-green-900/20',
+        inactive: 'text-green-600 hover:bg-green-50 hover:border-green-200 border-2 border-transparent hover:text-green-700 dark:text-green-300 dark:hover:bg-green-900/20 dark:hover:border-green-700/40',
+        badge: 'bg-green-200 text-green-900 dark:bg-green-800 dark:text-green-100',
+        badgeActive: 'bg-green-300 text-green-900 dark:bg-green-700 dark:text-green-100'
       },
       red: {
-        active: 'bg-red-100 text-red-800 border-2 border-red-300 shadow-sm',
-        inactive: 'text-red-600 hover:bg-red-50 hover:border-red-200 border-2 border-transparent hover:text-red-700',
-        badge: 'bg-red-200 text-red-900',
-        badgeActive: 'bg-red-300 text-red-900'
+        active: 'bg-red-100 text-red-800 border-2 border-red-300 shadow-sm dark:bg-red-900/30 dark:text-red-200 dark:border-red-700/60 dark:shadow-red-900/20',
+        inactive: 'text-red-600 hover:bg-red-50 hover:border-red-200 border-2 border-transparent hover:text-red-700 dark:text-red-300 dark:hover:bg-red-900/20 dark:hover:border-red-700/40',
+        badge: 'bg-red-200 text-red-900 dark:bg-red-800 dark:text-red-100',
+        badgeActive: 'bg-red-300 text-red-900 dark:bg-red-700 dark:text-red-100'
       },
       purple: {
-        active: 'bg-purple-100 text-purple-800 border-2 border-purple-300 shadow-sm',
-        inactive: 'text-purple-600 hover:bg-purple-50 hover:border-purple-200 border-2 border-transparent hover:text-purple-700',
-        badge: 'bg-purple-200 text-purple-900',
-        badgeActive: 'bg-purple-300 text-purple-900'
+        active: 'bg-purple-100 text-purple-800 border-2 border-purple-300 shadow-sm dark:bg-purple-900/30 dark:text-purple-200 dark:border-purple-700/60 dark:shadow-purple-900/20',
+        inactive: 'text-purple-600 hover:bg-purple-50 hover:border-purple-200 border-2 border-transparent hover:text-purple-700 dark:text-purple-300 dark:hover:bg-purple-900/20 dark:hover:border-purple-700/40',
+        badge: 'bg-purple-200 text-purple-900 dark:bg-purple-800 dark:text-purple-100',
+        badgeActive: 'bg-purple-300 text-purple-900 dark:bg-purple-700 dark:text-purple-100'
       },
       gray: {
-        active: 'bg-gray-100 text-gray-800 border-2 border-gray-300 shadow-sm',
-        inactive: 'text-gray-600 hover:bg-gray-50 hover:border-gray-200 border-2 border-transparent hover:text-gray-700',
-        badge: 'bg-gray-200 text-gray-900',
-        badgeActive: 'bg-gray-300 text-gray-900'
+        active: 'bg-gray-100 text-gray-800 border-2 border-gray-300 shadow-sm dark:bg-gray-700/60 dark:text-gray-100 dark:border-gray-600 dark:shadow-black/20',
+        inactive: 'text-gray-600 hover:bg-gray-50 hover:border-gray-200 border-2 border-transparent hover:text-gray-700 dark:text-gray-300 dark:hover:bg-gray-700/40 dark:hover:border-gray-600',
+        badge: 'bg-gray-200 text-gray-900 dark:bg-gray-600 dark:text-gray-100',
+        badgeActive: 'bg-gray-300 text-gray-900 dark:bg-gray-500 dark:text-gray-100'
       }
     };
     return colors[color] || colors.blue;
@@ -1336,22 +1337,22 @@ const OrderManagementPage = () => {
   );
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col" dir="rtl">
+    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col transition-colors" dir="rtl">
       {/* Clean Navigation Bar */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 transition-colors">
         <div className="flex items-center justify-between">
           {/* Left - Title with Icon */}
           <div className="flex items-center space-x-3 space-x-reverse">
             <HvarSystemIcon />
             <div>
-              <h1 className="text-xl font-bold text-gray-900 font-cairo-play">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 font-cairo-play">
                مخزن هفار
               </h1>
             </div>
           </div>
 
           {/* Center - Clean Tabs */}
-          <div className="flex space-x-2 space-x-reverse">
+          <div className="flex-1 flex justify-center space-x-2 space-x-reverse overflow-x-auto scrollbar-hide px-2">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               const hasBadge = tab.badge && tab.badge !== '0';
@@ -1391,20 +1392,21 @@ const OrderManagementPage = () => {
           </div>
 
           {/* Right - Enhanced Status Controls */}
-          <div className="flex items-center space-x-3 space-x-reverse">
+          <div className="flex items-center space-x-3 space-x-reverse shrink-0">
             <div className="flex items-center space-x-2 space-x-reverse">
               <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${scannerState.isInitializing ? 'bg-yellow-500 animate-pulse' :
                 scannerState.isProcessing ? 'bg-blue-500 animate-pulse' :
                   scannerState.isScanning ? 'bg-green-500' :
                     scannerState.error ? 'bg-red-500' : 'bg-gray-400'
                 }`}></div>
-              <span className="text-xs text-gray-600 font-cairo-play">
+              <span className="text-xs text-gray-600 dark:text-gray-300 font-cairo">
                 {scannerState.isInitializing ? 'جاري التشغيل...' :
                   scannerState.isProcessing ? 'جاري المعالجة...' :
                     scannerState.isScanning ? 'نشط' :
                       scannerState.error ? 'خطأ' : 'متوقف'}
               </span>
             </div>
+            {/* <ThemeToggle /> */}
           </div>
         </div>
       </div>
@@ -1412,17 +1414,17 @@ const OrderManagementPage = () => {
       {/* Content Area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Compact Scanner */}
-        <div className="w-72 bg-white border-l border-gray-200 flex flex-col">
+        <div className="w-72 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col transition-colors">
           {/* Scanner Header */}
-          <div className="p-4 border-b border-gray-100">
+          <div className="p-4 border-b border-gray-100 dark:border-gray-700">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-900 font-cairo-play">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 font-cairo">
                 مسح رمز التتبع
               </h3>
               <button
                 onClick={toggleCamera}
-                className={`
-                  px-2 py-1 rounded text-xs font-cairo-play transition-colors
+                 className={`
+                  px-2 py-1 rounded text-xs font-cairo transition-colors
                   ${scannerState.showCamera
                     ? 'bg-red-100 text-red-700 hover:bg-red-200'
                     : 'bg-green-100 text-green-700 hover:bg-green-200'
@@ -1465,7 +1467,7 @@ const OrderManagementPage = () => {
                         {scannerState.isProcessing && (
                           <div className="absolute inset-0 bg-green-400/20 border-2 border-green-400 rounded animate-pulse">
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="bg-green-500 text-white px-2 py-1 rounded text-xs font-cairo-play">
+                              <div className="bg-green-500 text-white px-2 py-1 rounded text-xs font-cairo">
                                 ✓
                               </div>
                             </div>
@@ -1474,14 +1476,14 @@ const OrderManagementPage = () => {
 
                         {/* Success indicator */}
                         {scannerState.isProcessing && (
-                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-2 py-1 rounded text-xs font-cairo-play animate-pulse">
+                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-2 py-1 rounded text-xs font-cairo animate-pulse">
                             جاري المعالجة...
                           </div>
                         )}
 
                         {/* Success indicator for completed scans */}
                         {!scannerState.isProcessing && scannerState.isScanning && (
-                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-2 py-1 rounded text-xs font-cairo-play">
+                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-2 py-1 rounded text-xs font-cairo">
                             جاهز للمسح
                           </div>
                         )}
@@ -1493,7 +1495,7 @@ const OrderManagementPage = () => {
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                       <button
                         onClick={startCamera}
-                        className="px-3 py-1 bg-blue-600 text-white rounded text-xs font-cairo-play hover:bg-blue-700 transition-colors"
+                        className="px-3 py-1 bg-blue-600 text-white rounded text-xs font-cairo hover:bg-blue-700 transition-colors"
                       >
                         بدء المسح
                       </button>
@@ -1504,7 +1506,7 @@ const OrderManagementPage = () => {
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                       <div className="flex items-center space-x-2 space-x-reverse">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span className="text-white text-xs font-cairo-play">
+                        <span className="text-white text-xs font-cairo">
                           جاري تشغيل الكاميرا...
                         </span>
                       </div>
@@ -1514,7 +1516,7 @@ const OrderManagementPage = () => {
                   {scannerState.isScanning && (
                     <div className="absolute bottom-2 left-2 right-2">
                       <div className="bg-black/70 rounded p-1 text-center">
-                        <p className="text-white text-xs font-cairo-play">
+                        <p className="text-white text-xs font-cairo">
                           {scannerState.isProcessing ? 'جاري جلب البيانات من بوسطة...' : 'امسح رمز QR'}
                         </p>
                       </div>
@@ -1532,13 +1534,13 @@ const OrderManagementPage = () => {
                   value={manualInput}
                   onChange={(e) => setManualInput(e.target.value)}
                   placeholder="أدخل رقم التتبع..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-cairo text-right"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-cairo text-right bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 placeholder:dark:text-gray-300"
                   dir="rtl"
                 />
                 <button
                   type="submit"
                   disabled={!manualInput.trim() || isManualSubmitting}
-                  className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-cairo-play disabled:bg-gray-300"
+                  className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-cairo disabled:bg-gray-300"
                 >
                   {isManualSubmitting ? 'جاري البحث...' : 'بحث عن الطلب'}
                 </button>
@@ -1546,10 +1548,10 @@ const OrderManagementPage = () => {
 
               {/* Scanner Input Indicator */}
               <div className="flex items-center justify-between text-xs text-gray-500">
-                <span className="font-cairo-play">جهاز المسح الضوئي:</span>
+                <span className="font-cairo">جهاز المسح الضوئي:</span>
                 <div className="flex items-center space-x-1 space-x-reverse">
                   <div className={`w-2 h-2 rounded-full ${scannerBuffer ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></div>
-                  <span className="font-cairo-play">
+                  <span className="font-cairo">
                     {scannerBuffer ? 'نشط' : 'جاهز'}
                   </span>
                 </div>
@@ -1557,12 +1559,12 @@ const OrderManagementPage = () => {
             </div>
 
             {scannerState.error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-2 mt-2">
+              <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2 transition-colors">
                 <div className="flex items-center space-x-2 space-x-reverse">
                   <svg className="w-4 h-4 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p className="text-red-700 font-cairo-play text-right text-xs flex-1">{scannerState.error}</p>
+                  <p className="text-red-700 dark:text-red-200 font-cairo text-right text-xs flex-1">{scannerState.error}</p>
                   <button
                     onClick={() => {
                       setScannerState(prev => ({ ...prev, error: null }));
@@ -1570,7 +1572,7 @@ const OrderManagementPage = () => {
                         qrScannerRef.current.resume();
                       }
                     }}
-                    className="text-red-600 hover:text-red-800 text-xs font-cairo-play underline"
+                    className="text-red-600 hover:text-red-800 dark:text-red-300 dark:hover:text-red-200 text-xs font-cairo underline"
                   >
                     إعادة المحاولة
                   </button>
@@ -1581,46 +1583,46 @@ const OrderManagementPage = () => {
 
           {/* Recent Scans */}
           <div className="flex-1 p-4 overflow-y-auto scrollbar-hide">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3 font-cairo-play">
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 font-cairo">
               آخر المسح ({recentScans.length})
             </h4>
             <div className="space-y-2">
               {recentScans.length > 0 ? (
                 recentScans.slice(0, 8).map((scan) => (
-                  <div key={scan._id} className="flex items-center justify-between bg-gray-50 rounded-lg p-2 hover:bg-gray-100 transition-colors duration-200">
+                  <div key={scan._id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200">
                     <div className="flex items-center space-x-2 space-x-reverse flex-1 min-w-0">
-                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-6 h-6 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg className="w-3 h-3 text-blue-600 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 text-xs font-cairo-play truncate mb-1">
+                        <p className="font-medium text-gray-900 dark:text-gray-100 text-xs font-cairo truncate mb-1">
                           {scan.trackingNumber}
                         </p>
-                        <p className="text-gray-600 text-xs font-cairo-play truncate">
+                        <p className="text-gray-600 dark:text-gray-300 text-xs font-cairo truncate">
                           {scan.receiver?.fullName || 'غير محدد'}
                         </p>
                         {scan.specs?.packageDetails?.description && (
-                          <p className="text-gray-500 text-xs font-cairo-play truncate max-w-xs">
+                          <p className="text-gray-500 dark:text-gray-400 text-xs font-cairo truncate max-w-xs">
                             {scan.specs.packageDetails.description}
                           </p>
                         )}
                       </div>
                     </div>
-                    <span className="text-xs text-gray-500 font-cairo-play flex-shrink-0 mr-2">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 font-cairo flex-shrink-0 mr-2">
                       {scan.scannedAt ? formatTimeOnly(scan.scannedAt) : 'لا يوجد وقت'}
                     </span>
                   </div>
                 ))
               ) : (
                 <div className="text-center py-8">
-                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg className="w-6 h-6 text-gray-400 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </div>
-                  <p className="text-gray-500 text-sm font-cairo-play">لا توجد عمليات مسح حديثة</p>
+                  <p className="text-gray-500 dark:text-gray-300 text-sm font-cairo">لا توجد عمليات مسح حديثة</p>
                 </div>
               )}
             </div>
@@ -1630,36 +1632,52 @@ const OrderManagementPage = () => {
         {/* Right Panel - Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Tab Header with Count */}
-          <div className="bg-white border-b border-gray-100 px-6 py-3">
+          <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-6 py-3 transition-colors">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2 space-x-reverse">
-                <h2 className="text-lg font-bold text-gray-900 font-cairo-play">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 font-cairo">
                   {tabs.find(tab => tab.id === activeTab)?.label}
                 </h2>
                 {activeTab === 'returns' && (
                   <div className="flex items-center space-x-2 space-x-reverse">
                     <button
                       onClick={() => setReturnsSubTab('valid')}
-                      className={`px-3 py-1 rounded-full text-xs font-cairo flex items-center gap-2 ${returnsSubTab === 'valid' ? 'bg-green-100 text-green-800 border border-green-300' : 'text-green-700 hover:bg-green-50 border border-transparent'}`}
+                      className={`px-3 py-1 rounded-full text-xs font-cairo flex items-center gap-2 transition-colors ${
+                        returnsSubTab === 'valid'
+                          ? 'bg-green-100 text-green-800 border border-green-300 dark:bg-green-900/30 dark:text-green-200 dark:border-green-700'
+                          : 'text-green-700 hover:bg-green-50 border border-transparent dark:text-green-300 dark:hover:bg-green-900/20'
+                      }`}
                     >
                       <span>سليمة</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold transition-colors font-cairo ${returnsSubTab === 'valid' ? 'bg-green-300 text-green-900' : 'bg-green-200 text-green-900'}`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold transition-colors font-cairo ${
+                        returnsSubTab === 'valid'
+                          ? 'bg-green-300 text-green-900 dark:bg-green-700 dark:text-green-100'
+                          : 'bg-green-200 text-green-900 dark:bg-green-800 dark:text-green-100'
+                      }`}>
                         {returnsCounts.valid}
                       </span>
                     </button>
                     <button
                       onClick={() => setReturnsSubTab('damaged')}
-                      className={`px-3 py-1 rounded-full text-xs font-cairo flex items-center gap-2 ${returnsSubTab === 'damaged' ? 'bg-red-100 text-red-800 border border-red-300' : 'text-red-700 hover:bg-red-50 border border-transparent'}`}
+                      className={`px-3 py-1 rounded-full text-xs font-cairo flex items-center gap-2 transition-colors ${
+                        returnsSubTab === 'damaged'
+                          ? 'bg-red-100 text-red-800 border border-red-300 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700'
+                          : 'text-red-700 hover:bg-red-50 border border-transparent dark:text-red-300 dark:hover:bg-red-900/20'
+                      }`}
                     >
                       <span>تالفة</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold transition-colors font-cairo ${returnsSubTab === 'damaged' ? 'bg-red-300 text-red-900' : 'bg-red-200 text-red-900'}`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold transition-colors font-cairo ${
+                        returnsSubTab === 'damaged'
+                          ? 'bg-red-300 text-red-900 dark:bg-red-700 dark:text-red-100'
+                          : 'bg-red-200 text-red-900 dark:bg-red-800 dark:text-red-100'
+                      }`}>
                         {returnsCounts.damaged}
                       </span>
                     </button>
                   </div>
                 )}
               </div>
-              <span className="text-sm text-gray-600 font-cairo-play">
+              <span className="text-sm text-gray-600 dark:text-gray-300 font-cairo">
                 {activeTab === 'returns' 
                   ? (returnsSubTab === 'valid' ? returnsCounts.valid : returnsCounts.damaged)
                   : (orders[activeTab]?.length || 0)} طلب
@@ -1701,10 +1719,10 @@ const OrderManagementPage = () => {
                       {/* 1. Tracking Number - Horizontal Layout */}
                       <div className="flex items-center space-x-3 space-x-reverse flex-shrink-0">
                         <div className="min-w-0">
-                          <p className="font-bold text-gray-900 text-xs font-cairo-play mb-1">
+                          <p className="font-bold text-gray-900 text-xs font-cairo mb-1">
                             رقم التتبع
                           </p>
-                          <span className="text-gray-900 text-md font-bold font-cairo-play truncate max-w-32">
+                          <span className="text-gray-900 text-md font-bold font-cairo truncate max-w-32">
                             {scannedOrder.trackingNumber}
                           </span>
                         </div>
@@ -1721,10 +1739,10 @@ const OrderManagementPage = () => {
                           </svg>
                         </div>
                         <div className="min-w-0 max-w-32">
-                          <p className="font-bold text-gray-900 text-xs font-cairo-play mb-1">
+                          <p className="font-bold text-gray-900 text-xs font-cairo mb-1">
                             العميل
                           </p>
-                          <span className="text-gray-700 text-sm font-small font-cairo-play truncate max-w-full">
+                          <span className="text-gray-700 text-sm font-small font-cairo truncate max-w-full">
                             {scannedOrder.receiver?.fullName || 'غير محدد'}
                           </span>
                         </div>
@@ -1741,10 +1759,10 @@ const OrderManagementPage = () => {
                           </svg>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-gray-900 text-xs font-cairo-play mb-1">
+                          <p className="font-bold text-gray-900 text-xs font-cairo mb-1">
                             وصف المنتج
                           </p>
-                          <span className="text-gray-700 text-sm font-small font-cairo-play line-clamp-2 break-words">
+                          <span className="text-gray-700 text-sm font-small font-cairo line-clamp-2 break-words">
                             {scannedOrder.specs?.packageDetails?.description || 'لا يوجد وصف للمنتج'}
                           </span>
                         </div>
@@ -1758,7 +1776,7 @@ const OrderManagementPage = () => {
                 <div className="flex items-center space-x-2 space-x-reverse flex-shrink-0">
                   <button
                     onClick={handleConfirmReceive}
-                    className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-cairo-play transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                    className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-cairo transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                     aria-label="تأكيد استلام الطلب"
                   >
                     تأكيد (Enter)
@@ -1771,7 +1789,7 @@ const OrderManagementPage = () => {
                         qrScannerRef.current.resume();
                       }
                     }}
-                    className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-cairo-play transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                    className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-cairo transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                     aria-label="إلغاء استلام الطلب"
                   >
                     إلغاء
@@ -1787,7 +1805,7 @@ const OrderManagementPage = () => {
               <div className="flex items-center justify-center py-12">
                 <div className="flex items-center space-x-3 space-x-reverse">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  <span className="text-gray-600 font-cairo-play">جاري تحميل الطلبات...</span>
+                  <span className="text-gray-600 font-cairo">جاري تحميل الطلبات...</span>
                 </div>
               </div>
             ) : orders[activeTab]?.length > 0 ? (
@@ -1795,7 +1813,7 @@ const OrderManagementPage = () => {
                 className="columns-1 lg:columns-2 gap-4"
                 key={`orders-${activeTab}-${forceUpdate}`}
               >
-                <Suspense fallback={<div className="py-6 text-center text-gray-500 font-cairo-play">جاري التحضير...</div>}>
+                <Suspense fallback={<div className="py-6 text-center text-gray-500 font-cairo">جاري التحضير...</div>}>
                   {(activeTab === 'returns'
                     ? orders[activeTab].filter(o => (o.returnCondition || 'valid') === returnsSubTab)
                     : orders[activeTab]
@@ -1818,15 +1836,15 @@ const OrderManagementPage = () => {
               </div>
             ) : (
               <div className="text-center py-12">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-gray-400 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2 font-cairo-play">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 font-cairo">
                   لا توجد طلبات
                 </h3>
-                <p className="text-gray-600 font-cairo-play">
+                <p className="text-gray-600 dark:text-gray-300 font-cairo">
                   لا توجد طلبات في هذه المرحلة حالياً
                 </p>
               </div>

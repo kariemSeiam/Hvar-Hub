@@ -48,14 +48,14 @@ const ConfirmationModal = ({
       <div className={`relative max-w-md w-full rounded-xl shadow-xl ${currentVariant.modal}`}>
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-cairo-play font-semibold text-gray-900 text-right">
+          <h3 className="text-lg font-cairo font-semibold text-gray-900 text-right">
             {title}
           </h3>
         </div>
 
         {/* Content */}
         <div className="px-6 py-4">
-          <p className="text-gray-600 font-roboto text-right leading-relaxed">
+          <p className="text-gray-600 font-cairo text-right leading-relaxed">
             {message}
           </p>
         </div>
@@ -64,13 +64,13 @@ const ConfirmationModal = ({
         <div className="px-6 py-4 bg-gray-50 rounded-b-xl flex space-x-3 space-x-reverse">
           <button
             onClick={onConfirm}
-            className={`flex-1 py-2 px-4 rounded-lg text-white font-cairo-play font-medium transition-colors ${currentVariant.confirm}`}
+            className={`flex-1 py-2 px-4 rounded-lg text-white font-cairo font-medium transition-colors ${currentVariant.confirm}`}
           >
             {confirmText}
           </button>
           <button
             onClick={onClose}
-            className={`flex-1 py-2 px-4 rounded-lg text-gray-700 font-cairo-play font-medium transition-colors ${currentVariant.cancel}`}
+            className={`flex-1 py-2 px-4 rounded-lg text-gray-700 font-cairo font-medium transition-colors ${currentVariant.cancel}`}
           >
             {cancelText}
           </button>

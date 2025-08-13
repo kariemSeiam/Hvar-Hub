@@ -1,0 +1,33 @@
+---
+description: Database models, enums, timestamps, and indexing rules
+globs: ["back/db/**/*.py", "back/utils/timezone.py", "back/config/**/*.py"]
+alwaysApply: true
+---
+
+- Models and base behavior
+  - Use `BaseModel` in `back/db/auto_init.py` for `id`, `created_at`, `updated_at`, and `save/delete/to_dict` utilities.
+  - Always use `get_egypt_now()` for default and timestamp updates to keep Africa/Cairo timezone.
+
+- Enums and transitions
+  - Add new states to `OrderStatus` and new actions to `MaintenanceAction` in `back/db/auto_init.py`.
+  - Update `ACTION_STATUS_MAP` and `Order.can_transition_to` accordingly. Keep transitions explicit and conservative.
+  - If an action should not change status (like `SET_RETURN_CONDITION`), document it and skip in the mapping.
+
+- Columns and migrations
+  - Prefer adding columns/types in `Order`/`MaintenanceHistory`/`ProofImage` within `auto_init.py`.
+  - For dev self-heal, follow the pattern in `OrderService.get_orders_by_status` that ALTERs missing columns in SQLite. Consider mirroring such checks if you introduce new columns accessed by queries.
+  - For MySQL, keep UTF-8 settings via `configure_utf8_database()`; if you add string columns, ensure they are covered by charset adjustments.
+
+- Indexing
+  - If you add high-frequency filters/sorts, extend `create_indexes()` with `CREATE INDEX IF NOT EXISTS ...` covering new columns.
+  - Index common search fields (e.g., phone, tracking_number) and timestamp-based sorts.
+
+- Serialization
+  - Extend `to_dict()` carefully; convert numerics to float and datetimes to ISO strings as shown in `Order.to_dict()`.
+  - Include related data via dynamic relationships with explicit ordering (e.g., `maintenance_history.order_by(...).all()`).
+
+- Data integrity
+  - Keep validation in services; models should remain thin. Use enums for constrained values (`return_condition`, `status`).
+
+These rules preserve consistent schema evolution, correct time handling, and fast queries.
+

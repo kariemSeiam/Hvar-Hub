@@ -4,8 +4,7 @@ const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icon-192x192.png',
-  '/icon-512x512.png'
+  '/icon.svg'
 ];
 
 // Install event - cache resources
@@ -54,6 +53,17 @@ self.addEventListener('fetch', (event) => {
   // Skip chrome-extension and other non-http requests
   if (!event.request.url.startsWith('http')) {
     return;
+  }
+
+  // Bypass caching for Bosta signed images (always fetch fresh)
+  try {
+    const reqUrl = new URL(event.request.url);
+    if (reqUrl.hostname === 'storage.googleapis.com' && reqUrl.pathname.startsWith('/bosta-files/')) {
+      event.respondWith(fetch(event.request, { cache: 'no-store' }));
+      return;
+    }
+  } catch (e) {
+    // ignore URL parsing errors
   }
 
   event.respondWith(
@@ -106,8 +116,8 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: event.data ? event.data.text() : 'HVAR Hub notification',
-    icon: '/icon-192x192.png',
-    badge: '/icon-192x192.png',
+    icon: '/icon.svg',
+    badge: '/icon.svg',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -117,12 +127,12 @@ self.addEventListener('push', (event) => {
       {
         action: 'explore',
         title: 'Open Scanner',
-        icon: '/icon-192x192.png'
+        icon: '/icon.svg'
       },
       {
         action: 'close',
         title: 'Close',
-        icon: '/icon-192x192.png'
+        icon: '/icon.svg'
       }
     ]
   };

@@ -1,0 +1,29 @@
+---
+description: Design system rules (colors, typography, spacing, RTL) with performance-oriented Tailwind usage
+globs: ["front/src/**/*.{js,jsx,css}", "front/tailwind.config.js"]
+alwaysApply: true
+---
+
+- Colors and tokens
+  - Use Tailwind extended palettes from `front/tailwind.config.js`: `brand-red`, `brand-blue`, `accent-*`, `ui-*`, and `status-*` tokens.
+  - Status colors: match tabs and badges—received: blue, inMaintenance: amber, completed: green, failed: red, sending: purple, returns: gray.
+  - Returns sub-tabs: "سليمة" must use green semantics; "تالفة" must use red. Follow the styles in `OrderManagementPage` buttons.
+
+- Typography and spacing
+  - Fonts: `'Cairo Play'` primary, with `Cairo`/`Tajawal` fallbacks. Use Tailwind `fontFamily` tokens (`font-cairo`, `font-cairo-play`).
+  - Use fluid `fontSize` and `spacing` scales defined in Tailwind config for responsive Arabic UI.
+
+- RTL and dark mode
+  - Default direction is RTL; use utilities added by the Tailwind plugin (e.g., `--start/--end`, `.rtl-space-x-reverse`).
+  - Dark mode is class-based; toggle via `ThemeProvider`. Avoid inline colors when tokens suffice.
+
+- Components and utilities
+  - Prefer semantic utility compositions (e.g., `glass-effect`, `text-gradient`, `scan-frame`) already defined.
+  - Keep interactive feedback subtle and performant: use Tailwind keyframes (`fade-in`, `slide-*`, `glow`, `shimmer`).
+
+- Performance
+  - Avoid deep selector chains; compose via utility classes.
+  - Limit custom CSS in `index.css` to base/component layers; keep most styling within Tailwind utilities.
+
+These rules preserve visual consistency and high performance while matching the current brand language.
+

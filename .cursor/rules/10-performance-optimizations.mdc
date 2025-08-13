@@ -1,0 +1,19 @@
+---
+description: Performance and scalability practices across backend and frontend
+globs: ["back/**/*.py", "front/src/**/*.{js,jsx}"]
+alwaysApply: true
+---
+
+- Backend
+  - Paginate lists; cap `limit`. Add indexes for new frequent filters/sorts.
+  - Avoid implicit relationship loading in loops; fetch explicitly and serialize.
+  - Short network timeouts for third-party APIs; degrade gracefully on failure.
+
+- Frontend
+  - Use `useOptimizedOrderAPI` for batching/dedup. Always provide stable `requestId`s.
+  - Cache GETs in `orderAPI` and memoize transformations; clear caches after mutations.
+  - Lazy-load heavy components (`React.lazy`) and wrap lists in `Suspense` placeholders.
+  - Memoize lists and item props; use stable `key`s (`order._id`).
+
+These rules reduce latency, memory churn, and re-rendering.
+

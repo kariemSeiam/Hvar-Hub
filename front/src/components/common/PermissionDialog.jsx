@@ -105,10 +105,10 @@ const PermissionDialog = ({
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-3 sm:p-4 text-white text-center flex-shrink-0">
           <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">{instructions.icon}</div>
-          <h2 className="text-base sm:text-lg font-cairo-play font-bold mb-1 sm:mb-2">
+          <h2 className="text-base sm:text-lg font-cairo font-bold mb-1 sm:mb-2">
             {instructions.title}
           </h2>
-          <p className="text-blue-100 text-xs font-roboto leading-relaxed">
+          <p className="text-blue-100 text-xs font-cairo leading-relaxed">
             {instructions.description}
           </p>
         </div>
@@ -137,7 +137,7 @@ const PermissionDialog = ({
           {deviceInfo && (
             <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-gray-50 rounded-lg">
               <h3 className="text-xs font-medium text-gray-700 mb-2">معلومات الجهاز:</h3>
-              <div className="text-xs text-gray-600 space-y-1">
+              <div className="text-xs text-gray-600 space-y-1 font-cairo">
                 <div>النوع: {deviceInfo.isMobile ? 'هاتف محمول' : deviceInfo.isTablet ? 'تابلت' : 'كمبيوتر'}</div>
                 <div>المتصفح: {browserInfo?.isChrome ? 'Chrome' : browserInfo?.isSafari ? 'Safari' : browserInfo?.isFirefox ? 'Firefox' : 'آخر'}</div>
                 <div>دعم الكاميرا: {deviceInfo.hasCamera ? 'متوفر' : 'غير متوفر'}</div>
@@ -161,13 +161,13 @@ const PermissionDialog = ({
           {/* Instructions */}
           <div className="mb-3 sm:mb-4">
             <h3 className="text-xs font-medium text-gray-700 mb-2">خطوات منح الإذن:</h3>
-            <div className="space-y-2">
+            <div className="space-y-2 font-cairo">
               {instructions.steps.map((step, index) => (
                 <div key={index} className="flex items-start space-x-2 space-x-reverse">
                   <div className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
                     {index + 1}
                   </div>
-                  <p className="text-xs text-gray-600 font-roboto leading-relaxed">{step}</p>
+                  <p className="text-xs text-gray-600 font-cairo leading-relaxed">{step}</p>
                 </div>
               ))}
             </div>
@@ -179,13 +179,13 @@ const PermissionDialog = ({
               <h3 className="text-xs font-medium text-blue-800 mb-2">
                 {instructions.browserSpecific.title}:
               </h3>
-              <div className="space-y-2">
+              <div className="space-y-2 font-cairo">
                 {instructions.browserSpecific.steps.map((step, index) => (
                   <div key={index} className="flex items-start space-x-2 space-x-reverse">
                     <div className="flex-shrink-0 w-4 h-4 bg-blue-200 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold">
                       {index + 1}
                     </div>
-                    <p className="text-xs text-blue-700 font-roboto leading-relaxed">{step}</p>
+                    <p className="text-xs text-blue-700 font-cairo leading-relaxed">{step}</p>
                   </div>
                 ))}
               </div>
@@ -196,7 +196,7 @@ const PermissionDialog = ({
           {errorDetails && (
             <div className="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
               <h3 className="text-xs font-medium text-red-800 mb-2">تفاصيل الخطأ:</h3>
-              <p className="text-xs text-red-700 font-roboto mb-2 leading-relaxed">
+              <p className="text-xs text-red-700 font-cairo mb-2 leading-relaxed">
                 {errorDetails.userMessage || 
                  (errorDetails.name === 'NotAllowedError' ? 'تم رفض الإذن من قبل المستخدم' :
                   errorDetails.name === 'NotFoundError' ? 'لم يتم العثور على كاميرا' :
@@ -209,7 +209,7 @@ const PermissionDialog = ({
               {errorDetails.solution && (
                 <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
                   <h4 className="text-xs font-medium text-blue-800 mb-1">الحل المقترح:</h4>
-                  <div className="text-xs text-blue-700 space-y-1">
+                  <div className="text-xs text-blue-700 space-y-1 font-cairo">
                     {errorDetails.solution === 'go_to_settings' && (
                       <>
                         <div>• اذهب إلى إعدادات المتصفح</div>
@@ -293,7 +293,7 @@ const PermissionDialog = ({
               {permissionState === 'prompt' && (
                 <button
                   onClick={requestPermission}
-                  className="flex-1 py-2.5 px-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-cairo-play font-medium text-sm"
+                  className="flex-1 py-2.5 px-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-cairo font-medium text-sm"
                 >
                   طلب الإذن
                 </button>
@@ -302,7 +302,7 @@ const PermissionDialog = ({
               {permissionState === 'granted' && (
                 <button
                   onClick={onClose}
-                  className="flex-1 py-2.5 px-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-cairo-play font-medium text-sm"
+                  className="flex-1 py-2.5 px-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-cairo font-medium text-sm"
                 >
                   متابعة
                 </button>
@@ -310,7 +310,7 @@ const PermissionDialog = ({
               
               <button
                 onClick={onClose}
-                className="flex-1 py-2.5 px-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-cairo-play font-medium text-sm"
+                className="flex-1 py-2.5 px-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-cairo font-medium text-sm"
               >
                 إغلاق
               </button>
@@ -344,7 +344,7 @@ const PermissionDialog = ({
                         setErrorDetails(error);
                       }
                     }}
-                    className="py-2 px-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-cairo-play font-medium text-xs"
+                    className="py-2 px-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-cairo font-medium text-xs"
                   >
                     إعادة المحاولة بقوة
                   </button>
@@ -361,7 +361,7 @@ const PermissionDialog = ({
                         window.open('about:preferences', '_blank');
                       }
                     }}
-                    className="py-2 px-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-cairo-play font-medium text-xs"
+                    className="py-2 px-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-cairo font-medium text-xs"
                   >
                     فتح الإعدادات
                   </button>
@@ -370,7 +370,7 @@ const PermissionDialog = ({
                     onClick={() => {
                       window.location.reload();
                     }}
-                    className="py-2 px-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-cairo-play font-medium text-xs"
+                    className="py-2 px-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-cairo font-medium text-xs"
                   >
                     إعادة التحميل
                   </button>
@@ -407,7 +407,7 @@ const PermissionDialog = ({
                         setErrorDetails(error);
                       }
                     }}
-                    className="py-2 px-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-cairo-play font-medium text-xs font-bold"
+                    className="py-2 px-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-cairo font-medium text-xs font-bold"
                     title="يجرب جميع الطرق الممكنة بما في ذلك إنشاء كاميرا وهمية للاختبار"
                   >
                     🚀 قوة قصوى
@@ -421,7 +421,7 @@ const PermissionDialog = ({
                       console.log('Error Details:', errorDetails);
                       alert('تم طباعة معلومات التشخيص في وحدة التحكم (Console)');
                     }}
-                    className="py-2 px-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-cairo-play font-medium text-xs"
+                    className="py-2 px-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-cairo font-medium text-xs"
                   >
                     معلومات التشخيص
                   </button>

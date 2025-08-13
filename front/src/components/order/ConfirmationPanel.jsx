@@ -41,10 +41,10 @@ const ConfirmationPanel = ({
               {/* 1. Tracking Number */}
               <div className="flex items-center space-x-3 space-x-reverse flex-shrink-0">
                 <div className="min-w-0">
-                  <p className="font-bold text-gray-900 text-xs font-cairo-play mb-1">
+                  <p className="font-bold text-gray-900 text-xs font-cairo mb-1">
                     رقم التتبع
                   </p>
-                  <span className="text-gray-900 text-md font-bold font-cairo-play truncate max-w-32">
+                  <span className="text-gray-900 text-md font-bold font-cairo truncate max-w-32">
                     {scannedOrder.trackingNumber}
                   </span>
                 </div>
@@ -61,10 +61,10 @@ const ConfirmationPanel = ({
                   </svg>
                 </div>
                 <div className="min-w-0 max-w-32">
-                  <p className="font-bold text-gray-900 text-xs font-cairo-play mb-1">
+                  <p className="font-bold text-gray-900 text-xs font-cairo mb-1">
                     العميل
                   </p>
-                  <span className="text-gray-700 text-sm font-small font-cairo-play truncate max-w-full">
+                  <span className="text-gray-700 text-sm font-small font-cairo truncate max-w-full">
                     {scannedOrder.receiver?.fullName || 'غير محدد'}
                   </span>
                 </div>
@@ -81,10 +81,10 @@ const ConfirmationPanel = ({
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-gray-900 text-xs font-cairo-play mb-1">
+                  <p className="font-bold text-gray-900 text-xs font-cairo mb-1">
                     وصف المنتج
                   </p>
-                  <span className="text-gray-700 text-sm font-small font-cairo-play line-clamp-2 break-words">
+                  <span className="text-gray-700 text-sm font-small font-cairo line-clamp-2 break-words">
                     {scannedOrder.specs?.packageDetails?.description || 'لا يوجد وصف للمنتج'}
                   </span>
                 </div>
@@ -98,14 +98,14 @@ const ConfirmationPanel = ({
         <div className="flex items-center space-x-2 space-x-reverse flex-shrink-0">
           <button
             onClick={onConfirm}
-            className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-cairo-play transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-cairo transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
             aria-label="تأكيد استلام الطلب"
           >
             تأكيد (Enter)
           </button>
           <button
             onClick={onCancel}
-            className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-cairo-play transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-cairo transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
             aria-label="إلغاء استلام الطلب"
           >
             إلغاء

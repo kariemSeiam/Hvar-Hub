@@ -1,0 +1,25 @@
+---
+description: React app structure, routing, state organization, and component patterns
+globs: ["front/src/**/*.{js,jsx}", "front/*.js"]
+alwaysApply: true
+---
+
+- App shell and routing
+  - Keep app shell in `front/src/App.jsx` with `ThemeProvider`, `Router`, `Toaster`.
+  - Add routes via `react-router-dom` with pages under `front/src/pages/`. Ensure unknown routes render `NotFoundPage`.
+
+- State management
+  - Encapsulate API calls in hooks (`useOrderAPI`, `useOptimizedOrderAPI`) and keep UI stateless where possible.
+  - Derive view state (e.g., tab counts) from API responses and normalized data.
+
+- Components
+  - Place reusable primitives in `front/src/components/common/` (PascalCase). Domain-specific UIs under feature folders (e.g., `components/order/`).
+  - Use `React.memo` for list items; lazy-load heavy components with `React.lazy` and wrap with `Suspense`.
+  - Wrap pages with `ErrorBoundary` or HOC `withErrorBoundary` when appropriate.
+
+- Conventions
+  - Component props: camelCase; files: PascalCase.jsx; hooks: `useX.js`.
+  - RTL: use Tailwind `space-x-reverse`, `text-right`, and theme utilities. Respect `ThemeProvider` direction.
+
+These rules keep the UI modular, fast, and aligned with existing patterns.
+

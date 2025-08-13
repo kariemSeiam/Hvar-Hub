@@ -1,0 +1,28 @@
+---
+description: Frontend API client patterns, caching, error mapping, and hooks usage
+globs: ["front/src/api/**/*.js", "front/src/hooks/**/*.js", "front/src/config/**/*.js"]
+alwaysApply: true
+---
+
+- API clients
+  - Use `front/src/api/axios.js` for base axios instance configured from `front/src/config/environment.js`.
+  - Feature clients (e.g., `orderAPI.js`) should:
+    - Keep a small in-memory cache with TTL (`CACHE_DURATION`).
+    - Normalize backend payloads via a pure `transformBackendOrder` function (memoize by id).
+    - Map errors to friendly Arabic messages using `ERROR_MESSAGES`.
+    - Clear caches after mutating actions.
+
+- Status mapping
+  - Maintain consistent mapping functions (`mapBackendStatusToBostaState`, `getStatusCode`) and ensure `uiStatus` is set using backend `ui_status` when provided.
+  - Update `STATUS_MAPPING` and Tab UIs if you add new statuses.
+
+- Hooks
+  - Prefer `useOptimizedOrderAPI` for batching, deduplication, and cancellation in high-traffic views.
+  - Always provide `requestId` to dedupe concurrent operations and avoid race conditions.
+  - Keep UI updates optimistic where safe; reconcile with server on success.
+
+- Logging
+  - Use the `debug` helpers and feature flags from `environment.js` to gate logs.
+
+These rules produce consistent network flows, minimal re-renders, and better perceived performance.
+
