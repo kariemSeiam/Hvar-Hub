@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import OrderManagementPage from './pages/OrderManagementPage';
+import { ServiceActionsPage } from './components/service';
+import StockManagementPage from './pages/StockManagementPage';
 import NotFoundPage from './pages/NotFoundPage';
 import DemoPage from './pages/DemoPage';
 import { Toaster, ToastBar, toast } from 'react-hot-toast';
@@ -15,6 +17,8 @@ function App() {
             <Route path="/" element={<OrderManagementPage />} />
             <Route path="/orders" element={<OrderManagementPage />} />
             <Route path="/demo" element={<DemoPage />} />
+            <Route path="/services" element={<ServiceActionsPage />} />
+            <Route path="/stock" element={<StockManagementPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </div>

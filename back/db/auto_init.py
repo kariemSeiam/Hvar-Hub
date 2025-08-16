@@ -59,6 +59,44 @@ class MaintenanceAction(Enum):
     # New action that does not change status; only updates return condition for returned orders
     SET_RETURN_CONDITION = 'set_return_condition'
 
+# ----------------------------------------------------------------------------
+# New enums for Service Actions and Inventory
+# ----------------------------------------------------------------------------
+
+class ServiceActionType(Enum):
+    PART_REPLACE = 'part_replace'           # استبدال قطعة
+    FULL_REPLACE = 'full_replace'           # استبدال كامل
+    RETURN_FROM_CUSTOMER = 'return_from_customer'  # استرجاع من العميل
+
+
+class ServiceActionStatus(Enum):
+    CREATED = 'created'                     # تم الإنشاء
+    CONFIRMED = 'confirmed'                 # تم التأكيد
+    PENDING_RECEIVE = 'pending_receive'     # في انتظار الاستلام (جاهز للفحص)
+    COMPLETED = 'completed'                 # مكتمل (تم إنجاز الإجراء)
+    FAILED = 'failed'                       # فاشل (فشل الإجراء)
+    CANCELLED = 'cancelled'                 # ملغي (تم إلغاء الإجراء)
+
+
+class ProductCategory(Enum):
+    HAND_BLENDER = 'هاند بلندر'
+    VACUUM_CLEANER = 'مكنسة'
+    FOOD_PROCESSOR = 'كبه'
+    MIXER = 'خلاط هفار'
+    ELECTRIC_OVEN = 'فرن هفار كهربائي'
+    DOUGH_MIXER = 'عجان'
+    SPICE_GRINDER = 'مطحنه توابل'
+
+
+class PartType(Enum):
+    MOTOR = 'motor'
+    COMPONENT = 'component'
+    ASSEMBLY = 'assembly'
+    PACKAGING = 'packaging'
+    HEATING_ELEMENT = 'heating_element'
+    WARRANTY = 'warranty'
+    COUPON = 'coupon'
+
 # ============================================================================
 # MODEL DEFINITIONS
 # ============================================================================
@@ -91,6 +129,9 @@ class BaseModel(db.Model):
             # Convert datetime objects to ISO format strings
             if isinstance(value, datetime):
                 result[column.name] = value.isoformat() if value else None
+            # Convert enum objects to their string values
+            elif hasattr(value, 'value'):
+                result[column.name] = value.value if value else None
             else:
                 result[column.name] = value
                 
@@ -170,6 +211,11 @@ class Order(BaseModel):
     
     # New tracking information (for returns)
     new_tracking_number = db.Column(db.String(100))
+
+    # Service Action integration
+    is_service_action_order = db.Column(db.Boolean, default=False)
+    service_action_id = db.Column(db.Integer, db.ForeignKey('service_actions.id'), nullable=True)
+    service_action_type = db.Column(SQLEnum(ServiceActionType), nullable=True)
     
     # Relationships
     maintenance_history = db.relationship('MaintenanceHistory', backref='order', lazy='dynamic', cascade='all, delete-orphan')
@@ -260,6 +306,216 @@ class Order(BaseModel):
         
         result['total'] = sum(result.values())
         return result
+
+
+class Product(BaseModel):
+    """Product catalog based on real data"""
+    __tablename__ = 'products'
+
+    sku = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    name_ar = db.Column(db.String(255), nullable=False)
+    category = db.Column(SQLEnum(ProductCategory), nullable=False)
+
+    # Inventory
+    alert_quantity = db.Column(db.Integer, default=0)
+    current_stock = db.Column(db.Integer, default=0)
+    warranty_period_months = db.Column(db.Integer, default=12)
+
+    # Status
+    is_active = db.Column(db.Boolean, default=True)
+
+    # Metadata
+    description = db.Column(db.Text)
+    specifications = db.Column(db.JSON)
+    image_url = db.Column(db.String(500))
+
+    # Relationships
+    parts = db.relationship('Part', backref='product', lazy='dynamic')
+
+    def to_dict(self):
+        """Convert product instance to dictionary with proper enum handling"""
+        try:
+            base_dict = super().to_dict()
+            
+            # Ensure specifications is properly handled
+            if self.specifications:
+                base_dict['specifications'] = self.specifications
+            
+            return base_dict
+        except Exception as e:
+            print(f"Error in Product.to_dict() for product {self.id}: {str(e)}")
+            return {
+                'id': self.id,
+                'sku': self.sku,
+                'name_ar': self.name_ar,
+                'category': self.category.value if self.category else None,
+                'error': f'Serialization error: {str(e)}'
+            }
+
+
+class Part(BaseModel):
+    """Part catalog based on real data"""
+    __tablename__ = 'parts'
+
+    part_sku = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    part_name = db.Column(db.String(255), nullable=False)
+    part_type = db.Column(SQLEnum(PartType), nullable=False)
+
+    # Product association
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False, index=True)
+
+    # Inventory
+    current_stock = db.Column(db.Integer, default=0)
+    min_stock_level = db.Column(db.Integer, default=5)
+    max_stock_level = db.Column(db.Integer, default=100)
+
+    # Real data
+    serial_number = db.Column(db.String(100))
+    is_active = db.Column(db.Boolean, default=True)
+
+    # Pricing
+    cost_price = db.Column(db.Numeric(10, 2))
+    selling_price = db.Column(db.Numeric(10, 2))
+
+    def to_dict(self):
+        """Convert part instance to dictionary with proper enum handling"""
+        try:
+            base_dict = super().to_dict()
+            
+            # Convert numeric fields to float for JSON serialization
+            if self.cost_price is not None:
+                base_dict['cost_price'] = float(self.cost_price)
+            if self.selling_price is not None:
+                base_dict['selling_price'] = float(self.selling_price)
+            
+            return base_dict
+        except Exception as e:
+            print(f"Error in Part.to_dict() for part {self.id}: {str(e)}")
+            return {
+                'id': self.id,
+                'part_sku': self.part_sku,
+                'part_name': self.part_name,
+                'part_type': self.part_type.value if self.part_type else None,
+                'product_id': self.product_id,
+                'error': f'Serialization error: {str(e)}'
+            }
+
+
+class ServiceAction(BaseModel):
+    """Service actions integrated with maintenance cycle (enhanced with Bosta data)."""
+    __tablename__ = 'service_actions'
+
+    # Core identification
+    action_type = db.Column(SQLEnum(ServiceActionType), nullable=False)
+    status = db.Column(SQLEnum(ServiceActionStatus), nullable=False, default=ServiceActionStatus.CREATED, index=True)
+
+    # Customer Information (from Bosta receiver object)
+    customer_bosta_id = db.Column(db.String(100), index=True)
+    customer_phone = db.Column(db.String(20), nullable=False, index=True)
+    customer_first_name = db.Column(db.String(100))
+    customer_last_name = db.Column(db.String(100))
+    customer_full_name = db.Column(db.String(255))
+    customer_second_phone = db.Column(db.String(20))
+
+    # Original Order Information (from Bosta order object)
+    original_bosta_id = db.Column(db.String(100), index=True)
+    original_tracking_number = db.Column(db.String(100), nullable=False, index=True)
+    original_order_type = db.Column(db.String(100))
+    original_order_type_code = db.Column(db.Integer)
+    original_order_status = db.Column(db.String(100))
+    original_order_status_code = db.Column(db.Integer)
+    original_cod_amount = db.Column(db.Numeric(10, 2))
+    original_shipment_fees = db.Column(db.Numeric(10, 2))
+    original_created_at = db.Column(db.DateTime)
+    original_updated_at = db.Column(db.DateTime)
+    original_scheduled_at = db.Column(db.DateTime)
+    original_pickup_request_id = db.Column(db.String(100))
+    original_pickup_request_type = db.Column(db.String(100))
+    original_is_confirmed_delivery = db.Column(db.Boolean, default=False)
+    original_payment_method = db.Column(db.String(50))
+    original_attempts_count = db.Column(db.Integer, default=0)
+
+    # Package Information (from Bosta specs object)
+    package_description = db.Column(db.Text)
+    package_notes = db.Column(db.Text)
+    package_items_count = db.Column(db.Integer, default=1)
+    package_type = db.Column(db.String(50))
+    package_weight = db.Column(db.Integer, default=1)
+    package_size = db.Column(db.String(50))
+
+    # Return Specifications (CRITICAL for service actions)
+    return_description = db.Column(db.Text)
+    return_items_count = db.Column(db.Integer, default=1)
+    return_package_type = db.Column(db.String(50))
+
+    # Address Information (pickup and dropoff)
+    pickup_country = db.Column(db.String(100))
+    pickup_country_code = db.Column(db.String(10))
+    pickup_city = db.Column(db.String(100))
+    pickup_city_ar = db.Column(db.String(100))
+    pickup_zone = db.Column(db.String(100))
+    pickup_zone_ar = db.Column(db.String(100))
+    pickup_district = db.Column(db.String(100))
+    pickup_district_ar = db.Column(db.String(100))
+    pickup_first_line = db.Column(db.Text)
+    pickup_second_line = db.Column(db.Text)
+    pickup_is_work_address = db.Column(db.Boolean, default=False)
+
+    dropoff_country = db.Column(db.String(100))
+    dropoff_country_code = db.Column(db.String(10))
+    dropoff_city = db.Column(db.String(100))
+    dropoff_city_ar = db.Column(db.String(100))
+    dropoff_zone = db.Column(db.String(100))
+    dropoff_zone_ar = db.Column(db.String(100))
+    dropoff_district = db.Column(db.String(100))
+    dropoff_district_ar = db.Column(db.String(100))
+    dropoff_first_line = db.Column(db.Text)
+    dropoff_second_line = db.Column(db.Text)
+    dropoff_building_number = db.Column(db.String(20))
+    dropoff_floor = db.Column(db.String(20))
+    dropoff_apartment = db.Column(db.String(20))
+    dropoff_location_name = db.Column(db.String(255))
+    dropoff_geo_location = db.Column(db.JSON)
+
+    # Service Action Details (our system data)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'))
+    part_id = db.Column(db.Integer, db.ForeignKey('parts.id'))
+    refund_amount = db.Column(db.Numeric(10, 2))
+
+    # New tracking for service action (THIS IS THE KEY TO UNIFIED CYCLE)
+    new_tracking_number = db.Column(db.String(100), unique=True, index=True)
+    new_tracking_created_at = db.Column(db.DateTime)
+
+    # Integration with maintenance cycle
+    maintenance_order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)
+    is_integrated_with_maintenance = db.Column(db.Boolean, default=False)
+
+    # Timestamps for workflow
+    confirmed_at = db.Column(db.DateTime)
+    pending_receive_at = db.Column(db.DateTime)
+    integrated_at = db.Column(db.DateTime)
+
+    # Notes and metadata
+    notes = db.Column(db.Text)
+    action_data = db.Column(db.JSON)
+
+    # Relationships
+    product = db.relationship('Product', backref='service_actions')
+    part = db.relationship('Part', backref='service_actions')
+    maintenance_order = db.relationship('Order', backref='linked_service_actions', foreign_keys=[maintenance_order_id])
+
+
+class ServiceActionHistory(BaseModel):
+    """Audit history for ServiceAction lifecycle."""
+    __tablename__ = 'service_action_history'
+
+    service_action_id = db.Column(db.Integer, db.ForeignKey('service_actions.id'), nullable=False, index=True)
+    action = db.Column(db.String(100), nullable=False)
+    from_status = db.Column(SQLEnum(ServiceActionStatus))
+    to_status = db.Column(SQLEnum(ServiceActionStatus))
+    notes = db.Column(db.Text)
+    action_data = db.Column(db.JSON)
+    user_name = db.Column(db.String(100), default='فني الصيانة')
 
 class MaintenanceHistory(BaseModel):
     """Maintenance history tracking for orders"""
@@ -516,7 +772,14 @@ def create_indexes():
             "CREATE INDEX IF NOT EXISTS idx_maintenance_history_order_id ON maintenance_history(order_id)",
             "CREATE INDEX IF NOT EXISTS idx_maintenance_history_action ON maintenance_history(action)",
             "CREATE INDEX IF NOT EXISTS idx_maintenance_history_timestamp ON maintenance_history(timestamp)",
-            "CREATE INDEX IF NOT EXISTS idx_proof_images_order_id ON proof_images(order_id)"
+            "CREATE INDEX IF NOT EXISTS idx_proof_images_order_id ON proof_images(order_id)",
+            # Inventory and service actions
+            "CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku)",
+            "CREATE INDEX IF NOT EXISTS idx_parts_part_sku ON parts(part_sku)",
+            "CREATE INDEX IF NOT EXISTS idx_parts_product_id ON parts(product_id)",
+            "CREATE INDEX IF NOT EXISTS idx_service_actions_status ON service_actions(status)",
+            "CREATE INDEX IF NOT EXISTS idx_service_actions_phone ON service_actions(customer_phone)",
+            "CREATE INDEX IF NOT EXISTS idx_service_actions_original_tracking ON service_actions(original_tracking_number)"
         ]
         
         for index_sql in indexes:
@@ -596,6 +859,16 @@ __all__ = [
     'OrderStatus',
     'ReturnCondition',
     'MaintenanceAction',
+    'ServiceActionType',
+    'ServiceActionStatus',
+    'ProductCategory',
+    'PartType',
+    'Product',
+    'Part',
+    'ServiceAction',
+    'ServiceActionHistory',
     'ACTION_STATUS_MAP',
-    'auto_initialize_database'
+    'auto_initialize_database',
+    'create_indexes',
+    'configure_utf8_database'
 ] 

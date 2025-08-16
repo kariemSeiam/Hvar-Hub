@@ -18,7 +18,7 @@ const OrderCard = ({
   const [showImages, setShowImages] = useState(false);
   // Get saved action data for input fields
   const getSavedActionData = () => {
-    const latestAction = order.maintenanceHistory?.find(entry => 
+    const latestAction = order.maintenanceHistory?.find(entry =>
       (entry.action === 'refund_or_replace' || entry.action === 'confirm_send' || entry.action === 'send_order') && entry.actionData
     );
     return latestAction?.actionData || {};
@@ -40,28 +40,28 @@ const OrderCard = ({
 
   // Check if confirm_send action is completed
   const isConfirmSendCompleted = () => {
-    return order.maintenanceHistory?.some(entry => 
+    return order.maintenanceHistory?.some(entry =>
       entry.action === 'confirm_send' && entry.actionData
     );
   };
 
   // Check if send_order action is completed
   const isSendOrderCompleted = () => {
-    return order.maintenanceHistory?.some(entry => 
+    return order.maintenanceHistory?.some(entry =>
       entry.action === 'send_order' && entry.actionData
     );
   };
 
   // Check if confirm_refund_replace action is completed
   const isConfirmRefundReplaceCompleted = () => {
-    return order.maintenanceHistory?.some(entry => 
+    return order.maintenanceHistory?.some(entry =>
       entry.action === 'confirm_refund_replace' && entry.actionData
     );
   };
 
   // Check if refund/replace action is completed
   const isRefundReplaceCompleted = () => {
-    return order.maintenanceHistory?.some(entry => 
+    return order.maintenanceHistory?.some(entry =>
       entry.action === 'refund_or_replace' && entry.actionData
     );
   };
@@ -69,25 +69,25 @@ const OrderCard = ({
   // Get the latest action data for display
   const getLatestActionData = () => {
     if (!isReadOnlyMode()) return null;
-    
+
     // For sending status, get the latest action that moved the order to sending
-    const latestAction = order.maintenanceHistory?.find(entry => 
+    const latestAction = order.maintenanceHistory?.find(entry =>
       (entry.action === 'refund_or_replace' || entry.action === 'confirm_send' || entry.action === 'send_order' || entry.action === 'confirm_refund_replace') && entry.action_data
     );
-    
+
     return latestAction?.action_data || {};
   };
 
   // Get stored action data for display
   const getStoredActionData = () => {
-    const latestAction = order.maintenanceHistory?.find(entry => 
+    const latestAction = order.maintenanceHistory?.find(entry =>
       (entry.action === 'refund_or_replace' || entry.action === 'send_order' || entry.action === 'confirm_send') && entry.action_data
     );
-    
+
     console.log('Order maintenance history:', order.maintenanceHistory);
     console.log('Latest action found:', latestAction);
     console.log('Action data:', latestAction?.action_data);
-    
+
     return latestAction?.action_data || {};
   };
 
@@ -365,10 +365,10 @@ const OrderCard = ({
     // If sending - this is now the final state, show appropriate badge
     if (order.status === 'sending') {
       // Check if this was a refund/replace order
-      const hasRefundReplaceAction = order.maintenanceHistory?.some(entry => 
+      const hasRefundReplaceAction = order.maintenanceHistory?.some(entry =>
         entry.action === 'refund_or_replace' && entry.actionData
       );
-      
+
       if (hasRefundReplaceAction) {
         return {
           label: 'تم استرداد او ارسال',
@@ -376,12 +376,12 @@ const OrderCard = ({
           icon: 'success'
         };
       }
-      
+
       // Check if this was a normal completed order
-      const hasConfirmSendAction = order.maintenanceHistory?.some(entry => 
+      const hasConfirmSendAction = order.maintenanceHistory?.some(entry =>
         entry.action === 'confirm_send' && entry.actionData
       );
-      
+
       if (hasConfirmSendAction) {
         return {
           label: 'تم الإرسال',
@@ -389,7 +389,7 @@ const OrderCard = ({
           icon: 'success'
         };
       }
-      
+
       // Default sending badge
       return {
         label: 'تم الإرسال',
@@ -499,7 +499,7 @@ const OrderCard = ({
         // Check if this is a refund/replace order (moved from failed)
         const hasRefundReplaceAction = order.maintenanceHistory?.some(h => h.action === 'refund_or_replace');
         const isRefundReplaceOrder = hasRefundReplaceAction && !order.maintenanceHistory?.some(h => h.action === 'send_order');
-        
+
         if (isRefundReplaceOrder) {
           // Show send order action with inputs for refund/replace orders
           baseActions.push({
@@ -593,7 +593,7 @@ const OrderCard = ({
       if (!item.date) {
         console.warn('Timeline item missing date:', item);
       }
-      
+
       return {
         title: getArabicStatusTitle(item.value),
         description: `حالة الشحن: ${getArabicStatusTitle(item.value)}`,
@@ -609,7 +609,7 @@ const OrderCard = ({
       if (!item.timestamp) {
         console.warn('Maintenance item missing timestamp:', item);
       }
-      
+
       return {
         title: getArabicActionTitle(item.action, item.action_data || item.actionData),
         description: item.notes,
@@ -999,9 +999,8 @@ const OrderCard = ({
       <div>
         <div
           ref={contentRef}
-          className={`whitespace-pre-wrap leading-relaxed text-xs text-gray-600 font-cairo overflow-auto scrollbar-hide pe-1 ${
-            expanded ? expandedMax : collapsedMax
-          }`}
+          className={`whitespace-pre-wrap leading-relaxed text-xs text-gray-600 font-cairo overflow-auto scrollbar-hide pe-1 ${expanded ? expandedMax : collapsedMax
+            }`}
         >
           {displayText}
         </div>
@@ -1024,26 +1023,24 @@ const OrderCard = ({
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border-2 border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-500 transition-all duration-300 ${className}`} {...props}>
       {/* Compact Header with State Badge */}
-              <div className="p-3 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 space-x-reverse">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${
-                bostaData.isReturn ? 'bg-gradient-to-br from-orange-100 to-orange-200' : 'bg-gradient-to-br from-blue-100 to-blue-200'
+      <div className="p-3 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2 space-x-reverse">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${bostaData.isReturn ? 'bg-gradient-to-br from-orange-100 to-orange-200' : 'bg-gradient-to-br from-blue-100 to-blue-200'
               }`}>
-                <svg className={`w-5 h-5 ${
-                  bostaData.isReturn ? 'text-orange-700' : 'text-blue-700'
+              <svg className={`w-5 h-5 ${bostaData.isReturn ? 'text-orange-700' : 'text-blue-700'
                 }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {bostaData.isReturn ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                  )}
-                </svg>
-              </div>
+                {bostaData.isReturn ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                )}
+              </svg>
+            </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2 space-x-reverse">
                 <h3 className="text-sm font-cairo font-bold text-gray-900 dark:text-gray-100">
-                  <a 
+                  <a
                     href={`https://business.bosta.co/orders/${bostaData.trackingNumber}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -1054,12 +1051,11 @@ const OrderCard = ({
                   </a>
                 </h3>
                 {/* Order Type Badge - align with small badge sizing */}
-                <span className={`px-2 py-1 text-xs font-cairo font-semibold rounded-full shadow-sm border ${
-                  getOrderTypeBadgeVariant(bostaData.orderType) === 'orange' ? 'bg-orange-200 text-orange-800 border-orange-300' :
+                <span className={`px-2 py-1 text-xs font-cairo font-semibold rounded-full shadow-sm border ${getOrderTypeBadgeVariant(bostaData.orderType) === 'orange' ? 'bg-orange-200 text-orange-800 border-orange-300' :
                   getOrderTypeBadgeVariant(bostaData.orderType) === 'red' ? 'bg-red-200 text-red-800 border-red-300' :
-                  getOrderTypeBadgeVariant(bostaData.orderType) === 'purple' ? 'bg-purple-200 text-purple-800 border-purple-300' :
-                  'bg-blue-200 text-blue-800 border-blue-300'
-                }`}>
+                    getOrderTypeBadgeVariant(bostaData.orderType) === 'purple' ? 'bg-purple-200 text-purple-800 border-purple-300' :
+                      'bg-blue-200 text-blue-800 border-blue-300'
+                  }`}>
                   {getOrderTypeLabel(bostaData.orderType)}
                 </span>
               </div>
@@ -1070,42 +1066,67 @@ const OrderCard = ({
                 {/* Show client phone for all orders */}
                 {bostaData.receiver.phone && (
                   <div className="relative group flex items-center space-x-1 space-x-reverse">
-                                         <span
-                       className="text-xs font-cairo font-medium text-green-700 hover:text-green-800 hover:underline cursor-pointer transition-colors"
-                       title="نسخ رقم العميل"
-                       onClick={() => copyToClipboard(formatEgyptianPhone(bostaData.receiver.phone))}
-                       tabIndex={0}
-                       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyToClipboard(formatEgyptianPhone(bostaData.receiver.phone)); } }}
-                     >
-                       {formatEgyptianPhone(bostaData.receiver.phone)}
-                     </span>
+                    <span
+                      className="text-xs font-cairo font-medium text-green-700 hover:text-green-800 hover:underline cursor-pointer transition-colors"
+                      title="نسخ رقم العميل"
+                      onClick={() => copyToClipboard(formatEgyptianPhone(bostaData.receiver.phone))}
+                      tabIndex={0}
+                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyToClipboard(formatEgyptianPhone(bostaData.receiver.phone)); } }}
+                    >
+                      {formatEgyptianPhone(bostaData.receiver.phone)}
+                    </span>
                     {/* Tooltip for second phone */}
                     {bostaData.receiver.secondPhone && (
                       <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200 pointer-events-none z-20 min-w-max">
-                                                 <div className="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-lg pointer-events-auto">
-                           <span 
-                             className="cursor-pointer hover:text-green-300 transition-colors"
-                             onClick={e => { e.stopPropagation(); copyToClipboard(formatEgyptianPhone(bostaData.receiver.secondPhone), 'تم نسخ الرقم الثاني!'); }}
-                             title="نسخ الرقم الثاني"
-                           >
-                             {formatEgyptianPhone(bostaData.receiver.secondPhone)}
-                           </span>
-                         </div>
+                        <div className="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-lg pointer-events-auto">
+                          <span
+                            className="cursor-pointer hover:text-green-300 transition-colors"
+                            onClick={e => { e.stopPropagation(); copyToClipboard(formatEgyptianPhone(bostaData.receiver.secondPhone), 'تم نسخ الرقم الثاني!'); }}
+                            title="نسخ الرقم الثاني"
+                          >
+                            {formatEgyptianPhone(bostaData.receiver.secondPhone)}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
                 )}
               </div>
+
+              {/* Service Action Information */}
+              {order.is_service_action_order && (
+                <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <svg className="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-xs font-semibold text-amber-800 font-cairo">
+                      إجراء خدمة متكامل
+                    </span>
+                  </div>
+                  <div className="text-xs text-amber-700 font-cairo">
+                    <span className="font-medium">النوع:</span> {
+                      order.service_action_type === 'part_replace' ? 'استبدال قطعة' :
+                        order.service_action_type === 'full_replace' ? 'استبدال كامل' :
+                          order.service_action_type === 'return_from_customer' ? 'استرجاع من العميل' :
+                            order.service_action_type
+                    }
+                    {order.service_action_id && (
+                      <span className="mr-2"> • <span className="font-medium">ID:</span> {order.service_action_id}</span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center space-x-2 space-x-reverse">
             {/* State Badge */}
             {stateBadge && (
               <div className={`px-2 py-1 rounded-full text-xs leading-tight font-cairo font-medium flex items-center gap-1 whitespace-nowrap shadow-sm border ${stateBadge.variant === 'danger' ? 'bg-red-200 text-red-900 border-red-300' :
-                  stateBadge.variant === 'info' ? 'bg-blue-200 text-blue-900 border-blue-300' :
-                    stateBadge.variant === 'secondary' ? 'bg-gray-200 text-gray-900 border-gray-300' :
-                      stateBadge.variant === 'success' ? 'bg-green-200 text-green-900 border-green-300' :
-                        'bg-yellow-200 text-yellow-900 border-yellow-300'
+                stateBadge.variant === 'info' ? 'bg-blue-200 text-blue-900 border-blue-300' :
+                  stateBadge.variant === 'secondary' ? 'bg-gray-200 text-gray-900 border-gray-300' :
+                    stateBadge.variant === 'success' ? 'bg-green-200 text-green-900 border-green-300' :
+                      'bg-yellow-200 text-yellow-900 border-yellow-300'
                 }`}>
                 {getStateIcon(stateBadge.icon)}
                 <span>{stateBadge.label}</span>
@@ -1251,12 +1272,12 @@ const OrderCard = ({
                 {bostaData.proofImages.length}
               </span>
             </div>
-            
+
             {/* Images Grid with Clickable Containers */}
             <div className="grid grid-cols-6 gap-2">
               {bostaData.proofImages.slice(0, 8).map((image, index) => (
-                <div 
-                  key={index} 
+                <div
+                  key={index}
                   className="relative group cursor-pointer"
                   onClick={() => {
                     try {
@@ -1312,7 +1333,7 @@ const OrderCard = ({
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Hover Overlay with Zoom Icon */}
                   <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-md transition-all duration-300 flex items-center justify-center">
                     <div className="bg-white bg-opacity-95 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg">
@@ -1321,14 +1342,14 @@ const OrderCard = ({
                       </svg>
                     </div>
                   </div>
-                  
+
                   {/* Image Index Badge */}
                   <div className="absolute top-1 right-1 bg-blue-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-cairo font-bold shadow-sm">
                     {index + 1}
                   </div>
                 </div>
               ))}
-              
+
               {/* Show More Indicator */}
               {bostaData.proofImages.length > 8 && (
                 <div className="relative group cursor-pointer aspect-square overflow-hidden rounded-md border border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 transition-all duration-300 flex items-center justify-center w-16 h-16">
@@ -1418,11 +1439,10 @@ const OrderCard = ({
                     value={newTrackingNumber}
                     onChange={(e) => setNewTrackingNumber(e.target.value)}
                     placeholder="أدخل رقم التتبع الجديد"
-                    className={`w-full px-3 py-2 border-2 rounded-lg font-cairo text-xs text-right shadow-sm ${
-                      (isConfirmSendCompleted() || isSendOrderCompleted()) 
-                        ? 'border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed' 
-                        : 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-400'
-                    }`}
+                    className={`w-full px-3 py-2 border-2 rounded-lg font-cairo text-xs text-right shadow-sm ${(isConfirmSendCompleted() || isSendOrderCompleted())
+                      ? 'border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed'
+                      : 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-400'
+                      }`}
                     dir="rtl"
                     readOnly={isConfirmSendCompleted() || isSendOrderCompleted()}
                     disabled={isConfirmSendCompleted() || isSendOrderCompleted()}
@@ -1437,11 +1457,10 @@ const OrderCard = ({
                     value={newCod}
                     onChange={(e) => setNewCod(e.target.value)}
                     placeholder="أدخل المبلغ"
-                    className={`w-full px-3 py-2 border-2 rounded-lg font-cairo text-xs text-right shadow-sm ${
-                      (isConfirmSendCompleted() || isSendOrderCompleted()) 
-                        ? 'border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed' 
-                        : 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-400'
-                    }`}
+                    className={`w-full px-3 py-2 border-2 rounded-lg font-cairo text-xs text-right shadow-sm ${(isConfirmSendCompleted() || isSendOrderCompleted())
+                      ? 'border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed'
+                      : 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-400'
+                      }`}
                     dir="rtl"
                     readOnly={isConfirmSendCompleted() || isSendOrderCompleted()}
                     disabled={isConfirmSendCompleted() || isSendOrderCompleted()}
@@ -1523,11 +1542,11 @@ const OrderCard = ({
                   </div>
                   <span className="text-xs font-cairo font-semibold text-green-700">تم الإرسال - بيانات الإجراء</span>
                 </div>
-                
+
                 {(() => {
                   const actionData = getLatestActionData();
                   if (!actionData) return null;
-                  
+
                   return (
                     <div className="space-y-2">
                       {actionData.refundAmount && (
@@ -1536,14 +1555,14 @@ const OrderCard = ({
                           <span className="text-xs font-cairo font-semibold text-green-700">{actionData.refundAmount} ج.م</span>
                         </div>
                       )}
-                      
+
                       {actionData.replacementTrackingNumber && (
                         <div className="flex items-center justify-between bg-white rounded p-2 border border-green-200">
                           <span className="text-xs font-cairo text-gray-600">رقم تتبع المنتج البديل:</span>
                           <span className="text-xs font-cairo font-semibold text-blue-700">{actionData.replacementTrackingNumber}</span>
                         </div>
                       )}
-                      
+
                       {actionData.notes && (
                         <div className="bg-white rounded p-2 border border-green-200">
                           <span className="text-xs font-cairo text-gray-600 block mb-1">ملاحظات:</span>
@@ -1569,11 +1588,11 @@ const OrderCard = ({
                   </div>
                   <span className="text-xs font-cairo font-semibold text-blue-700">تم الإرسال - بيانات الإجراء</span>
                 </div>
-                
+
                 {(() => {
                   const actionData = getLatestActionData();
                   if (!actionData) return null;
-                  
+
                   return (
                     <div className="space-y-2">
                       {actionData.new_tracking_number && (
@@ -1582,14 +1601,14 @@ const OrderCard = ({
                           <span className="text-xs font-cairo font-semibold text-blue-700">{actionData.new_tracking_number}</span>
                         </div>
                       )}
-                      
+
                       {actionData.new_cod && (
                         <div className="flex items-center justify-between bg-white rounded p-2 border border-blue-200">
                           <span className="text-xs font-cairo text-gray-600">المبلغ المستحق:</span>
                           <span className="text-xs font-cairo font-semibold text-green-700">{actionData.new_cod} ج.م</span>
                         </div>
                       )}
-                      
+
                       {actionData.notes && (
                         <div className="bg-white rounded p-2 border border-blue-200">
                           <span className="text-xs font-cairo text-gray-600 block mb-1">ملاحظات:</span>
@@ -1615,11 +1634,11 @@ const OrderCard = ({
                   </div>
                   <span className="text-xs font-cairo font-semibold text-purple-700">تم الإرسال للعميل - بيانات الإجراء</span>
                 </div>
-                
+
                 {(() => {
                   const actionData = getLatestActionData();
                   if (!actionData) return null;
-                  
+
                   return (
                     <div className="space-y-2">
                       {actionData.new_tracking_number && (
@@ -1628,14 +1647,14 @@ const OrderCard = ({
                           <span className="text-xs font-cairo font-semibold text-purple-700">{actionData.new_tracking_number}</span>
                         </div>
                       )}
-                      
+
                       {actionData.new_cod && (
                         <div className="flex items-center justify-between bg-white rounded p-2 border border-purple-200">
                           <span className="text-xs font-cairo text-gray-600">المبلغ المستحق:</span>
                           <span className="text-xs font-cairo font-semibold text-green-700">{actionData.new_cod} ج.م</span>
                         </div>
                       )}
-                      
+
                       {actionData.notes && (
                         <div className="bg-white rounded p-2 border border-purple-200">
                           <span className="text-xs font-cairo text-gray-600 block mb-1">ملاحظات:</span>
@@ -1661,11 +1680,11 @@ const OrderCard = ({
                   </div>
                   <span className="text-xs font-cairo font-semibold text-orange-700">تم الاسترداد أو الإرسال - بيانات الإجراء</span>
                 </div>
-                
+
                 {(() => {
                   const actionData = getLatestActionData();
                   if (!actionData) return null;
-                  
+
                   return (
                     <div className="space-y-2">
                       {actionData.refundAmount && (
@@ -1674,28 +1693,28 @@ const OrderCard = ({
                           <span className="text-xs font-cairo font-semibold text-orange-700">{actionData.refundAmount} ج.م</span>
                         </div>
                       )}
-                      
+
                       {actionData.replacementTrackingNumber && (
                         <div className="flex items-center justify-between bg-white rounded p-2 border border-orange-200">
                           <span className="text-xs font-cairo text-gray-600">رقم تتبع المنتج البديل:</span>
                           <span className="text-xs font-cairo font-semibold text-blue-700">{actionData.replacementTrackingNumber}</span>
                         </div>
                       )}
-                      
+
                       {actionData.new_tracking_number && (
                         <div className="flex items-center justify-between bg-white rounded p-2 border border-orange-200">
                           <span className="text-xs font-cairo text-gray-600">رقم التتبع الجديد:</span>
                           <span className="text-xs font-cairo font-semibold text-blue-700">{actionData.new_tracking_number}</span>
                         </div>
                       )}
-                      
+
                       {actionData.new_cod && (
                         <div className="flex items-center justify-between bg-white rounded p-2 border border-orange-200">
                           <span className="text-xs font-cairo text-gray-600">المبلغ المستحق:</span>
                           <span className="text-xs font-cairo font-semibold text-green-700">{actionData.new_cod} ج.م</span>
                         </div>
                       )}
-                      
+
                       {actionData.notes && (
                         <div className="bg-white rounded p-2 border border-orange-200">
                           <span className="text-xs font-cairo text-gray-600 block mb-1">ملاحظات:</span>
@@ -1721,11 +1740,11 @@ const OrderCard = ({
                   </div>
                   <span className="text-xs font-cairo font-semibold text-brand-blue-700">بيانات الإرسال</span>
                 </div>
-                
+
                 {(() => {
                   const actionData = getStoredActionData();
                   if (!actionData || (!actionData.new_tracking_number && !actionData.new_cod && !actionData.notes)) return null;
-                  
+
                   return (
                     <div className="space-y-2">
                       {actionData.new_tracking_number && (
@@ -1734,14 +1753,14 @@ const OrderCard = ({
                           <span className="text-xs font-cairo font-semibold text-blue-700">{actionData.new_tracking_number}</span>
                         </div>
                       )}
-                      
+
                       {actionData.new_cod && (
                         <div className="flex items-center justify-between bg-white rounded p-2 border border-blue-200">
                           <span className="text-xs font-cairo text-gray-600">المبلغ المستحق:</span>
                           <span className="text-xs font-cairo font-semibold text-green-700">{actionData.new_cod} ج.م</span>
                         </div>
                       )}
-                      
+
                       {actionData.notes && (
                         <div className="bg-white rounded p-2 border border-blue-200">
                           <span className="text-xs font-cairo text-gray-600 block mb-1">ملاحظات:</span>
@@ -1762,11 +1781,10 @@ const OrderCard = ({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="ملاحظات (اختيارية)..."
               rows={2}
-              className={`w-full px-2 py-1 border rounded-md font-cairo text-xs text-right resize-none transition-all duration-200 min-h-[3rem] ${
-                isReadOnlyMode() 
-                  ? 'border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed' 
-                  : 'border-gray-300 focus:ring-1 focus:ring-blue-500 focus:border-transparent'
-              }`}
+              className={`w-full px-2 py-1 border rounded-md font-cairo text-xs text-right resize-none transition-all duration-200 min-h-[3rem] ${isReadOnlyMode()
+                ? 'border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed'
+                : 'border-gray-300 focus:ring-1 focus:ring-blue-500 focus:border-transparent'
+                }`}
               dir="rtl"
               readOnly={isReadOnlyMode()}
               disabled={isReadOnlyMode()}
@@ -1906,8 +1924,8 @@ const OrderCard = ({
 
               <div className="grid grid-cols-6 gap-2">
                 {bostaData.proofImages.slice(0, 12).map((image, index) => (
-                  <div 
-                    key={index} 
+                  <div
+                    key={index}
                     className="relative group cursor-pointer"
                     onClick={() => {
                       try {
@@ -1984,13 +2002,13 @@ const OrderCard = ({
                 {order.maintenanceHistory.map((entry, index) => (
                   <div key={index} className="flex items-start space-x-2 space-x-reverse">
                     <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${entry.action === 'received' ? 'bg-blue-500' :
-                        entry.action === 'start_maintenance' ? 'bg-green-500' :
-                          entry.action === 'fail_maintenance' ? 'bg-red-500' :
-                            entry.action === 'reschedule' ? 'bg-yellow-500' :
-                              entry.action === 'complete_maintenance' ? 'bg-green-600' :
-                                entry.action === 'send_order' ? 'bg-purple-500' :
-                                  entry.action === 'return_order' ? 'bg-gray-500' :
-                                    'bg-yellow-500'
+                      entry.action === 'start_maintenance' ? 'bg-green-500' :
+                        entry.action === 'fail_maintenance' ? 'bg-red-500' :
+                          entry.action === 'reschedule' ? 'bg-yellow-500' :
+                            entry.action === 'complete_maintenance' ? 'bg-green-600' :
+                              entry.action === 'send_order' ? 'bg-purple-500' :
+                                entry.action === 'return_order' ? 'bg-gray-500' :
+                                  'bg-yellow-500'
                       }`}></div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">

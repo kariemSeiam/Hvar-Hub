@@ -24,7 +24,11 @@ def init_db(app):
     migrate.init_app(app, db)
 
     # Import models from auto_init to ensure they are registered with SQLAlchemy
-    from db.auto_init import Order, MaintenanceHistory, ProofImage, BaseModel
+    from db.auto_init import (
+        Order, MaintenanceHistory, ProofImage, BaseModel,
+        Product, Part, ServiceAction, ServiceActionHistory,
+        create_indexes, configure_utf8_database
+    )
 
     # Auto-initialize database if needed
     with app.app_context():
@@ -34,24 +38,34 @@ def init_db(app):
             if has_orders:
                 print("✅ Database tables already exist")
             else:
-                raise RuntimeError('Orders table missing')
+                print("🔄 Auto-initializing database (orders table missing)...")
+                from db.auto_init import auto_initialize_database
+                auto_initialize_database()
         except Exception:
             print("🔄 Auto-initializing database (tables not found or engine cold start)...")
             from db.auto_init import auto_initialize_database
             auto_initialize_database()
 
-            # Create tables idempotently (covers SQLite and fresh MySQL schemas)
-            try:
-                db.create_all()
-                print("✅ Tables created successfully")
+        # Always attempt to create any missing tables for newly added models
+        try:
+            db.create_all()
+            print("✅ Ensured tables are created (idempotent)")
+        except Exception as e:
+            print(f"⚠️  Warning creating tables: {str(e)}")
+
+        # Configure UTF-8 on MySQL and ensure indexes exist
+        try:
+            if db.engine.dialect.name == 'mysql':
                 try:
-                    # Create helpful indexes as a final step
-                    from db.auto_init import create_indexes
-                    create_indexes()
+                    configure_utf8_database()
                 except Exception as e:
-                    print(f"ℹ️  Skipping index creation: {str(e)}")
+                    print(f"ℹ️  UTF-8 configuration skipped: {str(e)}")
+            try:
+                create_indexes()
             except Exception as e:
-                print(f"⚠️  Warning creating tables: {str(e)}")
+                print(f"ℹ️  Skipping index creation: {str(e)}")
+        except Exception as e:
+            print(f"ℹ️  Post-init configuration skipped: {str(e)}")
 
         # Ensure new columns exist without requiring full migrations (safe/no-op if present)
         try:
@@ -67,6 +81,37 @@ def init_db(app):
                             print("✅ Added missing column: orders.return_condition")
                     except Exception as e:
                         print(f"ℹ️  Skipping add return_condition column (may already exist or not supported): {str(e)}")
+                # Additional service-action integration columns
+                if 'is_service_action_order' not in columns:
+                    try:
+                        with db.engine.connect() as connection:
+                            if db.engine.dialect.name == 'mysql':
+                                connection.execute(text("ALTER TABLE orders ADD COLUMN is_service_action_order TINYINT(1) DEFAULT 0"))
+                            else:
+                                connection.execute(text("ALTER TABLE orders ADD COLUMN is_service_action_order BOOLEAN DEFAULT 0"))
+                            connection.commit()
+                            print("✅ Added missing column: orders.is_service_action_order")
+                    except Exception as e:
+                        print(f"ℹ️  Skipping add is_service_action_order (may already exist): {str(e)}")
+                if 'service_action_id' not in columns:
+                    try:
+                        with db.engine.connect() as connection:
+                            connection.execute(text("ALTER TABLE orders ADD COLUMN service_action_id INTEGER"))
+                            connection.commit()
+                            print("✅ Added missing column: orders.service_action_id")
+                    except Exception as e:
+                        print(f"ℹ️  Skipping add service_action_id (may already exist): {str(e)}")
+                if 'service_action_type' not in columns:
+                    try:
+                        with db.engine.connect() as connection:
+                            if db.engine.dialect.name == 'mysql':
+                                connection.execute(text("ALTER TABLE orders ADD COLUMN service_action_type VARCHAR(50)"))
+                            else:
+                                connection.execute(text("ALTER TABLE orders ADD COLUMN service_action_type VARCHAR(50)"))
+                            connection.commit()
+                            print("✅ Added missing column: orders.service_action_type")
+                    except Exception as e:
+                        print(f"ℹ️  Skipping add service_action_type (may already exist): {str(e)}")
         except Exception as e:
             print(f"ℹ️  Schema check skipped due to error: {str(e)}")
 

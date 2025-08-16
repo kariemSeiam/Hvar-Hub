@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect, Suspense, useMemo } fr
 import { toast } from 'react-hot-toast';
 // Lazy-load heavy components to reduce initial bundle size
 const OrderCard = React.lazy(() => import('../components/common/OrderCard'));
+const PendingServiceActionsSection = React.lazy(() => import('../components/maintenance/PendingServiceActionsSection'));
 import { scanSuccessFeedback, scanErrorFeedback, hapticFeedback } from '../utils/feedback';
 import {
   getDeviceInfo,
@@ -33,7 +34,7 @@ const OrderManagementPage = () => {
   const [recentScans, setRecentScans] = useState([]);
   const [scannerBuffer, setScannerBuffer] = useState('');
   const [lastScanTime, setLastScanTime] = useState(0);
-  
+
   const [highlightedOrderId, setHighlightedOrderId] = useState(null);
   const [lastScannedCode, setLastScannedCode] = useState('');
   const [lastScanTimestamp, setLastScanTimestamp] = useState(0);
@@ -124,23 +125,23 @@ const OrderManagementPage = () => {
         setOrders(prev => {
           // Get current orders for this status
           const currentOrders = prev[stateKey] || [];
-          
+
           // Find newly scanned orders (orders with scannedAt timestamp from today)
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          const newlyScannedOrders = currentOrders.filter(order => 
+          const newlyScannedOrders = currentOrders.filter(order =>
             order.scannedAt && new Date(order.scannedAt) >= today
           );
-          
+
           // Filter out newly scanned orders from backend orders to avoid duplicates
           const backendOrderIds = new Set(transformedOrders.map(order => order._id));
-          const filteredBackendOrders = transformedOrders.filter(order => 
+          const filteredBackendOrders = transformedOrders.filter(order =>
             !newlyScannedOrders.some(scannedOrder => scannedOrder._id === order._id)
           );
-          
+
           // Combine newly scanned orders at the top with backend orders
           const combinedOrders = [...newlyScannedOrders, ...filteredBackendOrders];
-          
+
           return {
             ...prev,
             [stateKey]: combinedOrders
@@ -158,7 +159,7 @@ const OrderManagementPage = () => {
               valid: validRes.success ? (validRes.data?.pagination?.total || validRes.data?.total || 0) : 0,
               damaged: damagedRes.success ? (damagedRes.data?.pagination?.total || damagedRes.data?.total || 0) : 0
             });
-          } catch (_) {}
+          } catch (_) { }
         }
       } else {
         console.warn(`Failed to load ${status} orders:`, result.message);
@@ -216,7 +217,7 @@ const OrderManagementPage = () => {
           valid: validRes.success ? (validRes.data?.pagination?.total || validRes.data?.total || 0) : 0,
           damaged: damagedRes.success ? (damagedRes.data?.pagination?.total || damagedRes.data?.total || 0) : 0
         });
-      } catch (_) {}
+      } catch (_) { }
     };
     if (activeTab === 'returns') {
       refreshReturnsCounters();
@@ -474,13 +475,13 @@ const OrderManagementPage = () => {
           // Load orders for the target tab and add the existing order to the top
           await loadOrdersByStatus(existingOrder.status);
         }
-        
+
         // Add the existing order to the top of the list if not already present
         setOrders(prev => {
           const newState = { ...prev };
           const stateKey = mapBackendStatusToTabId(existingOrder.status);
           const existingIndex = newState[stateKey]?.findIndex(order => order._id === existingOrder._id);
-          
+
           if (existingIndex === -1) {
             // Order not in current state, add it to the top
             newState[stateKey] = [existingOrder, ...(newState[stateKey] || [])];
@@ -490,7 +491,7 @@ const OrderManagementPage = () => {
             const [movedOrder] = orderList.splice(existingIndex, 1);
             newState[stateKey] = [movedOrder, ...orderList];
           }
-          
+
           return newState;
         });
 
@@ -566,10 +567,10 @@ const OrderManagementPage = () => {
           setOrders(prev => {
             const newState = { ...prev };
             const stateKey = statusMap[orderData.status] || 'received';
-            
+
             // Remove existing order if it exists to avoid duplicates
             const filteredOrders = newState[stateKey]?.filter(order => order._id !== orderData._id) || [];
-            
+
             // Add new order at the top
             newState[stateKey] = [orderData, ...filteredOrders];
             return newState;
@@ -672,10 +673,10 @@ const OrderManagementPage = () => {
         setOrders(prev => {
           const newState = { ...prev };
           const stateKey = statusMap[orderData.status] || 'received';
-          
+
           // Remove existing order if it exists to avoid duplicates
           const filteredOrders = newState[stateKey]?.filter(order => order._id !== orderData._id) || [];
-          
+
           // Add new order at the top
           newState[stateKey] = [orderData, ...filteredOrders];
           return newState;
@@ -963,13 +964,13 @@ const OrderManagementPage = () => {
       setOrders(prev => {
         const newState = { ...prev };
         const stateKey = statusMap[transformedOrder.status] || 'received';
-        
+
         console.log('Adding order to state key:', stateKey);
         console.log('Order to add:', transformedOrder);
-        
+
         // Remove existing order if it exists to avoid duplicates
         const filteredOrders = newState[stateKey]?.filter(order => order._id !== transformedOrder._id) || [];
-        
+
         // Add new order at the top
         newState[stateKey] = [transformedOrder, ...filteredOrders];
         console.log('Updated orders state:', newState);
@@ -1036,15 +1037,15 @@ const OrderManagementPage = () => {
       if (result.success) {
         // Get the updated order from the backend response
         const updatedOrder = result.data.order ? orderAPI.transformBackendOrder(result.data.order) : order;
-        
+
         // Get target status for this action
         const targetStatus = getTargetStatusForAction(actionType);
         const targetTab = targetStatus === 'inMaintenance' ? 'inMaintenance' : targetStatus;
-        
+
         // Update local state immediately
         setOrders(prev => {
           const newState = { ...prev };
-          
+
           const currentTab = activeTab;
 
           if (!targetTab) {
@@ -1065,7 +1066,7 @@ const OrderManagementPage = () => {
               newState[targetStateKey] = [updatedOrder, ...newState[targetStateKey]];
             }
           }
-          
+
           return newState;
         });
 
@@ -1085,7 +1086,7 @@ const OrderManagementPage = () => {
               damaged: damagedRes.success ? (damagedRes.data?.pagination?.total || damagedRes.data?.total || 0) : 0
             });
           }
-        } catch (_) {}
+        } catch (_) { }
 
         // Force re-render
         setForceUpdate(prev => prev + 1);
@@ -1109,7 +1110,7 @@ const OrderManagementPage = () => {
           } else {
             toast.success(`تم تحديث الطلب ${tracking || '—'} بنجاح`);
           }
-        } catch (_) {}
+        } catch (_) { }
 
         hapticFeedback('success');
       } else {
@@ -1296,7 +1297,7 @@ const OrderManagementPage = () => {
     return colors[color] || colors.blue;
   };
 
-  
+
 
   // Custom HVAR Professional Logo
   const HvarSystemIcon = () => (
@@ -1346,7 +1347,7 @@ const OrderManagementPage = () => {
             <HvarSystemIcon />
             <div>
               <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 font-cairo-play">
-               مخزن هفار
+                مخزن هفار
               </h1>
             </div>
           </div>
@@ -1423,7 +1424,7 @@ const OrderManagementPage = () => {
               </h3>
               <button
                 onClick={toggleCamera}
-                 className={`
+                className={`
                   px-2 py-1 rounded text-xs font-cairo transition-colors
                   ${scannerState.showCamera
                     ? 'bg-red-100 text-red-700 hover:bg-red-200'
@@ -1631,6 +1632,25 @@ const OrderManagementPage = () => {
 
         {/* Right Panel - Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Pending Service Actions Section */}
+          <div className="px-6 py-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200">
+            <Suspense fallback={
+              <div className="flex items-center justify-center py-3">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600"></div>
+                <span className="text-sm text-gray-600 mr-2 font-cairo">جاري تحميل إجراءات الخدمة...</span>
+              </div>
+            }>
+              <PendingServiceActionsSection
+                className="mb-0"
+                maxDisplay={3}
+                onServiceActionClick={(action) => {
+                  // Handle service action click - could navigate to services page or show details
+                  toast.success(`إجراء الخدمة: ${action.customer_name} - جاهز للتكامل`);
+                }}
+              />
+            </Suspense>
+          </div>
+
           {/* Tab Header with Count */}
           <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-6 py-3 transition-colors">
             <div className="flex items-center justify-between">
@@ -1642,35 +1662,31 @@ const OrderManagementPage = () => {
                   <div className="flex items-center space-x-2 space-x-reverse">
                     <button
                       onClick={() => setReturnsSubTab('valid')}
-                      className={`px-3 py-1 rounded-full text-xs font-cairo flex items-center gap-2 transition-colors ${
-                        returnsSubTab === 'valid'
-                          ? 'bg-green-100 text-green-800 border border-green-300 dark:bg-green-900/30 dark:text-green-200 dark:border-green-700'
-                          : 'text-green-700 hover:bg-green-50 border border-transparent dark:text-green-300 dark:hover:bg-green-900/20'
-                      }`}
+                      className={`px-3 py-1 rounded-full text-xs font-cairo flex items-center gap-2 transition-colors ${returnsSubTab === 'valid'
+                        ? 'bg-green-100 text-green-800 border border-green-300 dark:bg-green-900/30 dark:text-green-200 dark:border-green-700'
+                        : 'text-green-700 hover:bg-green-50 border border-transparent dark:text-green-300 dark:hover:bg-green-900/20'
+                        }`}
                     >
                       <span>سليمة</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold transition-colors font-cairo ${
-                        returnsSubTab === 'valid'
-                          ? 'bg-green-300 text-green-900 dark:bg-green-700 dark:text-green-100'
-                          : 'bg-green-200 text-green-900 dark:bg-green-800 dark:text-green-100'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold transition-colors font-cairo ${returnsSubTab === 'valid'
+                        ? 'bg-green-300 text-green-900 dark:bg-green-700 dark:text-green-100'
+                        : 'bg-green-200 text-green-900 dark:bg-green-800 dark:text-green-100'
+                        }`}>
                         {returnsCounts.valid}
                       </span>
                     </button>
                     <button
                       onClick={() => setReturnsSubTab('damaged')}
-                      className={`px-3 py-1 rounded-full text-xs font-cairo flex items-center gap-2 transition-colors ${
-                        returnsSubTab === 'damaged'
-                          ? 'bg-red-100 text-red-800 border border-red-300 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700'
-                          : 'text-red-700 hover:bg-red-50 border border-transparent dark:text-red-300 dark:hover:bg-red-900/20'
-                      }`}
+                      className={`px-3 py-1 rounded-full text-xs font-cairo flex items-center gap-2 transition-colors ${returnsSubTab === 'damaged'
+                        ? 'bg-red-100 text-red-800 border border-red-300 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700'
+                        : 'text-red-700 hover:bg-red-50 border border-transparent dark:text-red-300 dark:hover:bg-red-900/20'
+                        }`}
                     >
                       <span>تالفة</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold transition-colors font-cairo ${
-                        returnsSubTab === 'damaged'
-                          ? 'bg-red-300 text-red-900 dark:bg-red-700 dark:text-red-100'
-                          : 'bg-red-200 text-red-900 dark:bg-red-800 dark:text-red-100'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold transition-colors font-cairo ${returnsSubTab === 'damaged'
+                        ? 'bg-red-300 text-red-900 dark:bg-red-700 dark:text-red-100'
+                        : 'bg-red-200 text-red-900 dark:bg-red-800 dark:text-red-100'
+                        }`}>
                         {returnsCounts.damaged}
                       </span>
                     </button>
@@ -1678,7 +1694,7 @@ const OrderManagementPage = () => {
                 )}
               </div>
               <span className="text-sm text-gray-600 dark:text-gray-300 font-cairo">
-                {activeTab === 'returns' 
+                {activeTab === 'returns'
                   ? (returnsSubTab === 'valid' ? returnsCounts.valid : returnsCounts.damaged)
                   : (orders[activeTab]?.length || 0)} طلب
               </span>
@@ -1817,17 +1833,16 @@ const OrderManagementPage = () => {
                   {(activeTab === 'returns'
                     ? orders[activeTab].filter(o => (o.returnCondition || 'valid') === returnsSubTab)
                     : orders[activeTab]
-                   ).map((order) => (
+                  ).map((order) => (
                     <div key={order._id} className="break-inside-avoid mb-4">
                       <OrderCard
                         order={order}
                         onAction={handleOrderAction}
                         showTimeline={false}
-                        className={`text-sm transition-all duration-500 ease-out transform ${
-                          highlightedOrderId === order._id
-                            ? `${getHighlightClasses(activeTab)} scale-[1.02]`
-                            : ''
-                        } ${actionInProgress ? 'opacity-75' : ''}`}
+                        className={`text-sm transition-all duration-500 ease-out transform ${highlightedOrderId === order._id
+                          ? `${getHighlightClasses(activeTab)} scale-[1.02]`
+                          : ''
+                          } ${actionInProgress ? 'opacity-75' : ''}`}
                         disabled={actionInProgress}
                       />
                     </div>
@@ -1853,7 +1868,7 @@ const OrderManagementPage = () => {
         </div>
       </div>
 
-      
+
 
       {/* Refund/Replace Modal */}
       {/* Removed as per edit hint */}

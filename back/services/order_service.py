@@ -9,13 +9,21 @@ from db import db
 from utils.timezone import get_egypt_now
 from sqlalchemy import text, or_
 from sqlalchemy.exc import OperationalError
+from utils.bosta_utils import (
+    normalize_egypt_phone,
+    transform_delivery_brief as util_transform_delivery_brief,
+    transform_bosta_search_response,
+    transform_bosta_data_for_service_actions as util_transform_bosta_service_actions,
+)
+from services.unified_service import UnifiedService
 
 
 class BostaAPIService:
     """Service for Bosta API integration"""
     
     BASE_URL = 'https://app.bosta.co/api/v2'
-    TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IkxDMDk1RFUzYVd6czhnOEpqTjM3UyIsInJvbGVzIjpbIkJVU0lORVNTX0FETUlOIl0sImJ1c2luZXNzQWRtaW5JbmZvIjp7ImJ1c2luZXNzSWQiOiJaMGZLbmVrUmQ3SXllaGhjN2hMRnoiLCJidXNpbmVzc05hbWUiOiJIVkFSIn0sImNvdW50cnkiOnsiX2lkIjoiNjBlNDQ4MmM3Y2I3ZDRiYzQ4NDljNGQ1IiwibmFtZSI6IkVneXB0IiwibmFtZUFyIjoi2YXYtdixIiwiY29kZSI6IkVHIn0sImVtYWlsIjoia2FyaWVtc2VpYW1AZ21haWwuY29tIiwicGhvbmUiOiIrMjAxMDMzOTM5ODI4IiwiZ3JvdXAiOnsiX2lkIjoiWGFxbENGQSIsIm5hbWUiOiJCVVNJTkVTU19GVUxMX0FDQ0VTUyIsImNvZGUiOjExNX0sInRva2VuVHlwZSI6IkFDQ0VTUyIsInRva2VuVmVyc2lvbiI6IlYyIiwic2Vzc2lvbklkIjoiMDFLMVIxRFpSUkRaNTI1UEUyNUczWDEySkgiLCJpYXQiOjE3NTQyMjcyMTIsImV4cCI6MTc1NTQzNjgxMn0.L3E4X84JcRr898L5gvC8IhxHckhQHpdR4W3qh6gba98'
+    import os as _os
+    TOKEN = _os.environ.get('BOSTA_TOKEN')
     
     @classmethod
     def get_headers(cls):
@@ -34,6 +42,8 @@ class BostaAPIService:
         Returns: (success, data, error_message)
         """
         try:
+            if not cls.TOKEN:
+                return False, None, "إعداد BOSTA_TOKEN غير موجود على الخادم"
             url = f"{cls.BASE_URL}/deliveries/business/{tracking_number}"
             response = requests.get(url, headers=cls.get_headers(), timeout=10)
             
@@ -49,6 +59,87 @@ class BostaAPIService:
                 
         except requests.RequestException as e:
             return False, None, f"خطأ في الشبكة: {str(e)}"
+
+    @classmethod
+    def search_deliveries(cls, *, phone: Optional[str] = None, name: Optional[str] = None,
+                          tracking: Optional[str] = None, page: int = 1, limit: int = 50) -> Tuple[bool, Optional[Dict], Optional[str]]:
+        """
+        Search Bosta deliveries by phone, name, or tracking using /deliveries/search
+        Returns: (success, data, error_message)
+        """
+        try:
+            if not cls.TOKEN:
+                return False, None, "إعداد BOSTA_TOKEN غير موجود على الخادم"
+            url = f"{cls.BASE_URL}/deliveries/search"
+            payload: Dict = {
+                "limit": limit,
+                "page": page,
+                "sortBy": "-updatedAt",
+            }
+
+            if phone:
+                # Normalize phone once via shared utils
+                clean_phone = normalize_egypt_phone(phone)
+                payload["mobilePhones"] = [clean_phone]
+                print(f"📱 Searching by phone: {phone} -> {clean_phone}")
+                
+            if tracking:
+                # Bosta search can accept trackingNumbers or generic search term
+                payload["trackingNumbers"] = [tracking] if isinstance(tracking, str) else tracking
+                print(f"📦 Searching by tracking: {tracking}")
+                
+            if name and not tracking and not phone:
+                # Best-effort generic search term when name is provided
+                payload["searchTerm"] = name
+                print(f"👤 Searching by name: {name}")
+
+            print(f"🔍 Bosta API request to {url}: {json.dumps(payload, indent=2)}")
+            # Do not log tokens
+
+            response = requests.post(url, headers=cls.get_headers(), json=payload, timeout=12)
+
+            print(f"📡 Bosta API response status: {response.status_code}")
+            print(f"📡 Bosta API response headers: {dict(response.headers)}")
+
+            if response.status_code == 200:
+                data = response.json()
+                print(f"✅ Bosta API success: {json.dumps(data, indent=2)[:500]}...")
+                return True, data.get('data', data), None
+            elif response.status_code == 401:
+                print(f"❌ Bosta API authentication error: {response.text}")
+                return False, None, "خطأ في المصادقة - تحقق من إعدادات API"
+            elif response.status_code == 400:
+                print(f"❌ Bosta API bad request: {response.text}")
+                return False, None, f"طلب غير صحيح: {response.text}"
+            else:
+                print(f"❌ Bosta API error {response.status_code}: {response.text}")
+                return False, None, f"خطأ في الخادم: {response.status_code} - {response.text}"
+        except requests.RequestException as e:
+            print(f"💥 Network error in Bosta search: {str(e)}")
+            return False, None, f"خطأ في الشبكة: {str(e)}"
+        except Exception as e:
+            print(f"💥 Unexpected error in Bosta search: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False, None, f"خطأ غير متوقع: {str(e)}"
+
+    @classmethod
+    def transform_delivery_brief(cls, delivery: Dict) -> Dict:
+        """Transform a Bosta delivery object to a brief normalized dict (delegates to utils)."""
+        return util_transform_delivery_brief(delivery)
+
+    @classmethod
+    def search_deliveries_by_phone_name_tracking(
+        cls,
+        *,
+        phone: Optional[str] = None,
+        name: Optional[str] = None,
+        tracking: Optional[str] = None,
+        page: int = 1,
+        limit: int = 50,
+    ) -> Tuple[bool, Optional[Dict], Optional[str]]:
+        """Alias providing explicit naming per plan; proxies to search_deliveries."""
+        return cls.search_deliveries(phone=phone, name=name, tracking=tracking, page=page, limit=limit)
     
     @classmethod
     def transform_bosta_data(cls, bosta_data: Dict) -> Dict:
@@ -178,6 +269,19 @@ class OrderService:
         Returns: (success, order, error_message, is_existing)
         """
         try:
+            # First, detect if tracking belongs to a pending service action and integrate
+            try:
+                sa = UnifiedService.get_service_action_by_tracking(tracking_number)
+                if sa and getattr(sa, 'status', None) and str(sa.status.value) == 'pending_receive':
+                    ok, order, err = UnifiedService.integrate_with_maintenance_cycle(tracking_number, user_name)
+                    if ok:
+                        return True, order, None, False
+                    else:
+                        # If integration failed, continue to normal scan path with informative error later
+                        print(f"ServiceAction integration attempt failed: {err}")
+            except Exception as _integration_probe_err:
+                print(f"ServiceAction detection error (non-fatal): {_integration_probe_err}")
+
             # Check if order already exists
             existing_order = Order.get_by_tracking_number(tracking_number)
             if existing_order and not force_create:
@@ -597,6 +701,123 @@ class OrderService:
             
         except Exception as e:
             return []
+
+    @staticmethod
+    def search_orders_by_phone(phone: str, page: int = 1, limit: int = 50) -> List[Order]:
+        """
+        Search local orders by customer phone number
+        Returns: List of Order objects
+        """
+        try:
+            # Clean phone number for search
+            clean_phone = normalize_egypt_phone(phone)
+            
+            # Search for orders with matching phone numbers
+            offset = (page - 1) * limit
+            orders = Order.query.filter(
+                or_(
+                    Order.customer_phone == clean_phone,
+                    Order.customer_phone == phone,  # Also try original format
+                    Order.customer_phone.like(f"%{clean_phone[-9:]}%")  # Try last 9 digits
+                )
+            ).order_by(Order.created_at.desc()).offset(offset).limit(limit).all()
+            
+            print(f"🔍 Local search found {len(orders)} orders for phone: {phone}")
+            return orders
+            
+        except Exception as e:
+            print(f"❌ Error in local phone search: {str(e)}")
+            return []
+
+    @staticmethod
+    def get_customer_orders_by_tracking(tracking_number: str, page: int = 1, limit: int = 50) -> Tuple[bool, Optional[Dict], Optional[str]]:
+        """
+        Given a tracking number, fetch its order from Bosta, extract customer phone/name,
+        then search all deliveries for that customer.
+        Returns: (success, data, error)
+        """
+        try:
+            success, base_order, error = BostaAPIService.fetch_order_data(tracking_number)
+            if not success or not base_order:
+                return False, None, error or "لم يتم العثور على الطلب"
+
+            receiver = (base_order.get('receiver') or {})
+            phone = receiver.get('phone')
+            full_name = receiver.get('fullName') or receiver.get('firstName')
+            second_phone = receiver.get('secondPhone')
+
+            if not phone:
+                return False, None, "لا يوجد رقم هاتف مرتبط بالطلب"
+
+            s_ok, search_data, s_err = BostaAPIService.search_deliveries(phone=phone, page=page, limit=limit)
+            if not s_ok:
+                return False, None, s_err or "فشل في جلب طلبات العميل"
+
+            deliveries = (search_data or {}).get('deliveries', [])
+            transformed = [BostaAPIService.transform_delivery_brief(d) for d in deliveries]
+
+            return True, {
+                'customer': {
+                    'full_name': full_name,
+                    'phone': phone,
+                    'second_phone': second_phone,
+                    'has_second_phone': bool(second_phone)
+                },
+                'deliveries': transformed,
+                'raw': search_data
+            }, None
+        except Exception as e:
+            return False, None, f"خطأ غير متوقع: {str(e)}"
+
+    @staticmethod
+    def search_customers(search_type: str, search_value: str, page: int = 1, limit: int = 50) -> Tuple[bool, Optional[Dict], Optional[str]]:
+        """Search customers via Bosta by phone | name | tracking and return grouped results.
+
+        Returns: (success, data, error)
+        data shape: { customers: [...], total_count, page, limit }
+        """
+        try:
+            if not search_value or not search_type:
+                return False, None, "بيانات البحث غير مكتملة"
+
+            phone = name = tracking = None
+            if search_type == 'phone':
+                phone = search_value
+            elif search_type == 'name':
+                name = search_value
+            elif search_type == 'tracking':
+                tracking = search_value
+            else:
+                return False, None, "نوع البحث غير صحيح"
+
+            ok, data, err = BostaAPIService.search_deliveries(phone=phone, name=name, tracking=tracking, page=page, limit=limit)
+            if not ok:
+                return False, None, err or "فشل في جلب النتائج"
+
+            grouped = transform_bosta_search_response({'data': data} if data is not None else {})
+            return True, grouped, None
+        except Exception as e:
+            return False, None, f"خطأ غير متوقع: {str(e)}"
+
+    @staticmethod
+    def transform_bosta_for_service_actions(bosta_data: Dict) -> Dict:
+        """Transform raw Bosta order payload to a comprehensive structure for service actions."""
+        try:
+            return util_transform_bosta_service_actions(bosta_data or {})
+        except Exception:
+            return {}
+
+    @staticmethod
+    def get_service_action_payload_by_tracking(tracking_number: str) -> Tuple[bool, Optional[Dict], Optional[str]]:
+        """Fetch a Bosta order by tracking number and return a service-actions-friendly payload."""
+        try:
+            ok, bosta_data, err = BostaAPIService.fetch_order_data(tracking_number)
+            if not ok or not bosta_data:
+                return False, None, err or "لم يتم العثور على الطلب"
+            transformed = OrderService.transform_bosta_for_service_actions(bosta_data)
+            return True, transformed, None
+        except Exception as e:
+            return False, None, f"خطأ غير متوقع: {str(e)}"
     
     @staticmethod
     def get_orders_summary() -> Dict:

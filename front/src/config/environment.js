@@ -12,7 +12,7 @@ const isTest = import.meta.env.MODE === 'test';
 export const API_CONFIG = {
   // Development: local backend
   development: {
-    baseURL: 'http://127.0.0.1:5001',
+    baseURL: '',  // Use relative URLs to avoid duplication
     timeout: 10000,
     retryAttempts: 2,
     cacheDuration: 30000, // 30 seconds
@@ -94,6 +94,37 @@ export const ERROR_MESSAGES = {
   UNAUTHORIZED: 'خطأ في المصادقة - تحقق من إعدادات API',
   VALIDATION_ERROR: 'بيانات الطلب غير صحيحة',
   UNKNOWN_ERROR: 'خطأ غير معروف - يرجى المحاولة مرة أخرى'
+};
+
+// Backend endpoints used across the app
+export const API_ENDPOINTS = {
+  bostaSearch: '/api/v1/bosta/search',
+  bostaCustomerOrders: '/api/v1/bosta/customer-orders',
+  // Orders
+  orderById: (id) => `/api/orders/${id}`,
+  // Service actions
+  services: {
+    create: '/api/v1/services/create',
+    confirm: (id) => `/api/v1/services/${id}/confirm`,
+    moveToPending: (id) => `/api/v1/services/${id}/pending-receive`,
+    list: '/api/v1/services',
+    listPending: '/api/v1/services/pending-receive',
+    complete: (id) => `/api/v1/services/${id}/complete`,
+    fail: (id) => `/api/v1/services/${id}/fail`,
+    update: (id) => `/api/v1/services/${id}`,
+    search: '/api/v1/services/search'
+  },
+  // Products & Parts
+  products: '/api/v1/products',
+  productById: (id) => `/api/v1/products/${id}`,
+  parts: '/api/v1/parts',
+  partById: (id) => `/api/v1/parts/${id}`,
+  // Inventory
+  inventory: {
+    analytics: '/api/v1/inventory/analytics',
+    lowStock: '/api/v1/inventory/low-stock',
+    productParts: (id) => `/api/v1/inventory/products/${id}/parts`
+  }
 };
 
 // Success messages in Arabic

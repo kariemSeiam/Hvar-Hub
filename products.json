@@ -1,0 +1,916 @@
+{
+  "generated_at": "2025-01-27T12:00:00Z",
+  "market": "مصر",
+  "brand": "هفار",
+  "currency_note": "جميع البيانات بدون أسعار",
+  "total_products": 19,
+  
+  "products": [
+    {
+      "product_id": 1,
+      "sku": "hvar5057",
+      "name_ar": "هاند بلندر هفار 1500 وات 5057",
+      "category": "هاند بلندر",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:07",
+      "updated_at": "2025-08-07 17:16:07",
+      "power_watts": 1500,
+      "features": [
+        "هاند بلندر قوي 1500 وات",
+        "متعدد الوظائف",
+        "سهولة الاستخدام",
+        "تصميم مدمج"
+      ],
+      "parts": [
+        {
+          "part_id": 1,
+          "part_sku": "hvar0178",
+          "part_name": "كبة هاند بلندر 5057",
+          "part_type": "component"
+        },
+        {
+          "part_id": 2,
+          "part_sku": "hvar0179",
+          "part_name": "سلاح فرم هاند بلندر 5057",
+          "part_type": "component"
+        },
+        {
+          "part_id": 3,
+          "part_sku": "hvar0181",
+          "part_name": "غطا كبه هاند 5057",
+          "part_type": "component"
+        },
+        {
+          "part_id": 4,
+          "part_sku": "hvar0177",
+          "part_name": "خافق شبكي هاند 5057",
+          "part_type": "component"
+        },
+        {
+          "part_id": 5,
+          "part_sku": "hvar0182",
+          "part_name": "ماتور هاند 5057",
+          "part_type": "motor"
+        },
+        {
+          "part_id": 6,
+          "part_sku": "hvar0183",
+          "part_name": "هراسه هاند 5057",
+          "part_type": "component"
+        },
+        {
+          "part_id": 7,
+          "part_sku": "hvar0184",
+          "part_name": "كوب معياري هاند 5057",
+          "part_type": "component"
+        },
+        {
+          "part_id": 8,
+          "part_sku": "hvar0185",
+          "part_name": "كرتون خارجي 5057",
+          "part_type": "packaging"
+        },
+        {
+          "part_id": 9,
+          "part_sku": "hvar0187",
+          "part_name": "شريحه 1 كرتون 5057",
+          "part_type": "packaging"
+        },
+        {
+          "part_id": 10,
+          "part_sku": "hvar0188",
+          "part_name": "شريحه 2 كرتون 5057",
+          "part_type": "packaging"
+        },
+        {
+          "part_id": 11,
+          "part_sku": "hvar0189",
+          "part_name": "شريحه 3 كرتون 5057",
+          "part_type": "packaging"
+        },
+        {
+          "part_id": 12,
+          "part_sku": "hvar0190",
+          "part_name": "مكمله خافق شبكي 5057",
+          "part_type": "component"
+        },
+        {
+          "part_id": 13,
+          "part_sku": "hvar0180",
+          "part_name": "تجميعه هاند 5057",
+          "part_type": "assembly"
+        },
+        {
+          "part_id": 14,
+          "part_sku": "hvar0058",
+          "part_name": "ضمان عامين",
+          "part_type": "warranty"
+        },
+        {
+          "part_id": 15,
+          "part_sku": "hvar0109",
+          "part_name": "كوبون خصم 100",
+          "part_type": "coupon"
+        }
+      ]
+    },
+    {
+      "product_id": 2,
+      "sku": "hvar5055",
+      "name_ar": "هاند بلندر هفار 1500 وات 5055",
+      "category": "هاند بلندر",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:07",
+      "updated_at": "2025-08-07 17:16:07",
+      "power_watts": 1500,
+      "features": [
+        "هاند بلندر قوي 1500 وات",
+        "متعدد الوظائف",
+        "سهولة الاستخدام",
+        "تصميم مدمج"
+      ],
+      "parts": [
+        {
+          "part_id": 16,
+          "part_sku": "hvar5055",
+          "part_name": "هاند بلندر هفار 1500 وات 5055",
+          "part_type": "assembly"
+        },
+        {
+          "part_id": 17,
+          "part_sku": "hvar0092",
+          "part_name": "مضرب بيض هاند 5055",
+          "part_type": "component"
+        },
+        {
+          "part_id": 18,
+          "part_sku": "hvar0089",
+          "part_name": "وعاء هاند 5055",
+          "part_type": "component"
+        },
+        {
+          "part_id": 19,
+          "part_sku": "hvar0091",
+          "part_name": "سلاح هاند 5055",
+          "part_type": "component"
+        },
+        {
+          "part_id": 20,
+          "part_sku": "hvar0093",
+          "part_name": "كبه هاند 5055",
+          "part_type": "component"
+        },
+        {
+          "part_id": 21,
+          "part_sku": "hvar0090",
+          "part_name": "ماتور هاند 5055",
+          "part_type": "motor"
+        }
+      ]
+    },
+    {
+      "product_id": 3,
+      "sku": "hvar228",
+      "name_ar": "مكنسة هفار بطه 2800 وات",
+      "category": "مكنسة",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:07",
+      "updated_at": "2025-08-07 17:16:07",
+      "power_watts": 2800,
+      "features": [
+        "مكنسة قوية 2800 وات",
+        "تصميم البطة",
+        "سهولة المناورة",
+        "كفاءة عالية في التنظيف"
+      ],
+      "parts": [
+        {
+          "part_id": 22,
+          "part_sku": "hvar0174",
+          "part_name": "موصل خرطوم مكنسة بطه",
+          "part_type": "component"
+        },
+        {
+          "part_id": 23,
+          "part_sku": "hvar0173",
+          "part_name": "خرطوم مكنسة بطة",
+          "part_type": "component"
+        },
+        {
+          "part_id": 24,
+          "part_sku": "hvar0104",
+          "part_name": "فرشه ارضية مكنسه بطه",
+          "part_type": "component"
+        }
+      ]
+    },
+    {
+      "product_id": 4,
+      "sku": "hvar0010",
+      "name_ar": "مكنسة هفار برميل 30 لتر",
+      "category": "مكنسة",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:07",
+      "updated_at": "2025-08-07 17:16:07",
+      "capacity_liters": 30,
+      "features": [
+        "مكنسة برميل 30 لتر",
+        "سعة كبيرة للتنظيف",
+        "مناسبة للاستخدام التجاري",
+        "قوة شفط عالية"
+      ],
+      "parts": [
+        {
+          "part_id": 25,
+          "part_sku": "hvar0010",
+          "part_name": "مكنسة هفار برميل 30 لتر",
+          "part_type": "assembly"
+        },
+        {
+          "part_id": 26,
+          "part_sku": "hvar0106",
+          "part_name": "فرشه مكنسه برميل",
+          "part_type": "component"
+        },
+        {
+          "part_id": 27,
+          "part_sku": "hvar0154",
+          "part_name": "خرطوم مكنسة برميل",
+          "part_type": "component"
+        },
+        {
+          "part_id": 28,
+          "part_sku": "hvar0155",
+          "part_name": "ماسوره معدنية لمكنسة برميل",
+          "part_type": "component"
+        },
+        {
+          "part_id": 29,
+          "part_sku": "hvar0161",
+          "part_name": "دراع موصل خرطوم مكنسة برميل",
+          "part_type": "component"
+        }
+      ]
+    },
+    {
+      "product_id": 5,
+      "sku": "hvar5030",
+      "name_ar": "مطحنة توابل هفار",
+      "category": "مطحنه توابل",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:07",
+      "updated_at": "2025-08-07 17:16:07",
+      "features": [
+        "مطحنة توابل عالية الجودة",
+        "طحن ناعم للتوابل",
+        "سهولة الاستخدام",
+        "تصميم مدمج"
+      ],
+      "parts": [
+        {
+          "part_id": 30,
+          "part_sku": "hvar5030",
+          "part_name": "مطحنة توابل هفار",
+          "part_type": "assembly"
+        },
+        {
+          "part_id": 31,
+          "part_sku": "hvar0072",
+          "part_name": "غطاء مطحنة توابل 5030",
+          "part_type": "component"
+        }
+      ]
+    },
+    {
+      "product_id": 6,
+      "sku": "hvar5070p5",
+      "name_ar": "كبه هفار 6.5 لتر 2000 وات احمر",
+      "category": "كبه",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:07",
+      "updated_at": "2025-08-07 17:16:07",
+      "power_watts": 2000,
+      "capacity_liters": 6.5,
+      "color": "احمر",
+      "features": [
+        "كبه قوية 2000 وات",
+        "سعة كبيرة 6.5 لتر",
+        "لون أحمر جذاب",
+        "شفرات ستانلس ستيل"
+      ],
+      "parts": [
+        {
+          "part_id": 32,
+          "part_sku": "hvar5071",
+          "part_name": "ماتور كبه 5070",
+          "part_type": "motor"
+        },
+        {
+          "part_id": 33,
+          "part_sku": "hvar5072",
+          "part_name": "وعاء كبه 6.5 لتر",
+          "part_type": "component"
+        },
+        {
+          "part_id": 34,
+          "part_sku": "hvar5073",
+          "part_name": "شفرة كبه 5070",
+          "part_type": "component"
+        },
+        {
+          "part_id": 35,
+          "part_sku": "hvar5074",
+          "part_name": "غطا كبه 5070",
+          "part_type": "component"
+        },
+        {
+          "part_id": 36,
+          "part_sku": "hvar5075",
+          "part_name": "قاعدة كبه 5070",
+          "part_type": "component"
+        },
+        {
+          "part_id": 37,
+          "part_sku": "hvar5076",
+          "part_name": "كرتون كبه 5070",
+          "part_type": "packaging"
+        }
+      ]
+    },
+    {
+      "product_id": 7,
+      "sku": "hvar5073",
+      "name_ar": "كبه هفار 6.5 لتر 2000 وات 3 سرعات",
+      "category": "كبه",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:07",
+      "updated_at": "2025-08-07 17:16:07",
+      "power_watts": 2000,
+      "capacity_liters": 6.5,
+      "speeds_count": 3,
+      "features": [
+        "كبه قوية 2000 وات",
+        "سعة كبيرة 6.5 لتر",
+        "3 سرعات للتحكم الدقيق",
+        "شفرات ستانلس ستيل"
+      ],
+      "parts": [
+        {
+          "part_id": 41,
+          "part_sku": "hvar5077",
+          "part_name": "غطا كبه 5073",
+          "part_type": "component"
+        },
+        {
+          "part_id": 42,
+          "part_sku": "hvar5078",
+          "part_name": "قاعدة كبه 5073",
+          "part_type": "component"
+        },
+        {
+          "part_id": 43,
+          "part_sku": "hvar5079",
+          "part_name": "كرتون كبه 5073",
+          "part_type": "packaging"
+        }
+      ]
+    },
+    {
+      "product_id": 8,
+      "sku": "hvar5077",
+      "name_ar": "كبه هفار 2000 وات - 5077 بلاك",
+      "category": "كبه",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:07",
+      "updated_at": "2025-08-07 17:16:07",
+      "power_watts": 2000,
+      "color": "اسود",
+      "features": [
+        "كبه قوية 2000 وات",
+        "لون أسود أنيق",
+        "شفرات ستانلس ستيل",
+        "تصميم عصري"
+      ],
+      "parts": [
+        {
+          "part_id": 46,
+          "part_sku": "hvar5080",
+          "part_name": "شفرة كبه 5077",
+          "part_type": "component"
+        },
+        {
+          "part_id": 47,
+          "part_sku": "hvar5081",
+          "part_name": "غطا كبه 5077",
+          "part_type": "component"
+        },
+        {
+          "part_id": 48,
+          "part_sku": "hvar5082",
+          "part_name": "قاعدة كبه 5077",
+          "part_type": "component"
+        },
+        {
+          "part_id": 49,
+          "part_sku": "hvar5083",
+          "part_name": "كرتون كبه 5077",
+          "part_type": "packaging"
+        }
+      ]
+    },
+    {
+      "product_id": 9,
+      "sku": "hvar5022",
+      "name_ar": "كبه هفار 1500 وات",
+      "category": "كبه",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:08",
+      "updated_at": "2025-08-07 17:16:08",
+      "power_watts": 1500,
+      "features": [
+        "كبه متوسطة القوة 1500 وات",
+        "مناسبة للاستخدام اليومي",
+        "شفرات ستانلس ستيل",
+        "سهولة الاستخدام"
+      ],
+      "parts": [
+        {
+          "part_id": 50,
+          "part_sku": "hvar5023",
+          "part_name": "ماتور كبه 5022",
+          "part_type": "motor"
+        },
+        {
+          "part_id": 51,
+          "part_sku": "hvar5024",
+          "part_name": "وعاء كبه 5022",
+          "part_type": "component"
+        },
+        {
+          "part_id": 52,
+          "part_sku": "hvar5025",
+          "part_name": "شفرة كبه 5022",
+          "part_type": "component"
+        },
+        {
+          "part_id": 53,
+          "part_sku": "hvar5026",
+          "part_name": "غطا كبه 5022",
+          "part_type": "component"
+        },
+        {
+          "part_id": 54,
+          "part_sku": "hvar5027",
+          "part_name": "قاعدة كبه 5022",
+          "part_type": "component"
+        },
+        {
+          "part_id": 55,
+          "part_sku": "hvar5028",
+          "part_name": "كرتون كبه 5022",
+          "part_type": "packaging"
+        }
+      ]
+    },
+    {
+      "product_id": 10,
+      "sku": "hvar5025",
+      "name_ar": "كبه هفار 1200 وات",
+      "category": "كبه",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:08",
+      "updated_at": "2025-08-07 17:16:08",
+      "power_watts": 1200,
+      "features": [
+        "كبه متوسطة القوة 1200 وات",
+        "مناسبة للعائلات الصغيرة",
+        "شفرات ستانلس ستيل",
+        "سهولة الاستخدام"
+      ],
+      "parts": [
+        {
+          "part_id": 59,
+          "part_sku": "hvar5029",
+          "part_name": "غطا كبه 5025",
+          "part_type": "component"
+        },
+        {
+          "part_id": 61,
+          "part_sku": "hvar5031",
+          "part_name": "كرتون كبه 5025",
+          "part_type": "packaging"
+        }
+      ]
+    },
+    {
+      "product_id": 11,
+      "sku": "hvar5027",
+      "name_ar": "كبه هفار 1000 وات تربو أبيض",
+      "category": "كبه",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:08",
+      "updated_at": "2025-08-07 17:16:08",
+      "power_watts": 1000,
+      "color": "ابيض",
+      "features": [
+        "كبه متوسطة القوة 1000 وات",
+        "وضع تربو للقوة الإضافية",
+        "لون أبيض أنيق",
+        "شفرات ستانلس ستيل"
+      ],
+      "parts": [
+        {
+          "part_id": 66,
+          "part_sku": "hvar5032",
+          "part_name": "قاعدة كبه 5027",
+          "part_type": "component"
+        },
+        {
+          "part_id": 67,
+          "part_sku": "hvar5033",
+          "part_name": "كرتون كبه 5027",
+          "part_type": "packaging"
+        }
+      ]
+    },
+    {
+      "product_id": 12,
+      "sku": "hvar5070p4",
+      "name_ar": "كبه هفار 6.5 لتر 2000 وات موف",
+      "category": "كبه",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:08",
+      "updated_at": "2025-08-07 17:16:08",
+      "power_watts": 2000,
+      "capacity_liters": 6.5,
+      "color": "موف",
+      "features": [
+        "كبه قوية 2000 وات",
+        "سعة كبيرة 6.5 لتر",
+        "لون موف جذاب",
+        "شفرات ستانلس ستيل"
+      ],
+      "parts": []
+    },
+    {
+      "product_id": 13,
+      "sku": "hvar5070p3",
+      "name_ar": "كبه هفار 6.5 لتر 2000 وات ليمونى",
+      "category": "كبه",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:08",
+      "updated_at": "2025-08-07 17:16:08",
+      "power_watts": 2000,
+      "capacity_liters": 6.5,
+      "color": "ليمونى",
+      "features": [
+        "كبه قوية 2000 وات",
+        "سعة كبيرة 6.5 لتر",
+        "لون ليموني منعش",
+        "شفرات ستانلس ستيل"
+      ],
+      "parts": []
+    },
+    {
+      "product_id": 14,
+      "sku": "hvar5070",
+      "name_ar": "كبه هفار 6.5 لتر 2000 وات اسود - 5070",
+      "category": "كبه",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:08",
+      "updated_at": "2025-08-07 17:16:08",
+      "power_watts": 2000,
+      "capacity_liters": 6.5,
+      "color": "اسود",
+      "features": [
+        "كبه قوية 2000 وات",
+        "سعة كبيرة 6.5 لتر",
+        "لون أسود كلاسيكي",
+        "شفرات ستانلس ستيل"
+      ],
+      "parts": []
+    },
+    {
+      "product_id": 15,
+      "sku": "hvar5070p1",
+      "name_ar": "كبه هفار 6.5 لتر 2000 وات بينك / روز",
+      "category": "كبه",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:08",
+      "updated_at": "2025-08-07 17:16:08",
+      "power_watts": 2000,
+      "capacity_liters": 6.5,
+      "color": "بينك/روز",
+      "features": [
+        "كبه قوية 2000 وات",
+        "سعة كبيرة 6.5 لتر",
+        "لون بينك/روز أنيق",
+        "شفرات ستانلس ستيل"
+      ],
+      "parts": []
+    },
+    {
+      "product_id": 16,
+      "sku": "hvar10046",
+      "name_ar": "فرن هفار 46 لتر 2200 وات",
+      "category": "فرن هفار كهربائي",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:08",
+      "updated_at": "2025-08-07 17:16:08",
+      "power_watts": 2200,
+      "capacity_liters": 46,
+      "features": [
+        "فرن كهربائي 46 لتر",
+        "قوة 2200 وات",
+        "تحكم دقيق في درجة الحرارة",
+        "مناسب للعائلات الكبيرة"
+      ],
+      "parts": [
+        {
+          "part_id": 92,
+          "part_sku": "hvar10047",
+          "part_name": "ماتور فرن 10046",
+          "part_type": "motor"
+        },
+        {
+          "part_id": 93,
+          "part_sku": "hvar10048",
+          "part_name": "عنصر تسخين فرن",
+          "part_type": "heating_element"
+        },
+        {
+          "part_id": 94,
+          "part_sku": "hvar10049",
+          "part_name": "باب فرن",
+          "part_type": "component"
+        },
+        {
+          "part_id": 95,
+          "part_sku": "hvar10050",
+          "part_name": "صينية فرن",
+          "part_type": "component"
+        },
+        {
+          "part_id": 96,
+          "part_sku": "hvar10051",
+          "part_name": "مقياس حرارة فرن",
+          "part_type": "component"
+        },
+        {
+          "part_id": 97,
+          "part_sku": "hvar10052",
+          "part_name": "كرتون فرن",
+          "part_type": "packaging"
+        }
+      ]
+    },
+    {
+      "product_id": 17,
+      "sku": "hvar10007",
+      "name_ar": "عجان هفار 7 لتر",
+      "category": "عجان",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:08",
+      "updated_at": "2025-08-07 17:16:08",
+      "capacity_liters": 7,
+      "features": [
+        "عجان 7 لتر",
+        "مناسب للعجين الكبير",
+        "محرك قوي",
+        "سهولة الاستخدام"
+      ],
+      "parts": [
+        {
+          "part_id": 98,
+          "part_sku": "hvar10008",
+          "part_name": "ماتور عجان 10007",
+          "part_type": "motor"
+        },
+        {
+          "part_id": 99,
+          "part_sku": "hvar10009",
+          "part_name": "وعاء عجان 7 لتر",
+          "part_type": "component"
+        },
+        {
+          "part_id": 100,
+          "part_sku": "hvar10010",
+          "part_name": "شفرة عجان",
+          "part_type": "component"
+        },
+        {
+          "part_id": 101,
+          "part_sku": "hvar10011",
+          "part_name": "غطا عجان",
+          "part_type": "component"
+        },
+        {
+          "part_id": 102,
+          "part_sku": "hvar10012",
+          "part_name": "قاعدة عجان",
+          "part_type": "component"
+        },
+        {
+          "part_id": 103,
+          "part_sku": "hvar10013",
+          "part_name": "كرتون عجان",
+          "part_type": "packaging"
+        }
+      ]
+    },
+    {
+      "product_id": 18,
+      "sku": "hvar5066",
+      "name_ar": "خلاط هفار 8000 وات 3*1",
+      "category": "خلاط هفار",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:08",
+      "updated_at": "2025-08-07 17:16:08",
+      "power_watts": 8000,
+      "features": [
+        "خلاط قوي 8000 وات",
+        "3 سرعات + 1",
+        "مناسب للاستخدام التجاري",
+        "أداء عالي"
+      ],
+      "parts": [
+        {
+          "part_id": 104,
+          "part_sku": "hvar5067",
+          "part_name": "ماتور خلاط 5066",
+          "part_type": "motor"
+        },
+        {
+          "part_id": 105,
+          "part_sku": "hvar5068",
+          "part_name": "وعاء خلاط 5066",
+          "part_type": "component"
+        },
+        {
+          "part_id": 106,
+          "part_sku": "hvar5069",
+          "part_name": "شفرة خلاط 5066",
+          "part_type": "component"
+        },
+        {
+          "part_id": 107,
+          "part_sku": "hvar5070",
+          "part_name": "غطا خلاط 5066",
+          "part_type": "component"
+        }
+      ]
+    },
+    {
+      "product_id": 19,
+      "sku": "hvar5060",
+      "name_ar": "خلاط هفار 8000 وات 2*1",
+      "category": "خلاط هفار",
+      "alert_quantity": 0,
+      "warranty_period_months": 12,
+      "is_active": 1,
+      "created_at": "2025-08-07 17:16:08",
+      "updated_at": "2025-08-07 17:16:08",
+      "power_watts": 8000,
+      "features": [
+        "خلاط قوي 8000 وات",
+        "2 سرعات + 1",
+        "مناسب للاستخدام التجاري",
+        "أداء عالي"
+      ],
+      "parts": [
+        {
+          "part_id": 110,
+          "part_sku": "hvar5061",
+          "part_name": "ماتور خلاط 5060",
+          "part_type": "motor"
+        },
+        {
+          "part_id": 111,
+          "part_sku": "hvar5062",
+          "part_name": "وعاء خلاط 5060",
+          "part_type": "component"
+        },
+        {
+          "part_id": 112,
+          "part_sku": "hvar5063",
+          "part_name": "شفرة خلاط 5060",
+          "part_type": "component"
+        },
+        {
+          "part_id": 113,
+          "part_sku": "hvar5064",
+          "part_name": "غطا خلاط 5060",
+          "part_type": "component"
+        },
+        {
+          "part_id": 114,
+          "part_sku": "hvar5065",
+          "part_name": "قاعدة خلاط 5060",
+          "part_type": "component"
+        },
+        {
+          "part_id": 115,
+          "part_sku": "hvar5066",
+          "part_name": "كرتون خلاط 5060",
+          "part_type": "packaging"
+        }
+      ]
+    }
+  ],
+  
+  "categories_summary": {
+    "هاند بلندر": {
+      "count": 2,
+      "models": ["hvar5057", "hvar5055"],
+      "power_range": "1500 وات"
+    },
+    "مكنسة": {
+      "count": 2,
+      "models": ["hvar228", "hvar0010"],
+      "types": ["بطه 2800 وات", "برميل 30 لتر"]
+    },
+    "مطحنه توابل": {
+      "count": 1,
+      "models": ["hvar5030"]
+    },
+    "كبه": {
+      "count": 10,
+      "models": ["hvar5070p5", "hvar5073", "hvar5077", "hvar5022", "hvar5025", "hvar5027", "hvar5070p4", "hvar5070p3", "hvar5070", "hvar5070p1"],
+      "power_range": "1000-2000 وات",
+      "capacity_range": "6.5 لتر",
+      "colors": ["احمر", "اسود", "موف", "ليمونى", "بينك/روز"]
+    },
+    "فرن هفار كهربائي": {
+      "count": 1,
+      "models": ["hvar10046"],
+      "capacity": "46 لتر",
+      "power": "2200 وات"
+    },
+    "عجان": {
+      "count": 1,
+      "models": ["hvar10007"],
+      "capacity": "7 لتر"
+    },
+    "خلاط هفار": {
+      "count": 2,
+      "models": ["hvar5066", "hvar5060"],
+      "power": "8000 وات",
+      "speeds": ["3*1", "2*1"]
+    }
+  },
+  
+  "parts_summary": {
+    "total_parts": 115,
+    "by_type": {
+      "motor": 8,
+      "component": 65,
+      "packaging": 25,
+      "assembly": 8,
+      "warranty": 1,
+      "coupon": 1,
+      "heating_element": 1
+    }
+  },
+  
+  "warranty_info": {
+    "standard_warranty": "12 شهر",
+    "coverage": "جميع المنتجات",
+    "service_network": "شبكة هفار في جميع أنحاء مصر"
+  }
+}

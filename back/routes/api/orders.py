@@ -4,8 +4,19 @@ from datetime import datetime
 
 from db.auto_init import Order, OrderStatus, MaintenanceAction
 from services.order_service import OrderService
+from services.unified_service import UnifiedService
 
 orders_bp = Blueprint('orders', __name__, url_prefix='/api/orders')
+
+# Centralized Arabic status names to avoid duplication
+STATUS_ARABIC_NAME = {
+    'received': 'المستلمة',
+    'in_maintenance': 'تحت الصيانة',
+    'completed': 'مكتملة',
+    'failed': 'فاشلة/معلقة',
+    'sending': 'جاري الإرسال',
+    'returned': 'المرتجعة'
+}
 
 
 @orders_bp.route('/scan', methods=['POST'])
@@ -37,16 +48,7 @@ def scan_order():
             print(f"Order dict keys: {list(order_dict.keys())}")
             
             # Determine status name for message
-            status_names = {
-                'received': 'المستلمة',
-                'in_maintenance': 'تحت الصيانة',
-                'completed': 'مكتملة',
-                'failed': 'فاشلة/معلقة',
-                'sending': 'جاري الإرسال',
-                'returned': 'المرتجعة'
-            }
-            
-            status_name = status_names.get(order.status.value, 'غير محدد')
+            status_name = STATUS_ARABIC_NAME.get(order.status.value, 'غير محدد')
             
             response_data = {
                 'success': True,
@@ -238,6 +240,34 @@ def get_orders_summary():
         }), 500
 
 
+@orders_bp.route('/pending-service-actions', methods=['GET'])
+def get_pending_service_actions():
+    """List pending receive service actions for maintenance hub."""
+    try:
+        limit = min(int(request.args.get('limit', 50)), 100)
+        actions = UnifiedService.get_pending_receive_actions(limit=limit)
+        return jsonify({ 'success': True, 'data': actions }), 200
+    except Exception as e:
+        return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
+
+
+@orders_bp.route('/integrate-service-action', methods=['POST'])
+def integrate_service_action():
+    """Integrate a service action into maintenance cycle by scanning its tracking."""
+    try:
+        body = request.get_json(silent=True) or {}
+        tracking = (body.get('service_action_tracking') or '').strip()
+        user_name = (body.get('user_name') or 'فني الصيانة').strip()
+        if not tracking:
+            return jsonify({ 'success': False, 'message': 'رقم تتبع إجراء الخدمة مطلوب' }), 400
+        ok, order, err = UnifiedService.integrate_with_maintenance_cycle(tracking, user_name)
+        if not ok:
+            return jsonify({ 'success': False, 'message': err or 'فشل دمج إجراء الخدمة' }), 400
+        return jsonify({ 'success': True, 'data': { 'order': order.to_dict() }, 'message': 'تم دمج إجراء الخدمة مع دورة الصيانة' }), 200
+    except Exception as e:
+        return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
+
+
 @orders_bp.route('/recent-scans', methods=['GET'])
 def get_recent_scans():
     """Get recent scanned orders"""
@@ -321,16 +351,7 @@ def get_order_by_tracking(tracking_number):
                 order_dict = order.to_dict()
                 print(f"Successfully serialized order {order.id}")
                 # Determine status name for message
-                status_names = {
-                    'received': 'المستلمة',
-                    'in_maintenance': 'تحت الصيانة',
-                    'completed': 'مكتملة',
-                    'failed': 'فاشلة/معلقة',
-                    'sending': 'جاري الإرسال',
-                    'returned': 'المرتجعة'
-                }
-                
-                status_name = status_names.get(order.status.value, 'غير محدد')
+                status_name = STATUS_ARABIC_NAME.get(order.status.value, 'غير محدد')
                 
                 return jsonify({
                     'success': True,
