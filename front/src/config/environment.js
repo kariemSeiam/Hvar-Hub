@@ -98,11 +98,19 @@ export const ERROR_MESSAGES = {
 
 // Backend endpoints used across the app
 export const API_ENDPOINTS = {
-  bostaSearch: '/api/v1/bosta/search',
-  bostaCustomerOrders: '/api/v1/bosta/customer-orders',
+  // Bosta API endpoints
+  bosta: {
+    search: '/api/v1/bosta/search',
+    customerOrders: '/api/v1/bosta/customer-orders',
+    servicePayload: '/api/v1/bosta/service-payload'
+  },
+  bostaSearch: '/api/v1/bosta/search', // Legacy compatibility
+  bostaCustomerOrders: '/api/v1/bosta/customer-orders', // Legacy compatibility
+  
   // Orders
   orderById: (id) => `/api/orders/${id}`,
-  // Service actions
+  
+  // Service actions - Enhanced with unified workflow endpoints
   services: {
     create: '/api/v1/services/create',
     confirm: (id) => `/api/v1/services/${id}/confirm`,
@@ -112,18 +120,35 @@ export const API_ENDPOINTS = {
     complete: (id) => `/api/v1/services/${id}/complete`,
     fail: (id) => `/api/v1/services/${id}/fail`,
     update: (id) => `/api/v1/services/${id}`,
-    search: '/api/v1/services/search'
+    search: '/api/v1/services/search',
+    
+    // Enhanced workflow endpoints
+    byCustomerPhone: '/api/v1/services/by-customer-phone',
+    withHistory: (id) => `/api/v1/services/${id}/history`,
+    workflowStats: '/api/v1/services/workflow-statistics',
+    validate: (id) => `/api/v1/services/${id}/validate`,
+    byStatus: (status) => `/api/v1/services/by-status/${status}`,
+    integrationStatus: '/api/v1/services/integration-status'
   },
-  // Products & Parts
+  
+  // Products & Parts - Enhanced for real data
   products: '/api/v1/products',
   productById: (id) => `/api/v1/products/${id}`,
   parts: '/api/v1/parts',
   partById: (id) => `/api/v1/parts/${id}`,
+  
   // Inventory
   inventory: {
     analytics: '/api/v1/inventory/analytics',
     lowStock: '/api/v1/inventory/low-stock',
     productParts: (id) => `/api/v1/inventory/products/${id}/parts`
+  },
+  
+  // Product synchronization
+  sync: {
+    products: '/api/v1/sync/products',
+    status: '/api/v1/sync/status',
+    force: '/api/v1/sync/force'
   }
 };
 

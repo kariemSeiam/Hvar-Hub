@@ -38,7 +38,7 @@ const PendingServiceActionsSection = ({
     // Memoize filtered and limited actions
     const displayActions = useMemo(() => {
         return pendingActions
-            .filter(action => action.status === 'PENDING_RECEIVE')
+            .filter(action => action.status === 'pending_receive' || action.status === 'PENDING_RECEIVE')
             .slice(0, maxDisplay);
     }, [pendingActions, maxDisplay]);
 

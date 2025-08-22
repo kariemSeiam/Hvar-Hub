@@ -73,17 +73,22 @@ def search_bosta_deliveries():
         if not any([phone, name, tracking]):
             return jsonify({ 'success': False, 'message': 'يرجى إدخال رقم هاتف أو اسم أو رقم تتبع' }), 400
 
-        # Grouped response path
+        # ENHANCED: Grouped response path using enhanced search_deliveries with complete data extraction
         if group:
-            ok, grouped, err = OrderService.search_customers(
-                'phone' if phone else ('name' if name else 'tracking'),
-                phone or name or tracking,
+            # Use the enhanced BostaAPIService.search_deliveries with group=True
+            from services.order_service import BostaAPIService
+            ok, grouped_data, err = BostaAPIService.search_deliveries(
+                phone=phone or None,
+                name=name or None,
+                tracking=tracking or None,
                 page=page,
-                limit=limit
+                limit=limit,
+                group=True  # This enables the enhanced customer grouping
             )
             if ok:
-                return jsonify({ 'success': True, 'data': grouped, 'message': 'تم الجلب بنجاح' }), 200
-            # Fallback to local when searching by phone
+                return jsonify({ 'success': True, 'data': grouped_data, 'message': 'تم الجلب بنجاح' }), 200
+
+            # ENHANCED: Improved fallback to local when searching by phone
             if phone:
                 try:
                     from utils.bosta_utils import transform_local_order_brief
@@ -93,9 +98,11 @@ def search_bosta_deliveries():
                         grouped_local = {
                             'customers': [{
                                 'customer': {
-                                    'full_name': deliveries[0]['receiver']['full_name'] if deliveries else None,
+                                    'full_name': deliveries[0]['receiver']['full_name'] if deliveries else 'Unknown',
                                     'primary_phone': phone,
                                     'second_phone': deliveries[0]['receiver'].get('second_phone') if deliveries else None,
+                                    'first_name': deliveries[0]['receiver'].get('full_name', '').split(' ')[0] if deliveries else None,
+                                    'last_name': ' '.join(deliveries[0]['receiver'].get('full_name', '').split(' ')[1:]) if deliveries and len(deliveries[0]['receiver'].get('full_name', '').split(' ')) > 1 else None,
                                 },
                                 'orders': deliveries
                             }],
@@ -105,7 +112,7 @@ def search_bosta_deliveries():
                         }
                         return jsonify({ 'success': True, 'data': grouped_local, 'message': 'تم الجلب من قاعدة البيانات المحلية (Bosta API غير متاح)' }), 200
                 except Exception as fallback_error:
-                    print(f"❌ Grouped fallback failed: {fallback_error}")
+                    print(f"❌ Enhanced grouped fallback failed: {fallback_error}")
             return jsonify({ 'success': False, 'message': err or 'فشل في جلب النتائج' }), 400
 
         # Flat deliveries response path
@@ -181,8 +188,9 @@ def get_customer_orders_from_tracking():
 @api_bp.route('/bosta/service-payload', methods=['GET'])
 def get_service_payload_by_tracking():
     """
-    Given ?tracking=, return a comprehensive Bosta payload tailored for service actions
-    without persisting it. Useful for UI flows preparing a new service action.
+    ENHANCED: Given ?tracking=, return a comprehensive Bosta payload tailored for service actions
+    using COMPLETE data extraction as specified in Task 1.1.1.
+    This endpoint provides ALL customer and order data needed for service action creation.
     Response: { success, data, message }
     """
     try:
@@ -190,11 +198,40 @@ def get_service_payload_by_tracking():
         if not tracking:
             return jsonify({ 'success': False, 'message': 'رقم التتبع مطلوب' }), 400
 
-        ok, data, err = OrderService.get_service_action_payload_by_tracking(tracking)
-        if not ok:
-            return jsonify({ 'success': False, 'message': err or 'فشل في جلب البيانات' }), 400
+        # ENHANCED: Use the comprehensive data extraction function
+        from services.order_service import BostaAPIService
+        from utils.bosta_utils import transform_bosta_data_for_service_actions_complete
 
-        return jsonify({ 'success': True, 'data': data }), 200
+        print(f"🔍 Getting comprehensive service payload for tracking: {tracking}")
+
+        # First try to get the delivery data from Bosta API
+        ok, delivery_data, err = BostaAPIService.fetch_order_data(tracking)
+        if not ok:
+            print(f"❌ Failed to fetch delivery data: {err}")
+            return jsonify({ 'success': False, 'message': err or 'فشل في جلب بيانات الطلب' }), 400
+
+        # Transform using the comprehensive data extraction function
+        try:
+            comprehensive_payload = transform_bosta_data_for_service_actions_complete(delivery_data)
+            print(f"✅ Successfully extracted comprehensive data for service action creation")
+
+            return jsonify({
+                'success': True,
+                'data': comprehensive_payload,
+                'message': 'تم جلب البيانات الشاملة بنجاح'
+            }), 200
+
+        except Exception as transform_error:
+            print(f"❌ Error in comprehensive data transformation: {transform_error}")
+            # Fallback to the original method if transformation fails
+            ok, data, err = OrderService.get_service_action_payload_by_tracking(tracking)
+            if not ok:
+                return jsonify({ 'success': False, 'message': err or 'فشل في جلب البيانات' }), 400
+            return jsonify({ 'success': True, 'data': data }), 200
+
     except Exception as e:
+        print(f"💥 Exception in comprehensive service payload: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
 

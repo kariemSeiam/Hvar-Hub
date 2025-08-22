@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Tuple
 import requests
 import json
 
-from db.auto_init import Order, MaintenanceHistory, OrderStatus, MaintenanceAction, ACTION_STATUS_MAP, ReturnCondition
+from db.auto_init import Order, MaintenanceHistory, OrderStatus, MaintenanceAction, ACTION_STATUS_MAP, ReturnCondition, ServiceActionStatus
 from db import db
 from utils.timezone import get_egypt_now
 from sqlalchemy import text, or_
@@ -22,15 +22,20 @@ class BostaAPIService:
     """Service for Bosta API integration"""
     
     BASE_URL = 'https://app.bosta.co/api/v2'
-    import os as _os
-    TOKEN = _os.environ.get('BOSTA_TOKEN')
+    
+    @classmethod
+    def get_token(cls):
+        """Get Bosta token dynamically from environment"""
+        import os
+        return os.environ.get('BOSTA_TOKEN')
     
     @classmethod
     def get_headers(cls):
+        token = cls.get_token()
         return {
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'ar',
-            'Authorization': f'Bearer {cls.TOKEN}',
+            'Authorization': f'Bearer {token}',
             'Content-Type': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
@@ -42,7 +47,7 @@ class BostaAPIService:
         Returns: (success, data, error_message)
         """
         try:
-            if not cls.TOKEN:
+            if not cls.get_token():
                 return False, None, "إعداد BOSTA_TOKEN غير موجود على الخادم"
             url = f"{cls.BASE_URL}/deliveries/business/{tracking_number}"
             response = requests.get(url, headers=cls.get_headers(), timeout=10)
@@ -62,13 +67,17 @@ class BostaAPIService:
 
     @classmethod
     def search_deliveries(cls, *, phone: Optional[str] = None, name: Optional[str] = None,
-                          tracking: Optional[str] = None, page: int = 1, limit: int = 50) -> Tuple[bool, Optional[Dict], Optional[str]]:
+                          tracking: Optional[str] = None, page: int = 1, limit: int = 50,
+                          group: bool = False) -> Tuple[bool, Optional[Dict], Optional[str]]:
         """
-        Search Bosta deliveries by phone, name, or tracking using /deliveries/search
+        Enhanced search Bosta deliveries by phone, name, or tracking using /deliveries/search
         Returns: (success, data, error_message)
+
+        NEW: Added 'group' parameter to support customer grouping as specified in Task 1.1.1
+        When group=True, returns customers grouped by phone with their associated orders.
         """
         try:
-            if not cls.TOKEN:
+            if not cls.get_token():
                 return False, None, "إعداد BOSTA_TOKEN غير موجود على الخادم"
             url = f"{cls.BASE_URL}/deliveries/search"
             payload: Dict = {
@@ -82,12 +91,12 @@ class BostaAPIService:
                 clean_phone = normalize_egypt_phone(phone)
                 payload["mobilePhones"] = [clean_phone]
                 print(f"📱 Searching by phone: {phone} -> {clean_phone}")
-                
+
             if tracking:
                 # Bosta search can accept trackingNumbers or generic search term
                 payload["trackingNumbers"] = [tracking] if isinstance(tracking, str) else tracking
                 print(f"📦 Searching by tracking: {tracking}")
-                
+
             if name and not tracking and not phone:
                 # Best-effort generic search term when name is provided
                 payload["searchTerm"] = name
@@ -104,7 +113,17 @@ class BostaAPIService:
             if response.status_code == 200:
                 data = response.json()
                 print(f"✅ Bosta API success: {json.dumps(data, indent=2)[:500]}...")
-                return True, data.get('data', data), None
+
+                # ENHANCED: Support for customer grouping as per Task 1.1.1
+                if group:
+                    # Transform search response to grouped customer format
+                    grouped_data = transform_bosta_search_response(data)
+                    print(f"👥 Grouped {len(grouped_data.get('customers', []))} customers")
+                    return True, grouped_data, None
+                else:
+                    # Return flat search results
+                    return True, data.get('data', data), None
+
             elif response.status_code == 401:
                 print(f"❌ Bosta API authentication error: {response.text}")
                 return False, None, "خطأ في المصادقة - تحقق من إعدادات API"
@@ -265,68 +284,147 @@ class OrderService:
     @staticmethod
     def scan_order(tracking_number: str, user_name: str = 'فني الصيانة', force_create: bool = False) -> Tuple[bool, Optional[Order], Optional[str], bool]:
         """
-        Scan and process an order
+        ENHANCED: Scan and process an order with complete service action integration.
+        This is the CORE integration point between service actions and maintenance hub.
         Returns: (success, order, error_message, is_existing)
         """
         try:
-            # First, detect if tracking belongs to a pending service action and integrate
-            try:
-                sa = UnifiedService.get_service_action_by_tracking(tracking_number)
-                if sa and getattr(sa, 'status', None) and str(sa.status.value) == 'pending_receive':
-                    ok, order, err = UnifiedService.integrate_with_maintenance_cycle(tracking_number, user_name)
-                    if ok:
-                        return True, order, None, False
-                    else:
-                        # If integration failed, continue to normal scan path with informative error later
-                        print(f"ServiceAction integration attempt failed: {err}")
-            except Exception as _integration_probe_err:
-                print(f"ServiceAction detection error (non-fatal): {_integration_probe_err}")
+            print(f"🔍 Starting enhanced scan_order for tracking: {tracking_number}")
 
-            # Check if order already exists
+            # ============================================================================
+            # PHASE 1: SERVICE ACTION DETECTION AND INTEGRATION (CORE UNIFIED CYCLE)
+            # ============================================================================
+            service_action_integration_message = None
+            integrated_service_action = None
+
+            try:
+                # ENHANCED: Use UnifiedService to detect service actions with comprehensive checking
+                sa = UnifiedService.get_service_action_by_tracking(tracking_number)
+                if sa:
+                    print(f"🎯 Found service action {sa.id} for tracking {tracking_number}, status: {sa.status.value}")
+
+                    # Check if this is a PENDING_RECEIVE service action ready for integration
+                    if sa.status == ServiceActionStatus.PENDING_RECEIVE:
+                        print(f"🔄 Service action {sa.id} is PENDING_RECEIVE - attempting integration with maintenance cycle")
+
+                        # INTEGRATION POINT: Service Action → Maintenance Cycle
+                        ok, integrated_order, integration_err = UnifiedService.integrate_with_maintenance_cycle(tracking_number, user_name)
+                        if ok:
+                            print(f"✅ Service action {sa.id} successfully integrated with maintenance order {integrated_order.id}")
+                            integrated_service_action = sa
+                            service_action_integration_message = f"تم دمج إجراء الخدمة {sa.id} مع دورة الصيانة"
+
+                            # Return the integrated maintenance order
+                            return True, integrated_order, service_action_integration_message, False
+                        else:
+                            print(f"❌ Service action integration failed: {integration_err}")
+                            # Continue to normal flow but log the integration failure
+                            service_action_integration_message = f"فشل في دمج إجراء الخدمة: {integration_err}"
+
+                    elif sa.status == ServiceActionStatus.CREATED:
+                        print(f"⚠️ Service action {sa.id} found but still in CREATED status - not ready for integration")
+                        service_action_integration_message = "إجراء الخدمة موجود ولكن لم يتم تأكيده بعد"
+
+                    elif sa.status == ServiceActionStatus.CONFIRMED:
+                        print(f"⚠️ Service action {sa.id} found but still in CONFIRMED status - not moved to pending receive")
+                        service_action_integration_message = "إجراء الخدمة مؤكد ولكن لم يتم تحويله للاستلام"
+
+                    elif sa.is_integrated_with_maintenance:
+                        print(f"✅ Service action {sa.id} already integrated with maintenance order {sa.maintenance_order_id}")
+                        if sa.maintenance_order:
+                            print(f"🔄 Returning existing integrated maintenance order {sa.maintenance_order.id}")
+                            return True, sa.maintenance_order, "إجراء الخدمة مُدمج مع الصيانة مسبقاً", True
+                        else:
+                            print(f"⚠️ Service action {sa.id} marked as integrated but no maintenance order found")
+
+                    else:
+                        print(f"ℹ️ Service action {sa.id} found with status {sa.status.value} - not ready for integration")
+
+            except Exception as integration_probe_err:
+                print(f"⚠️ Service action detection error (non-fatal): {integration_probe_err}")
+                service_action_integration_message = f"خطأ في اكتشاف إجراء الخدمة: {str(integration_probe_err)}"
+
+            # ============================================================================
+            # PHASE 2: EXISTING ORDER CHECK
+            # ============================================================================
             existing_order = Order.get_by_tracking_number(tracking_number)
             if existing_order and not force_create:
-                return True, existing_order, None, True
-            
-            # Fetch data from Bosta API
+                print(f"📋 Found existing order {existing_order.id} for tracking {tracking_number}")
+
+                # Check if this order is linked to a service action
+                if existing_order.is_service_action_order and existing_order.service_action_id:
+                    print(f"🔗 Existing order {existing_order.id} is linked to service action {existing_order.service_action_id}")
+                    if service_action_integration_message:
+                        return True, existing_order, f"{service_action_integration_message} - الطلب موجود مسبقاً", True
+                    else:
+                        return True, existing_order, "الطلب موجود مسبقاً ومربوط بإجراء خدمة", True
+                else:
+                    print(f"📋 Existing order {existing_order.id} is regular maintenance order")
+                    return True, existing_order, service_action_integration_message or None, True
+
+            # ============================================================================
+            # PHASE 3: BOSTA API DATA FETCH AND TRANSFORMATION
+            # ============================================================================
+            print(f"🌐 Fetching data from Bosta API for tracking: {tracking_number}")
             success, bosta_data, error = BostaAPIService.fetch_order_data(tracking_number)
             if not success:
-                print(f"Bosta API error for {tracking_number}: {error}")
+                print(f"❌ Bosta API error for {tracking_number}: {error}")
                 return False, None, error, False
-            
-            # Transform Bosta data
+
+            # Transform Bosta data using enhanced transformation
             try:
                 order_data = BostaAPIService.transform_bosta_data(bosta_data)
                 if not order_data:
                     return False, None, "فشل في تحويل بيانات الطلب", False
+                print(f"✅ Successfully transformed Bosta data for {tracking_number}")
             except Exception as transform_error:
-                print(f"Transform error for {tracking_number}: {str(transform_error)}")
+                print(f"❌ Transform error for {tracking_number}: {str(transform_error)}")
                 return False, None, f"خطأ في تحويل البيانات: {str(transform_error)}", False
-            
-            # Create new order
+
+            # ============================================================================
+            # PHASE 4: ORDER CREATION WITH SERVICE ACTION CONTEXT
+            # ============================================================================
             try:
                 order = Order(**order_data)
                 order.scanned_at = get_egypt_now()
+
+                # ENHANCED: Add service action context if available
+                if integrated_service_action:
+                    order.is_service_action_order = True
+                    order.service_action_id = integrated_service_action.id
+                    order.service_action_type = integrated_service_action.action_type
+                    print(f"🔗 Created order with service action context: SA-{integrated_service_action.id}")
+
                 order.save()
-                
-                # Add initial maintenance history entry
+                print(f"✅ Successfully created new order {order.id} for tracking {tracking_number}")
+
+                # Add initial maintenance history entry with enhanced context
+                history_notes = 'تم استلام الطلب بنجاح'
+                if service_action_integration_message:
+                    history_notes += f" | {service_action_integration_message}"
+
                 history = MaintenanceHistory(
                     order_id=order.id,
                     action=MaintenanceAction.RECEIVED,
-                    notes='تم استلام الطلب بنجاح',
+                    notes=history_notes,
                     user_name=user_name,
+                    action_data={'service_action_context': integrated_service_action.id if integrated_service_action else None},
                     timestamp=get_egypt_now()
                 )
                 history.save()
-                
-                return True, order, None, False
-                
+                print(f"✅ Added maintenance history for order {order.id}")
+
+                return True, order, service_action_integration_message, False
+
             except Exception as e:
                 db.session.rollback()
-                print(f"Database error for {tracking_number}: {str(e)}")
+                print(f"❌ Database error for {tracking_number}: {str(e)}")
                 return False, None, f"خطأ في حفظ البيانات: {str(e)}", False
-                
+
         except Exception as e:
-            print(f"Unexpected error in scan_order for {tracking_number}: {str(e)}")
+            print(f"💥 Unexpected error in enhanced scan_order for {tracking_number}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return False, None, f"خطأ غير متوقع: {str(e)}", False
     
     @staticmethod

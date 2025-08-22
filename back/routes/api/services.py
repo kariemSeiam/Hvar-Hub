@@ -171,3 +171,138 @@ def fail_service_action(action_id):
         return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
 
 
+# =====================
+# ENHANCED WORKFLOW ENDPOINTS
+# =====================
+
+@api_bp.route('/services/by-customer-phone', methods=['GET'])
+def get_service_actions_by_customer_phone():
+    """
+    Get all service actions for a specific customer phone number
+    """
+    try:
+        phone = (request.args.get('phone') or '').strip()
+        limit = min(int(request.args.get('limit', 50)), 100)
+
+        if not phone:
+            return jsonify({ 'success': False, 'message': 'رقم الهاتف مطلوب' }), 400
+
+        actions = UnifiedService.get_service_actions_by_customer_phone(phone, limit=limit)
+        return jsonify({
+            'success': True,
+            'data': actions,
+            'message': f'تم العثور على {len(actions)} إجراء خدمة للعميل'
+        }), 200
+    except Exception as e:
+        return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
+
+
+@api_bp.route('/services/<int:action_id>/history', methods=['GET'])
+def get_service_action_with_history(action_id):
+    """
+    Get service action with complete history
+    """
+    try:
+        result = UnifiedService.get_service_action_with_history(action_id)
+        if not result:
+            return jsonify({ 'success': False, 'message': 'إجراء الخدمة غير موجود' }), 404
+
+        return jsonify({
+            'success': True,
+            'data': result,
+            'message': 'تم جلب إجراء الخدمة مع التاريخ الكامل'
+        }), 200
+    except Exception as e:
+        return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
+
+
+@api_bp.route('/services/workflow-statistics', methods=['GET'])
+def get_workflow_statistics():
+    """
+    Get comprehensive workflow statistics
+    """
+    try:
+        stats = UnifiedService.get_workflow_statistics()
+        return jsonify({
+            'success': True,
+            'data': stats,
+            'message': 'تم جلب إحصائيات سير العمل بنجاح'
+        }), 200
+    except Exception as e:
+        return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
+
+
+@api_bp.route('/services/<int:action_id>/validate', methods=['GET'])
+def validate_service_action_workflow(action_id):
+    """
+    Validate that a service action workflow is complete and consistent
+    """
+    try:
+        is_valid, issues = UnifiedService.validate_service_action_workflow(action_id)
+        return jsonify({
+            'success': True,
+            'data': {
+                'is_valid': is_valid,
+                'issues': issues
+            },
+            'message': 'تم التحقق من صحة سير العمل' if is_valid else f'تم العثور على مشاكل: {issues}'
+        }), 200
+    except Exception as e:
+        return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
+
+
+@api_bp.route('/services/by-status/<status>', methods=['GET'])
+def get_service_actions_by_status(status):
+    """
+    Get service actions by specific status with enhanced data
+    """
+    try:
+        try:
+            status_enum = ServiceActionStatus(status)
+        except ValueError:
+            return jsonify({ 'success': False, 'message': 'حالة غير صحيحة' }), 400
+
+        limit = min(int(request.args.get('limit', 100)), 200)
+        actions = UnifiedService.get_service_actions_by_status(status_enum, limit=limit)
+
+        return jsonify({
+            'success': True,
+            'data': actions,
+            'message': f'تم العثور على {len(actions)} إجراء خدمة في حالة {status}'
+        }), 200
+    except Exception as e:
+        return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
+
+
+@api_bp.route('/services/integration-status', methods=['GET'])
+def get_service_action_integration_status():
+    """
+    Get service actions integration status for maintenance hub
+    Shows which service actions are ready for integration
+    """
+    try:
+        phone = (request.args.get('customer_phone') or '').strip()
+        limit = min(int(request.args.get('limit', 20)), 50)
+
+        if phone:
+            # Get service actions for specific customer
+            actions = UnifiedService.get_service_actions_by_customer_phone(phone, limit=limit)
+            # Filter for pending receive only
+            pending_actions = [a for a in actions if a.get('status') == 'pending_receive']
+        else:
+            # Get all pending receive actions
+            pending_actions = UnifiedService.get_pending_receive_actions(limit=limit)
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'pending_integration_count': len(pending_actions),
+                'ready_for_maintenance_hub': pending_actions,
+                'integration_ready': len(pending_actions) > 0
+            },
+            'message': f'تم العثور على {len(pending_actions)} إجراء خدمة جاهز للدمج مع الصيانة'
+        }), 200
+    except Exception as e:
+        return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
+
+

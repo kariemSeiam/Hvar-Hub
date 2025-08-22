@@ -145,6 +145,156 @@ export const serviceActionAPI = {
   // Clear cache
   clearCache() {
     this._actionCache.clear();
+  },
+
+  // =====================
+  // ENHANCED WORKFLOW ENDPOINTS
+  // =====================
+
+  async getServiceActionsByCustomerPhone(phone, limit = 50) {
+    try {
+      const res = await backend.get(API_ENDPOINTS.services.byCustomerPhone, { 
+        params: { phone, limit } 
+      });
+      return { success: true, data: res.data.data };
+    } catch (e) {
+      return { success: false, data: [], message: getMessage(e) };
+    }
+  },
+
+  async getServiceActionWithHistory(actionId) {
+    try {
+      const res = await backend.get(API_ENDPOINTS.services.withHistory(actionId));
+      return { success: true, data: res.data.data };
+    } catch (e) {
+      return { success: false, data: null, message: getMessage(e) };
+    }
+  },
+
+  async getWorkflowStatistics() {
+    try {
+      const res = await backend.get(API_ENDPOINTS.services.workflowStats);
+      return { success: true, data: res.data.data };
+    } catch (e) {
+      return { success: false, data: {}, message: getMessage(e) };
+    }
+  },
+
+  async validateServiceActionWorkflow(actionId) {
+    try {
+      const res = await backend.get(API_ENDPOINTS.services.validate(actionId));
+      return { success: true, data: res.data.data };
+    } catch (e) {
+      return { success: false, data: { is_valid: false, issues: [] }, message: getMessage(e) };
+    }
+  },
+
+  async getServiceActionsByStatus(status, limit = 100) {
+    try {
+      const res = await backend.get(API_ENDPOINTS.services.byStatus(status), { 
+        params: { limit } 
+      });
+      return { success: true, data: res.data.data };
+    } catch (e) {
+      return { success: false, data: [], message: getMessage(e) };
+    }
+  },
+
+  async getIntegrationStatus(customerPhone = null, limit = 20) {
+    try {
+      const params = { limit };
+      if (customerPhone) params.customer_phone = customerPhone;
+      
+      const res = await backend.get(API_ENDPOINTS.services.integrationStatus, { params });
+      return { success: true, data: res.data.data };
+    } catch (e) {
+      return { success: false, data: { pending_integration_count: 0, ready_for_maintenance_hub: [] }, message: getMessage(e) };
+    }
+  },
+
+  // =====================
+  // ENHANCED CUSTOMER SEARCH
+  // =====================
+
+  async searchCustomers(searchType, searchValue, options = {}) {
+    try {
+      const payload = {
+        [searchType]: searchValue,
+        group: true, // Enable customer grouping
+        page: options.page || 1,
+        limit: options.limit || 50
+      };
+
+      const res = await backend.post(API_ENDPOINTS.bosta.search, payload);
+      return { success: true, data: res.data.data };
+    } catch (e) {
+      return { success: false, data: { customers: [] }, message: getMessage(e) };
+    }
+  },
+
+  async getServicePayloadByTracking(tracking) {
+    try {
+      const res = await backend.get(API_ENDPOINTS.bosta.servicePayload, { 
+        params: { tracking } 
+      });
+      return { success: true, data: res.data.data };
+    } catch (e) {
+      return { success: false, data: null, message: getMessage(e) };
+    }
+  },
+
+  // =====================
+  // UTILITY METHODS
+  // =====================
+
+  getStatusArabic(status) {
+    const statusMap = {
+      'created': 'تم الإنشاء',
+      'confirmed': 'تم التأكيد',
+      'pending_receive': 'في انتظار الاستلام',
+      'completed': 'مكتمل',
+      'failed': 'فاشل',
+      'cancelled': 'ملغي'
+    };
+    return statusMap[status] || status;
+  },
+
+  getActionTypeArabic(actionType) {
+    const typeMap = {
+      'part_replace': 'استبدال قطعة',
+      'full_replace': 'استبدال كامل',
+      'return_from_customer': 'استرجاع من العميل'
+    };
+    return typeMap[actionType] || actionType;
+  },
+
+  // Enhanced transformation with complete workflow context
+  transformServiceActionEnhanced(action) {
+    if (!action) return null;
+    
+    const transformed = this.transformServiceAction(action);
+    
+    return {
+      ...transformed,
+      status_arabic: this.getStatusArabic(transformed.status),
+      action_type_arabic: this.getActionTypeArabic(transformed.action_type),
+      is_ready_for_integration: transformed.status === 'pending_receive',
+      is_integrated: transformed.is_integrated_with_maintenance || false,
+      workflow_stage: this._getWorkflowStage(transformed.status),
+      customer_display_name: transformed.customer_full_name || transformed.customer_first_name || 'غير محدد'
+    };
+  },
+
+  _getWorkflowStage(status) {
+    const stageMap = {
+      'created': 'إنشاء الإجراء',
+      'confirmed': 'تأكيد الإجراء',
+      'pending_receive': 'جاهز للاستلام',
+      'completed': 'مكتمل',
+      'failed': 'فاشل',
+      'cancelled': 'ملغي'
+    };
+    return stageMap[status] || 'مرحلة غير معروفة';
   }
 };
 

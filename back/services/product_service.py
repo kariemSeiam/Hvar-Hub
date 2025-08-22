@@ -69,6 +69,8 @@ class ProductService:
                 product.alert_quantity = int(payload.get('alert_quantity') or product.alert_quantity or 0)
             if 'warranty_period_months' in payload:
                 product.warranty_period_months = int(payload.get('warranty_period_months') or product.warranty_period_months or 12)
+            if 'current_stock' in payload:
+                product.current_stock = int(payload.get('current_stock') or 0)
             if 'is_active' in payload:
                 product.is_active = bool(payload.get('is_active'))
             if 'description' in payload:

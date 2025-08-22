@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { ServiceActionTabNavigation, ServiceActionList, ServiceActionForm } from '../components/service';
 import { ConfirmationModal } from '../components/common';
+import EnhancedServiceActionForm from '../components/service/EnhancedServiceActionForm';
+import WorkflowDashboard from '../components/service/WorkflowDashboard';
 import { useServiceActions } from '../hooks/useServiceActions';
 
 const ServiceActionsPage = () => {
@@ -23,6 +25,8 @@ const ServiceActionsPage = () => {
     // Form state
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [editingAction, setEditingAction] = useState(null);
+    const [showDashboard, setShowDashboard] = useState(false);
+    const [currentView, setCurrentView] = useState('list'); // list, dashboard, create
 
     // Confirmation modal state
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -46,9 +50,10 @@ const ServiceActionsPage = () => {
         }
 
         if (result.success) {
-            // Close form
+            // Close form and return to list
             setShowCreateForm(false);
             setEditingAction(null);
+            setCurrentView('list');
         }
     };
 
@@ -56,6 +61,23 @@ const ServiceActionsPage = () => {
     const handleFormCancel = () => {
         setShowCreateForm(false);
         setEditingAction(null);
+        setCurrentView('list');
+    };
+
+    // Handle enhanced form submission
+    const handleEnhancedFormSubmit = async (serviceActionData) => {
+        const result = await createServiceAction(serviceActionData);
+        if (result.success) {
+            setCurrentView('list');
+            // Force update to show new action
+            forceUpdate();
+        }
+        return result;
+    };
+
+    // Handle enhanced form cancellation
+    const handleEnhancedFormCancel = () => {
+        setCurrentView('list');
     };
 
     // Handle action confirmation (for destructive actions)
@@ -89,8 +111,30 @@ const ServiceActionsPage = () => {
                         </div>
 
                         <div className="flex items-center gap-3">
+                            {/* View Toggle Buttons */}
+                            <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                <button
+                                    onClick={() => setCurrentView('list')}
+                                    className={`px-4 py-2 text-sm font-medium transition-colors ${currentView === 'list'
+                                        ? 'bg-brand-blue-500 text-white'
+                                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                        }`}
+                                >
+                                    القائمة
+                                </button>
+                                <button
+                                    onClick={() => setCurrentView('dashboard')}
+                                    className={`px-4 py-2 text-sm font-medium transition-colors ${currentView === 'dashboard'
+                                        ? 'bg-brand-blue-500 text-white'
+                                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                        }`}
+                                >
+                                    لوحة التحكم
+                                </button>
+                            </div>
+
                             {/* Pending Receive Integration Button */}
-                            {getPendingReceiveCount() > 0 && (
+                            {getPendingReceiveCount() > 0 && currentView === 'list' && (
                                 <button
                                     onClick={() => handleStatusChange('PENDING_RECEIVE')}
                                     className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-colors"
@@ -103,44 +147,61 @@ const ServiceActionsPage = () => {
                             )}
 
                             {/* Create New Action Button */}
-                            <button
-                                onClick={() => setShowCreateForm(true)}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                </svg>
-                                إنشاء إجراء جديد
-                            </button>
+                            {currentView === 'list' && (
+                                <button
+                                    onClick={() => setCurrentView('create')}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    </svg>
+                                    إنشاء إجراء خدمة
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
 
                 {/* Main Content */}
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    {/* Left Sidebar - Tab Navigation */}
-                    <div className="lg:col-span-1">
-                        <ServiceActionTabNavigation
-                            activeTab={activeStatus}
-                            onTabChange={handleTabChange}
-                            counts={getStatusCounts()}
+                {currentView === 'dashboard' ? (
+                    /* Dashboard View */
+                    <WorkflowDashboard className="mt-6" />
+                ) : currentView === 'create' ? (
+                    /* Enhanced Create Form */
+                    <div className="mt-6">
+                        <EnhancedServiceActionForm
+                            onSubmit={handleEnhancedFormSubmit}
+                            onCancel={handleEnhancedFormCancel}
+                            disabled={actionInProgress}
                         />
                     </div>
+                ) : (
+                    /* List View */
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        {/* Left Sidebar - Tab Navigation */}
+                        <div className="lg:col-span-1">
+                            <ServiceActionTabNavigation
+                                activeTab={activeStatus}
+                                onTabChange={handleTabChange}
+                                counts={getStatusCounts()}
+                            />
+                        </div>
 
-                    {/* Right Content Area */}
-                    <div className="lg:col-span-3">
-                        {/* Service Actions List */}
-                        <ServiceActionList
-                            serviceActions={filteredActions}
-                            isLoading={isLoading}
-                            activeStatus={activeStatus}
-                            highlightedOrderId={highlightedActionId}
-                            actionInProgress={actionInProgress}
-                            onAction={handleAction}
-                            forceUpdate={forceUpdate}
-                        />
+                        {/* Right Content Area */}
+                        <div className="lg:col-span-3">
+                            {/* Service Actions List */}
+                            <ServiceActionList
+                                serviceActions={filteredActions}
+                                isLoading={isLoading}
+                                activeStatus={activeStatus}
+                                highlightedOrderId={highlightedActionId}
+                                actionInProgress={actionInProgress}
+                                onAction={handleAction}
+                                forceUpdate={forceUpdate}
+                            />
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Create/Edit Form Modal */}
                 {showCreateForm && (
