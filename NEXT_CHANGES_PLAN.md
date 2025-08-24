@@ -99,11 +99,27 @@
 
 ### **Task 1: Database Models for Clean Stock Integration**
 **Time**: 2-3 days  
-**Priority**: Critical
+**Priority**: Critical  
+**Status**: 🔴 PENDING  
+**Cursor Rules**: `02-backend-db-models.mdc`, `15-unified-service-action-cycle.mdc`  
+**Status**: 🔴 PENDING  
+**Cursor Rules**: `02-backend-db-models.mdc`, `15-unified-service-action-cycle.mdc`
 
 #### **1.1: Simple Stock Movement Tracking**
-**Business Need**: Track stock changes for maintenance and service actions
-**Solution**: One simple table for all stock movements
+**Business Need**: Track stock changes for maintenance and service actions  
+**Solution**: One simple table for all stock movements  
+**Files to Modify**: `back/db/auto_init.py`, `back/init_db.py`
+
+**Detailed Implementation Guide**:
+- **Model Updates**: Follow existing patterns from `back/db/auto_init.py`
+- **Table Creation**: Use proper SQL syntax for table creation in `back/init_db.py`
+- **Index Creation**: Add all required indexes for performance optimization
+- **Constraint Management**: Implement proper foreign key and check constraints
+- **Migration Strategy**: Handle existing data during schema updates
+- **Testing**: Test all database operations on development database first
+- **Documentation**: Update model docstrings with field descriptions
+- **Validation**: Ensure all database constraints are properly enforced
+
 ```python
 class StockMovement(BaseModel):
     __tablename__ = 'stock_movements'
@@ -126,9 +142,39 @@ class StockMovement(BaseModel):
     created_by = db.Column(db.String(100), default='فني الصيانة')
 ```
 
+**Implementation Steps**:
+1. **Add to `back/db/auto_init.py`**: Create StockMovement class with BaseModel inheritance
+2. **Add to `back/init_db.py`**: Create table creation SQL with proper indexes
+3. **Add validation**: Ensure `quantity_change` is never 0, `condition` is valid enum
+4. **Add relationships**: Link to Order and ServiceAction models
+
+**Cursor Rules to Follow**:
+- **`02-backend-db-models.mdc`**: Use BaseModel pattern, add proper indexes
+- **`15-unified-service-action-cycle.mdc`**: Follow StockMovement schema rules exactly
+
+**Detailed Implementation Guide**:
+- **BaseModel Inheritance**: Follow pattern from `Order` and `Product` models in `back/db/auto_init.py`
+- **Database Constraints**: Add CHECK constraints for `quantity_change != 0` and valid `condition` values
+- **Indexes**: Create composite indexes on `(item_type, item_id)` and `(movement_type, created_at)` for performance
+- **Foreign Keys**: Ensure proper cascade behavior for `order_id` and `service_action_id`
+- **Validation**: Implement `__init__` method to validate data before creation
+- **Serialization**: Extend `to_dict()` method to include all new fields with proper formatting
+
 #### **1.2: Service Action Send/Receive Items**
-**Business Need**: Track what we send and receive for replacements
-**Solution**: Simple items table
+**Business Need**: Track what we send and receive for replacements  
+**Solution**: Simple items table for multi-product support  
+**Files to Modify**: `back/db/auto_init.py`, `back/init_db.py`
+
+**Detailed Implementation Guide**:
+- **Model Updates**: Follow existing patterns from `back/db/auto_init.py`
+- **Table Creation**: Use proper SQL syntax for table creation in `back/init_db.py`
+- **Index Creation**: Add all required indexes for performance optimization
+- **Constraint Management**: Implement proper foreign key and check constraints
+- **Migration Strategy**: Handle existing data during schema updates
+- **Testing**: Test all database operations on development database first
+- **Documentation**: Update model docstrings with field descriptions
+- **Validation**: Ensure all database constraints are properly enforced
+
 ```python
 class ServiceActionItem(BaseModel):
     __tablename__ = 'service_action_items'
@@ -147,33 +193,339 @@ class ServiceActionItem(BaseModel):
     received_at = db.Column(db.DateTime)
 ```
 
+**Implementation Steps**:
+1. **Add to `back/db/auto_init.py`**: Create ServiceActionItem class
+2. **Add to `back/init_db.py`**: Create table with foreign key constraints
+3. **Add indexes**: Index `service_action_id`, `item_type`, `item_id` for fast queries
+4. **Add validation**: Non-negative quantities, valid conditions
+
+**Cursor Rules to Follow**:
+- **`02-backend-db-models.mdc`**: Follow ServiceActionItem table structure exactly
+- **`15-unified-service-action-cycle.mdc`**: Implement required fields and validation
+
+**Detailed Implementation Guide**:
+- **Table Structure**: Follow exact schema from `15-unified-service-action-cycle.mdc` section "ServiceActionItem Table"
+- **Foreign Key Constraints**: Use `ON DELETE CASCADE` for `service_action_id` to maintain data integrity
+- **Index Strategy**: Create indexes on `(service_action_id, item_type)` for fast service action queries
+- **DateTime Fields**: Use `get_egypt_now()` from `back/utils/timezone.py` for default timestamps
+- **Validation Logic**: Implement `validate()` method to ensure business rules are enforced
+- **Relationship Loading**: Add lazy loading for related `ServiceAction` and `Product`/`Part` data
+
 #### **1.3: Service Action Types (3 Types)**
-**Business Clarification**: Clear separation of responsibilities
-- **MAINTENANCE**: Handled separately through maintenance orders with stock adjustments
-- **Service Actions**: Three types only
-  - **PART_REPLACE**: Send replacement parts, receive damaged back
-  - **FULL_REPLACE**: Send replacement product, receive damaged back  
-  - **RETURN_FROM_CUSTOMER**: Customer returns items, we refund
+**Business Clarification**: Clear separation of responsibilities  
+**Files to Modify**: `back/db/auto_init.py`
+
+**Detailed Implementation Guide**:
+- **Model Updates**: Follow existing patterns from `back/db/auto_init.py`
+- **Table Creation**: Use proper SQL syntax for table creation in `back/init_db.py`
+- **Index Creation**: Add all required indexes for performance optimization
+- **Constraint Management**: Implement proper foreign key and check constraints
+- **Migration Strategy**: Handle existing data during schema updates
+- **Testing**: Test all database operations on development database first
+- **Documentation**: Update model docstrings with field descriptions
+- **Validation**: Ensure all database constraints are properly enforced
+
+**Current Enum Update**:
+```python
+class ServiceActionType(db.Enum):
+    PART_REPLACE = 'part_replace'           # Send replacement parts, receive damaged back
+    FULL_REPLACE = 'full_replace'           # Send replacement product, receive damaged back  
+    RETURN_FROM_CUSTOMER = 'return_from_customer'  # Customer returns items, we refund
+    # REMOVE: MAINTENANCE - handled separately through maintenance orders
+```
+
+**Implementation Steps**:
+1. **Update enum in `back/db/auto_init.py`**: Remove MAINTENANCE, keep only 3 types
+2. **Update existing ServiceAction records**: Migrate any MAINTENANCE types to proper maintenance orders
+3. **Add validation**: Ensure only valid types can be created
+
+**Cursor Rules to Follow**:
+- **`15-unified-service-action-cycle.mdc`**: Only 3 types allowed, MAINTENANCE handled separately
+- **`02-backend-db-models.mdc`**: Use enums for constrained values
+
+**Detailed Implementation Guide**:
+- **Enum Update**: Follow pattern from existing enums in `back/db/auto_init.py` (OrderStatus, MaintenanceAction)
+- **Data Migration**: Create migration script to handle existing MAINTENANCE service actions
+- **Validation**: Add `@validates('action_type')` decorator to ensure only valid types are accepted
+- **Business Logic**: Update `ServiceAction.can_transition_to()` method to handle new type restrictions
+- **API Validation**: Ensure all API endpoints validate action_type against updated enum
+- **Frontend Sync**: Update `STATUS_MAPPING` in `front/src/config/environment.js` to reflect changes
 
 #### **1.4: Add Refund Tracking**
-**For return service actions**:
+**For return service actions**  
+**Files to Modify**: `back/db/auto_init.py` (update existing ServiceAction model)
+
+**Detailed Implementation Guide**:
+- **Model Updates**: Follow existing patterns from `back/db/auto_init.py`
+- **Table Creation**: Use proper SQL syntax for table creation in `back/init_db.py`
+- **Index Creation**: Add all required indexes for performance optimization
+- **Constraint Management**: Implement proper foreign key and check constraints
+- **Migration Strategy**: Handle existing data during schema updates
+- **Testing**: Test all database operations on development database first
+- **Documentation**: Update model docstrings with field descriptions
+- **Validation**: Ensure all database constraints are properly enforced
+
 ```python
-# In ServiceAction model, keep existing refund field
+# In existing ServiceAction model, add/update these fields:
 refund_amount = db.Column(db.Numeric(10, 2))  # For returns
 refund_processed = db.Column(db.Boolean, default=False)  # Track refund status
 refund_processed_at = db.Column(db.DateTime)  # When refund was processed
 ```
 
-**Files to Modify**:
-- `back/db/auto_init.py` - Add new models, update ServiceAction  
-- `back/init_db.py` - Create new tables
+**Implementation Steps**:
+1. **Update ServiceAction model**: Add refund tracking fields
+2. **Add validation**: `refund_amount` must be positive for returns
+3. **Add default values**: Set appropriate defaults for non-return actions
+
+**Cursor Rules to Follow**:
+- **`02-backend-db-models.mdc`**: Extend to_dict() carefully, include new fields
+- **`15-unified-service-action-cycle.mdc`**: Follow refund tracking pattern exactly
+
+**Detailed Implementation Guide**:
+- **Field Addition**: Add fields exactly as specified in `15-unified-service-action-cycle.mdc` section "ServiceAction Updates"
+- **Validation Logic**: Implement `@validates('refund_amount')` to ensure positive values for returns
+- **Default Values**: Set `refund_amount = None` for non-return actions, `refund_processed = False` by default
+- **DateTime Handling**: Use `get_egypt_now()` from `back/utils/timezone.py` for `refund_processed_at`
+- **Serialization**: Update `to_dict()` method to include new fields with proper formatting
+- **Business Rules**: Ensure refund fields are only populated for `RETURN_FROM_CUSTOMER` actions
+- **API Integration**: Update service action creation endpoints to handle refund_amount parameter
+
+#### **1.5: Product and Part Stock Fields Update**
+**Business Need**: Track valid vs damaged stock separately  
+**Files to Modify**: `back/db/auto_init.py` (update existing Product and Part models)
+
+**Detailed Implementation Guide**:
+- **Model Updates**: Follow existing patterns from `back/db/auto_init.py`
+- **Table Creation**: Use proper SQL syntax for table creation in `back/init_db.py`
+- **Index Creation**: Add all required indexes for performance optimization
+- **Constraint Management**: Implement proper foreign key and check constraints
+- **Migration Strategy**: Handle existing data during schema updates
+- **Testing**: Test all database operations on development database first
+- **Documentation**: Update model docstrings with field descriptions
+- **Validation**: Ensure all database constraints are properly enforced
+
+```python
+# In Product model - add alongside existing current_stock
+current_stock = db.Column(db.Integer, default=0)  # Total stock (keep existing)
+current_stock_damaged = db.Column(db.Integer, default=0)  # Damaged count (NEW)
+
+# In Part model - add alongside existing current_stock  
+current_stock = db.Column(db.Integer, default=0)  # Total stock (keep existing)
+current_stock_damaged = db.Column(db.Integer, default=0)  # Damaged count (NEW)
+```
+
+**Implementation Steps**:
+1. **Update Product model**: Add `current_stock_damaged` field
+2. **Update Part model**: Add `current_stock_damaged` field
+3. **Add validation**: Ensure damaged count never exceeds total stock
+4. **Update serialization**: Include both fields in `to_dict()` method
+
+**Cursor Rules to Follow**:
+- **`02-backend-db-models.mdc`**: Add stock fields to Product/Part models
+- **`15-unified-service-action-cycle.mdc`**: Implement condition tracking correctly
+
+**Detailed Implementation Guide**:
+- **Field Addition**: Add `current_stock_damaged` field with default value 0 to both models
+- **Validation Logic**: Implement `@validates('current_stock_damaged')` to ensure it never exceeds `current_stock`
+- **Business Rules**: Ensure `current_stock_damaged` is always non-negative and ≤ `current_stock`
+- **Database Constraints**: Add CHECK constraint `current_stock_damaged >= 0` and `current_stock_damaged <= current_stock`
+- **Serialization**: Update `to_dict()` method to include both stock fields with proper formatting
+- **Stock Calculations**: Add helper method `get_valid_stock()` that returns `current_stock - current_stock_damaged`
+- **Migration Strategy**: Handle existing records by setting `current_stock_damaged = 0` for all existing items
+- **API Updates**: Ensure all stock-related endpoints return both total and damaged stock counts
+
+#### **1.6: Database Migration and Indexes**
+**Performance and Data Integrity**  
+**Files to Modify**: `back/init_db.py`
+
+**Detailed Implementation Guide**:
+- **Model Updates**: Follow existing patterns from `back/db/auto_init.py`
+- **Table Creation**: Use proper SQL syntax for table creation in `back/init_db.py`
+- **Index Creation**: Add all required indexes for performance optimization
+- **Constraint Management**: Implement proper foreign key and check constraints
+- **Migration Strategy**: Handle existing data during schema updates
+- **Testing**: Test all database operations on development database first
+- **Documentation**: Update model docstrings with field descriptions
+- **Validation**: Ensure all database constraints are properly enforced
+
+**Required Indexes**:
+```sql
+-- Stock Movement Indexes
+CREATE INDEX IF NOT EXISTS idx_stock_movement_item ON stock_movements (item_type, item_id);
+CREATE INDEX IF NOT EXISTS idx_stock_movement_type ON stock_movements (movement_type, created_at);
+CREATE INDEX IF NOT EXISTS idx_stock_movement_order ON stock_movements (order_id);
+CREATE INDEX IF NOT EXISTS idx_stock_movement_service ON stock_movements (service_action_id);
+
+-- Service Action Item Indexes  
+CREATE INDEX IF NOT EXISTS idx_service_action_item_service ON service_action_items (service_action_id);
+CREATE INDEX IF NOT EXISTS idx_service_action_item_type ON service_action_items (item_type, item_id);
+```
+
+**Implementation Steps**:
+1. **Add to `back/init_db.py`**: Create all required indexes
+2. **Test performance**: Verify fast queries on stock movements
+3. **Add to `create_indexes()`**: Include in main index creation function
+
+**Cursor Rules to Follow**:
+- **`02-backend-db-models.mdc`**: Index common search fields and timestamp-based sorts
+- **`15-unified-service-action-cycle.mdc`**: Follow indexing requirements exactly
+
+**Detailed Implementation Guide**:
+- **Index Creation**: Follow exact SQL from `15-unified-service-action-cycle.mdc` section "Stock Movement Indexes"
+- **Performance Testing**: Use `EXPLAIN QUERY PLAN` to verify index usage on stock movement queries
+- **Composite Indexes**: Create optimal composite indexes for common query patterns
+- **Index Maintenance**: Add indexes to `create_indexes()` function in `back/init_db.py`
+- **Query Optimization**: Ensure all stock movement queries use appropriate indexes
+- **Monitoring**: Add logging to track query performance with and without indexes
+- **Fallback Strategy**: Have plan for handling queries that don't use indexes efficiently
+
+#### **1.7: Validation and Constraints**
+**Data Integrity Rules**  
+**Files to Modify**: `back/db/auto_init.py`
+
+**Detailed Implementation Guide**:
+- **Model Updates**: Follow existing patterns from `back/db/auto_init.py`
+- **Table Creation**: Use proper SQL syntax for table creation in `back/init_db.py`
+- **Index Creation**: Add all required indexes for performance optimization
+- **Constraint Management**: Implement proper foreign key and check constraints
+- **Migration Strategy**: Handle existing data during schema updates
+- **Testing**: Test all database operations on development database first
+- **Documentation**: Update model docstrings with field descriptions
+- **Validation**: Ensure all database constraints are properly enforced
+
+**Validation Rules**:
+```python
+# StockMovement validation
+- quantity_change: Must be non-zero (positive or negative)
+- condition: Must be 'valid' or 'damaged' only
+- movement_type: Must be 'maintenance', 'send', or 'receive'
+- item_type: Must be 'product' or 'part'
+
+# ServiceActionItem validation  
+- quantity_to_send: Must be non-negative
+- quantity_received: Must be non-negative
+- condition_received: Must be 'valid' or 'damaged' when received
+
+# Product/Part validation
+- current_stock_damaged: Must not exceed current_stock
+- Both fields must be non-negative
+```
+
+**Implementation Steps**:
+1. **Add validation methods**: Implement validation in model classes
+2. **Add database constraints**: Use CHECK constraints where possible
+3. **Add service-level validation**: Validate before saving
+
+**Cursor Rules to Follow**:
+- **`02-backend-db-models.mdc`**: Keep validation in services, models remain thin
+- **`15-unified-service-action-cycle.mdc`**: Follow validation rules exactly
+
+**Detailed Implementation Guide**:
+- **Model Validation**: Use SQLAlchemy `@validates` decorators for field-level validation
+- **Database Constraints**: Implement CHECK constraints for business rule enforcement
+- **Service Validation**: Follow pattern from `OrderService.validate_action_data` in `back/services/order_service.py`
+- **Error Messages**: Return Arabic error messages for validation failures (follow existing pattern)
+- **Validation Order**: Validate at model level first, then service level, then API level
+- **Custom Validators**: Create reusable validation functions for common business rules
+- **Testing**: Ensure all validation rules are covered by unit tests
+- **Documentation**: Document all validation rules in model docstrings
+
+#### **1.8: Testing Requirements**
+**Quality Assurance**  
+**Files to Create**: `temp-tests/backend/test_database_models.py`
+
+**Detailed Implementation Guide**:
+- **Model Updates**: Follow existing patterns from `back/db/auto_init.py`
+- **Table Creation**: Use proper SQL syntax for table creation in `back/init_db.py`
+- **Index Creation**: Add all required indexes for performance optimization
+- **Constraint Management**: Implement proper foreign key and check constraints
+- **Migration Strategy**: Handle existing data during schema updates
+- **Testing**: Test all database operations on development database first
+- **Documentation**: Update model docstrings with field descriptions
+- **Validation**: Ensure all database constraints are properly enforced
+
+**Test Cases**:
+```python
+def test_stock_movement_creation():
+    """Test StockMovement creation with all required fields"""
+    
+def test_service_action_item_validation():
+    """Test ServiceActionItem validation rules"""
+    
+def test_product_part_stock_fields():
+    """Test Product/Part stock field updates"""
+    
+def test_database_constraints():
+    """Test database-level constraints and validation"""
+    
+def test_indexes_performance():
+    """Test query performance with new indexes"""
+```
+
+**Implementation Steps**:
+1. **Create test file**: Add comprehensive test cases
+2. **Test validation**: Verify all business rules work correctly
+3. **Test performance**: Ensure indexes improve query speed
+4. **Test constraints**: Verify database-level validation
+
+**Cursor Rules to Follow**:
+- **`13-test-and-debug.mdc`**: Follow testing strategy for database models
+- **`15-unified-service-action-cycle.mdc`**: Test all business flow requirements
+
+**Detailed Implementation Guide**:
+- **Test Structure**: Follow pattern from existing test files in `temp-tests/backend/`
+- **Test Coverage**: Ensure 100% coverage of all validation rules and business logic
+- **Performance Testing**: Use `timeit` or similar to measure query performance improvements
+- **Constraint Testing**: Test database-level constraints by attempting invalid operations
+- **Integration Testing**: Test complete workflow from model creation to stock updates
+- **Error Testing**: Verify all validation errors return appropriate Arabic messages
+- **Data Integrity**: Test foreign key relationships and cascade behaviors
+- **Migration Testing**: Test database migration scripts on sample data
+
+#### **Task 1 Completion Checklist**:
+- [ ] **StockMovement model** created with all required fields and validation
+- [ ] **ServiceActionItem model** created with send/receive tracking
+- [ ] **ServiceActionType enum** updated to only 3 types (no MAINTENANCE)
+- [ ] **Refund tracking fields** added to ServiceAction model
+- [ ] **Product/Part models** updated with damaged stock tracking
+- [ ] **Database indexes** created for performance optimization
+- [ ] **Validation rules** implemented for data integrity
+- [ ] **Test cases** created and passing for all models
+- [ ] **Migration script** ready for production deployment
+
+**Next Task Dependency**: Task 1 must be completed before Task 2 (StockService) as it depends on these database models.
+
+**Estimated Time Breakdown**:
+- **Day 1**: Models creation and basic validation (4-5 hours)
+- **Day 2**: Indexes, constraints, and testing (4-5 hours)  
+- **Day 3**: Final testing, documentation, and migration prep (2-3 hours)
+
+**Risk Mitigation**:
+- **Backup existing data** before running migrations
+- **Test on development database** first
+- **Validate all existing queries** still work with new schema
+- **Have rollback plan** ready if issues arise
 
 ### **Task 2: Simple Stock Service**
 **Time**: 2-3 days  
-**Priority**: Critical
+**Priority**: Critical  
+**Status**: 🔴 PENDING  
+**Cursor Rules**: `03-backend-services.mdc`, `15-unified-service-action-cycle.mdc`  
+**Dependencies**: Task 1 (Database Models) must be completed first
 
 #### **2.1: StockService for Clean Business Operations**
-**Purpose**: Handle four simple stock operations
+**Purpose**: Handle four simple stock operations  
+**Files to Create**: `back/services/stock_service.py`
+
+**Detailed Implementation Guide**:
+- **Service Pattern**: Follow existing service patterns from `back/services/order_service.py`
+- **Static Methods**: Use `@staticmethod` decorators for all methods (no instance state)
+- **Transaction Management**: Ensure all stock operations are wrapped in database transactions
+- **Error Handling**: Return `(success, data, error)` tuples for consistent error handling
+- **Logging**: Add comprehensive logging for all stock operations (audit trail)
+- **Validation**: Validate all inputs before processing stock changes
+- **Performance**: Use bulk operations where possible for multiple stock updates
+- **Testing**: Create comprehensive unit tests for all StockService methods
 ```python
 # In back/services/stock_service.py
 class StockService:
@@ -233,12 +585,36 @@ current_stock_damaged = db.Column(db.Integer, default=0)  # Damaged count
 **Files to Create**:
 - `back/services/stock_service.py`
 
+**Detailed Implementation Guide**:
+- **Service Pattern**: Follow existing service patterns from `back/services/order_service.py`
+- **Static Methods**: Use `@staticmethod` decorators for all methods (no instance state)
+- **Transaction Management**: Ensure all stock operations are wrapped in database transactions
+- **Error Handling**: Return `(success, data, error)` tuples for consistent error handling
+- **Logging**: Add comprehensive logging for all stock operations (audit trail)
+- **Validation**: Validate all inputs before processing stock changes
+- **Performance**: Use bulk operations where possible for multiple stock updates
+- **Testing**: Create comprehensive unit tests for all StockService methods
+
 ### **Task 3: Simple Service Action Workflow**
 **Time**: 3-4 days  
-**Priority**: Critical
+**Priority**: Critical  
+**Status**: 🔴 PENDING  
+**Cursor Rules**: `03-backend-services.mdc`, `15-unified-service-action-cycle.mdc`  
+**Dependencies**: Task 1 (Database Models) and Task 2 (StockService) must be completed first
 
 #### **3.1: Service Action Creation (3 Types)**
-**Business Process**: Create Part Replace, Full Replace, or Return service action
+**Business Process**: Create Part Replace, Full Replace, or Return service action  
+**Files to Modify**: `back/services/unified_service.py`
+
+**Detailed Implementation Guide**:
+- **Service Pattern**: Follow existing service patterns from `back/services/unified_service.py`
+- **Static Methods**: Use `@staticmethod` decorators for all methods (no instance state)
+- **Transaction Management**: Ensure all service action operations are wrapped in database transactions
+- **Error Handling**: Return `(success, data, error)` tuples for consistent error handling
+- **Logging**: Add comprehensive logging for all service action operations (audit trail)
+- **Validation**: Validate all inputs before processing service actions
+- **Performance**: Use bulk operations where possible for multiple service action updates
+- **Testing**: Create comprehensive unit tests for all new methods
 ```python
 # In back/services/unified_service.py
 @staticmethod
@@ -339,12 +715,36 @@ def adjust_stock_for_maintenance(order_id, adjustments, user_name):
 - `back/services/unified_service.py` - Clean service action workflow
 - `back/services/order_service.py` - Add maintenance stock adjustment method
 
+**Detailed Implementation Guide**:
+- **UnifiedService Updates**: Follow existing patterns from `back/services/unified_service.py`
+- **Method Integration**: Ensure all methods call appropriate StockService methods
+- **State Management**: Implement proper state transitions for service actions
+- **Error Handling**: Return consistent error responses for all operations
+- **Logging**: Add comprehensive logging for all service action operations
+- **Validation**: Validate all inputs before processing service actions
+- **Testing**: Create comprehensive unit tests for all new methods
+- **Documentation**: Update service method docstrings with examples
+
 ### **Task 4: Simple API Endpoints**
 **Time**: 2-3 days  
-**Priority**: High
+**Priority**: High  
+**Status**: 🔴 PENDING  
+**Cursor Rules**: `04-backend-api-routes.mdc`, `15-unified-service-action-cycle.mdc`  
+**Dependencies**: Task 1 (Database Models), Task 2 (StockService), and Task 3 (Workflow) must be completed first
 
 #### **4.1: Service Action Endpoints (3 Types)**
-**Clean API for replacement and return workflows**:
+**Clean API for replacement and return workflows**  
+**Files to Modify**: `back/routes/api/services.py`
+
+**Detailed Implementation Guide**:
+- **Route Patterns**: Follow existing patterns from `back/routes/api/orders.py`
+- **Response Format**: Use consistent `{ success, data, message }` response format
+- **Error Handling**: Implement blueprint-level error handlers for 400/404/500
+- **Input Validation**: Validate all inputs before calling service methods
+- **Authentication**: Ensure proper authentication for all stock operations
+- **Logging**: Add request/response logging for debugging
+- **Testing**: Create comprehensive API tests for all new endpoints
+- **Documentation**: Add API documentation with examples
 ```python
 # Create replacement service action with items to send
 POST /api/v1/services/create
@@ -437,12 +837,35 @@ GET /api/v1/stock/current                   # Current stock levels (total and da
 - `back/routes/api/orders.py` - Add stock adjustment endpoint
 - `back/routes/api/products.py` - Add stock movement viewing endpoints
 
+**Detailed Implementation Guide**:
+- **Route Patterns**: Follow existing patterns from `back/routes/api/orders.py`
+- **Response Format**: Use consistent `{ success, data, message }` response format
+- **Error Handling**: Implement blueprint-level error handlers for 400/404/500
+- **Input Validation**: Validate all inputs before calling service methods
+- **Authentication**: Ensure proper authentication for all stock operations
+- **Logging**: Add request/response logging for debugging
+- **Testing**: Create comprehensive API tests for all new endpoints
+- **Documentation**: Add API documentation with examples
+
 ### **Task 5: Utilities and Helpers**
 **Time**: 1-2 days  
-**Priority**: Medium
+**Priority**: Medium  
+**Status**: 🔴 PENDING  
+**Cursor Rules**: `02-backend-db-models.mdc`, `15-unified-service-action-cycle.mdc`  
+**Dependencies**: Task 1 (Database Models) must be completed first, can be done in parallel with other tasks
 
 #### **5.1: Create Stock Utilities**
-**Purpose**: Helper functions for stock calculations
+**Purpose**: Helper functions for stock calculations  
+**Files to Create**: `back/utils/stock_utils.py`
+
+**Detailed Implementation Guide**:
+- **Utility Pattern**: Follow existing patterns from `back/utils/` directory
+- **Pure Functions**: Create pure functions that can be easily tested and reused
+- **Performance**: Ensure stock calculations are optimized for large datasets
+- **Error Handling**: Return meaningful error messages for invalid inputs
+- **Documentation**: Add comprehensive docstrings for all utility functions
+- **Testing**: Create unit tests for all utility functions in `temp-tests/backend/`
+- **Integration**: Ensure utilities integrate seamlessly with StockService and UnifiedService
 ```python
 # In back/utils/stock_utils.py
 def calculate_total_stock(item_type, item_id):
@@ -456,7 +879,17 @@ def get_stock_summary(service_action_id):
 ```
 
 #### **5.2: Service Action State Helpers**
-**Purpose**: Validate state transitions and workflow rules
+**Purpose**: Validate state transitions and workflow rules  
+**Files to Create**: `back/utils/service_utils.py`
+
+**Detailed Implementation Guide**:
+- **Utility Pattern**: Follow existing patterns from `back/utils/` directory
+- **Pure Functions**: Create pure functions that can be easily tested and reused
+- **Performance**: Ensure state validation is optimized for large datasets
+- **Error Handling**: Return meaningful error messages for invalid inputs
+- **Documentation**: Add comprehensive docstrings for all utility functions
+- **Testing**: Create unit tests for all utility functions in `temp-tests/backend/`
+- **Integration**: Ensure utilities integrate seamlessly with UnifiedService
 ```python
 # In back/utils/service_utils.py
 def can_transition_to(current_status, new_status):
@@ -469,6 +902,15 @@ def validate_service_action_items(items):
 **Files to Create**:
 - `back/utils/stock_utils.py`
 - `back/utils/service_utils.py`
+
+**Detailed Implementation Guide**:
+- **Stock Utilities**: Follow pattern from existing utility files in `back/utils/`
+- **Helper Functions**: Create pure functions that can be easily tested and reused
+- **Performance**: Ensure stock calculations are optimized for large datasets
+- **Error Handling**: Return meaningful error messages for invalid inputs
+- **Documentation**: Add comprehensive docstrings for all utility functions
+- **Testing**: Create unit tests for all utility functions in `temp-tests/backend/`
+- **Integration**: Ensure utilities integrate seamlessly with StockService and UnifiedService
 
 ---
 
@@ -642,190 +1084,4 @@ This refactoring plan focuses on **clean business workflow** without overenginee
 ---
 
 *This plan provides a clear, practical path to implement the unified service action cycle without overengineering or breaking existing functionality.*
-
----
-
-# 📋 شرح المشروع بالعربي - للفريق والإدارة
-
-## 🎯 الهدف العام من المشروع
-
-**المشكلة الحالية:**
-- إدارة المخزون غير مرتبطة بعمليات الصيانة وخدمة العملاء
-- لا نعرف بدقة كمية القطع المستخدمة في الصيانة
-- صعوبة في تتبع القطع المرسلة للعملاء والمُستلمة منهم
-- عدم وجود نظام واضح لمعالجة المرتجعات والاسترداد
-
-**الحل المقترح:**
-ربط جميع عمليات خدمة العملاء بالمخزون بطريقة تلقائية ودقيقة
-
----
-
-## 🔄 العمليات الثلاث الرئيسية (مبسطة)
-
-### **العملية الأولى: الصيانة الداخلية**
-**ما يحدث:**
-1. العميل يحضر المنتج للمركز
-2. الفني يقوم بالصيانة 
-3. أثناء الصيانة: يسجل القطع المستخدمة أو المُزالة
-4. النظام يحدث المخزون تلقائياً (زيادة أو نقصان)
-5. إرجاع المنتج للعميل
-
-**الفائدة:**
-- معرفة دقيقة لاستهلاك القطع في الصيانة
-- مخزون محدث لحظياً 
-- تقارير دقيقة عن تكلفة الصيانة
-
-### **العملية الثانية: استبدال القطع والمنتجات**
-**ما يحدث:**
-1. إنشاء طلب استبدال (قطعة أو منتج كامل)
-2. اختيار القطع/المنتجات المُراد إرسالها للعميل
-3. تأكيد الإرسال → المخزون ينقص تلقائياً
-4. العميل يرسل القطع التالفة بتراكنج جديد
-5. استلام القطع التالفة وتصنيفها (سليمة/تالفة)
-6. المخزون يزيد تلقائياً بالقطع المُستلمة
-
-**الفائدة:**
-- متابعة دقيقة لما يخرج ويدخل المخزون
-- معرفة حالة القطع المُستلمة من العملاء
-- تقليل الفقدان وزيادة الشفافية
-
-### **العملية الثالثة: مرتجعات العملاء**
-**ما يحدث:**
-1. إنشاء طلب إرجاع مع تحديد مبلغ الاسترداد
-2. العميل يرسل المنتجات بتراكنج جديد
-3. استلام المنتجات وتصنيفها (سليمة/تالفة)
-4. المخزون يزيد تلقائياً بالمنتجات المُستلمة
-5. معالجة الاسترداد المالي للعميل
-6. إغلاق طلب الإرجاع
-
-**الفائدة:**
-- إدارة واضحة للمرتجعات
-- مخزون دقيق للمنتجات المُرتجعة
-- تتبع عمليات الاسترداد المالي
-
----
-
-## 📊 التغييرات في النظام
-
-### **قاعدة البيانات:**
-- **جدول تحركات المخزون**: لتسجيل كل زيادة ونقصان مع السبب
-- **جدول عناصر الخدمة**: لتتبع القطع المُرسلة والمُستلمة
-- **حقول الاسترداد**: لتتبع المبالغ المُستردة للعملاء
-
-### **الخدمات الجديدة:**
-- **خدمة المخزون**: لإدارة جميع تحركات المخزون
-- **خدمة الإجراءات المُحسنة**: لربط خدمة العملاء بالمخزون
-
-### **واجهات برمجة التطبيقات:**
-- نقاط جديدة لإرسال واستقبال القطع
-- نقاط لتعديل المخزون أثناء الصيانة  
-- نقاط لمعالجة المرتجعات والاسترداد
-
----
-
-## 🎯 الفوائد للشركة
-
-### **الفوائد المالية:**
-- **تقليل الفقدان** في المخزون بنسبة 15-20%
-- **دقة أكبر** في حساب تكلفة الصيانة
-- **شفافية كاملة** في عمليات الاسترداد
-
-### **الفوائد التشغيلية:**
-- **توفير الوقت** في جرد المخزون
-- **قرارات أسرع** لطلب القطع الناقصة
-- **خدمة عملاء أفضل** بمتابعة دقيقة
-
-### **الفوائد الإدارية:**
-- **تقارير دقيقة** عن استهلاك القطع
-- **متابعة فورية** لحالة المخزون
-- **شفافية كاملة** في جميع العمليات
-
----
-
-## 📅 خطة التنفيذ (4 أسابيع)
-
-### **الأسبوع الأول: قاعدة البيانات**
-- إنشاء الجداول الجديدة
-- ربط المخزون بعمليات الخدمة
-- **النتيجة**: أساس قوي للنظام الجديد
-
-### **الأسبوع الثاني: الخدمات الأساسية**
-- برمجة خدمة إدارة المخزون
-- ربط عمليات الإرسال والاستقبال
-- **النتيجة**: نظام عمل أساسي مكتمل
-
-### **الأسبوع الثالث: واجهات التطبيق**
-- برمجة النقاط الجديدة
-- ربط الصيانة بالمخزون
-- **النتيجة**: نظام قابل للاستخدام
-
-### **الأسبوع الرابع: الاختبار والتشغيل**
-- اختبار جميع العمليات
-- تدريب الفريق
-- **النتيجة**: نظام جاهز للإنتاج
-
----
-
-## 🏆 النتائج المتوقعة
-
-### **بعد شهر من التشغيل:**
-- ✅ **مخزون دقيق 100%** مع تحديث فوري
-- ✅ **تقليل الأخطاء** في جرد المخزون بنسبة 90%
-- ✅ **شفافية كاملة** في استهلاك القطع
-
-### **بعد 3 أشهر:**
-- 📈 **تحسن الكفاءة** بنسبة 25%
-- 💰 **توفير التكاليف** من 10-15%
-- 🎯 **رضا العملاء أعلى** بخدمة أسرع وأدق
-
-### **بعد 6 أشهر:**
-- 📊 **بيانات تحليلية دقيقة** لاتخاذ قرارات استراتيجية
-- 🔄 **عمليات مُحسنة** وأكثر كفاءة
-- 🏢 **نمو الأعمال** بخدمة عملاء متطورة
-
----
-
-## 🔧 المتطلبات التقنية
-
-### **لا يحتاج:**
-- ❌ **خوادم جديدة** - يعمل على النظام الحالي
-- ❌ **تغيير النظام الحالي** - فقط إضافات وتحسينات
-- ❌ **تدريب معقد** - واجهات بسيطة ومألوفة
-
-### **يحتاج:**
-- ✅ **4 أسابيع تطوير** من فريق البرمجة
-- ✅ **تدريب الفريق** لمدة يوم واحد
-- ✅ **متابعة** لأول أسبوعين من التشغيل
-
----
-
-## 📈 مؤشرات النجاح
-
-### **مؤشرات فورية (أول أسبوع):**
-- جميع تحركات المخزون مُسجلة تلقائياً
-- الفنيون يستخدمون النظام بسهولة
-- عدم وجود أخطاء في تحديث المخزون
-
-### **مؤشرات متوسطة المدى (أول شهر):**
-- تقليل وقت جرد المخزون بنسبة 70%
-- زيادة دقة البيانات إلى 98%+
-- رضا الفريق عن سهولة الاستخدام
-
-### **مؤشرات طويلة المدى (3-6 أشهر):**
-- تحسن مؤشرات الأداء العامة
-- تقليل التكاليف التشغيلية
-- زيادة رضا العملاء
-
----
-
-## 🎯 الخلاصة
-
-هذا المشروع سيحول إدارة المخزون من **عملية يدوية معرضة للأخطاء** إلى **نظام تلقائي دقيق ومتطور**.
-
-**الاستثمار:** 4 أسابيع تطوير  
-**العائد:** توفير مستمر في التكاليف وتحسن الكفاءة  
-**المخاطر:** منخفضة جداً (لا يؤثر على النظام الحالي)  
-**الفرصة:** نقلة نوعية في إدارة العمليات
-
-**التوصية:** البدء فوراً للاستفادة من هذه الفرصة التطويرية المهمة.
 
