@@ -1,3 +1,9 @@
+---
+description: Testing strategies, debugging patterns, and quality assurance for the Unified Service Action Cycle
+globs: ["back/**/*.py", "front/src/**/*.{js,jsx}", "temp-tests/**/*.py"]
+alwaysApply: true
+---
+
 ## Backend Testing Strategy
 
 ### Unit Testing

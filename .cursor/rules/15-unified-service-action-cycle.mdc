@@ -1,3 +1,9 @@
+---
+description: Core business flows, implementation patterns, and best practices for the Unified Service Action Cycle
+globs: ["back/**/*.py", "front/src/**/*.{js,jsx}"]
+alwaysApply: true
+---
+
 # Unified Service Action Cycle Implementation Rules
 
 ## 🎯 Core Business Flows
@@ -173,7 +179,3 @@ PENDING_PREPARE → IN_MAINTENANCE → COMPLETED/FAILED
 - Validate state transitions
 
 This rule ensures consistent implementation of the Unified Service Action Cycle across the entire codebase.
-description:
-globs:
-alwaysApply: false
----

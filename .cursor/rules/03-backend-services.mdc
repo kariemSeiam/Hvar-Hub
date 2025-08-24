@@ -1,3 +1,8 @@
+---
+description: Service layer responsibilities, validation, transactions, and performance for the Unified Service Action Cycle
+globs: ["back/services/**/*.py"]
+alwaysApply: true
+---
 
 - Responsibilities
   - Encapsulate business logic and IO (DB queries, external APIs). Keep routes thin.

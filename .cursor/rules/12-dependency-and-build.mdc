@@ -1,3 +1,9 @@
+---
+description: Dependencies, build processes, and development workflow for the Unified Service Action Cycle
+globs: ["back/requirements.txt", "front/package.json", "back/run.py", "front/vite.config.js"]
+alwaysApply: true
+---
+
 ## Backend Dependencies and Build
 
 ### Core Dependencies

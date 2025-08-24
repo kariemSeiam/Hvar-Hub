@@ -1,3 +1,8 @@
+---
+description: API route patterns, request handling, response shapes, and error handling for the Unified Service Action Cycle
+globs: ["back/routes/**/*.py"]
+alwaysApply: true
+---
 
 - Request handling
   - Parse JSON with `request.get_json()`; trim strings; coerce numeric params with bounds (e.g., `limit` ≤ 100).

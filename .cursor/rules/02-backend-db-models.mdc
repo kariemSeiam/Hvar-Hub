@@ -1,3 +1,8 @@
+---
+description: Database models, enums, migrations, indexing, and serialization for the Unified Service Action Cycle
+globs: ["back/db/**/*.py", "back/init_db.py"]
+alwaysApply: true
+---
 
 - Models and base behavior
   - Use `BaseModel` in `back/db/auto_init.py` for `id`, `created_at`, `updated_at`, and `save/delete/to_dict` utilities.

@@ -1,3 +1,8 @@
+---
+description: Architecture overview, layering, response shapes, and integration patterns for the Unified Service Action Cycle
+globs: ["back/**/*.py", "front/**/*.{js,jsx,ts,tsx}"]
+alwaysApply: true
+---
 
 Follow these guardrails to keep backend, frontend, and data flows consistent with the existing project and the new Unified Service Action Cycle.
 
