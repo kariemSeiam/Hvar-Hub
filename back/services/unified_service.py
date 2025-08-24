@@ -16,8 +16,12 @@ from db.auto_init import (
     ServiceActionHistory,
     ServiceActionStatus,
     ServiceActionType,
+    ServiceActionItem,
+    Product,
+    Part,
 )
 from utils.timezone import get_egypt_now
+from services.stock_service import StockService
 
 
 class UnifiedService:
@@ -34,6 +38,7 @@ class UnifiedService:
         *,
         product_id: Optional[int] = None,
         part_id: Optional[int] = None,
+        items_to_send: Optional[List[Dict]] = None,
         refund_amount: Optional[float] = None,
         notes: str = "",
         action_data: Optional[Dict] = None,
@@ -41,6 +46,26 @@ class UnifiedService:
         try:
             if not original_tracking:
                 return False, None, "رقم التتبع الأصلي مطلوب"
+
+            # Validate inputs based on action type
+            if action_type in [ServiceActionType.PART_REPLACE, ServiceActionType.FULL_REPLACE]:
+                if not items_to_send:
+                    return False, None, "عناصر الإرسال مطلوبة لعمليات الاستبدال"
+                
+                # Validate items exist
+                for item in items_to_send:
+                    if item['item_type'] == 'product':
+                        if not Product.query.get(item['item_id']):
+                            return False, None, f"المنتج غير موجود: {item['item_id']}"
+                    elif item['item_type'] == 'part':
+                        if not Part.query.get(item['item_id']):
+                            return False, None, f"القطعة غير موجودة: {item['item_id']}"
+                    else:
+                        return False, None, f"نوع عنصر غير صحيح: {item['item_type']}"
+            
+            elif action_type == ServiceActionType.RETURN_FROM_CUSTOMER:
+                if not refund_amount or refund_amount <= 0:
+                    return False, None, "مبلغ الاسترداد مطلوب ويجب أن يكون أكبر من صفر للمرتجعات"
 
             service_action = ServiceAction(
                 action_type=action_type,
@@ -59,6 +84,19 @@ class UnifiedService:
                 notes=notes.strip() if notes else None,
                 action_data=action_data or {},
             ).save()
+
+            # Create ServiceActionItem records for replacement actions
+            if action_type in [ServiceActionType.PART_REPLACE, ServiceActionType.FULL_REPLACE] and items_to_send:
+                for item in items_to_send:
+                    service_item = ServiceActionItem(
+                        service_action_id=service_action.id,
+                        item_type=item['item_type'],
+                        item_id=item['item_id'],
+                        quantity_to_send=item['quantity']
+                    )
+                    db.session.add(service_item)
+                
+                db.session.flush()  # Get IDs
 
             return True, service_action, None
         except Exception as e:
@@ -414,5 +452,351 @@ class UnifiedService:
 
         except Exception as e:
             return False, f"خطأ في التحقق من صحة سير العمل: {str(e)}"
+
+    # -----------------------------
+    # Enhanced Service Action Workflow (Task 3)
+    # -----------------------------
+    
+    @staticmethod
+    def confirm_and_send(
+        service_action_id: int,
+        new_tracking_number: str,
+        user_name: str = "فني الصيانة"
+    ) -> Tuple[bool, Optional[Dict], Optional[str]]:
+        """
+        Confirm replacement service action and send items to customer
+        (Only for part_replace and full_replace)
+        """
+        try:
+            # Get service action
+            service_action = ServiceAction.query.get(service_action_id)
+            if not service_action:
+                return False, None, f"خدمة العمليات غير موجودة: #{service_action_id}"
+            
+            # Validate action type
+            if service_action.action_type not in [ServiceActionType.PART_REPLACE, ServiceActionType.FULL_REPLACE]:
+                return False, None, "هذه العملية متاحة فقط لعمليات الاستبدال"
+            
+            # Validate tracking number
+            if not new_tracking_number or len(new_tracking_number.strip()) < 3:
+                return False, None, "رقم التتبع الجديد غير صحيح"
+            
+            # Get items to send
+            service_items = ServiceActionItem.query.filter_by(service_action_id=service_action_id).all()
+            if not service_items:
+                return False, None, "لا توجد عناصر للإرسال في هذا الإجراء"
+            
+            # Prepare items for StockService
+            items_to_send = []
+            for item in service_items:
+                items_to_send.append({
+                    'item_type': item.item_type,
+                    'item_id': item.item_id,
+                    'quantity': item.quantity_to_send
+                })
+            
+            # Call StockService to reduce stock and create movement records
+            stock_success, stock_data, stock_error = StockService.send_items(
+                service_action_id=service_action_id,
+                items_to_send=items_to_send,
+                user_name=user_name
+            )
+            
+            if not stock_success:
+                return False, None, f"خطأ في تحديث المخزون: {stock_error}"
+            
+            # Update service action
+            service_action.status = ServiceActionStatus.CONFIRMED
+            service_action.new_tracking_number = new_tracking_number.strip()
+            service_action.new_tracking_created_at = get_egypt_now()
+            db.session.add(service_action)
+            
+            # Create history record
+            history = ServiceActionHistory(
+                service_action_id=service_action.id,
+                action='confirm_and_send',
+                from_status=ServiceActionStatus.CREATED,
+                to_status=ServiceActionStatus.CONFIRMED,
+                notes=f'تم إرسال العناصر للعميل - رقم التتبع: {new_tracking_number}',
+                action_data={
+                    'new_tracking_number': new_tracking_number,
+                    'items_sent': stock_data.get('items_sent', []),
+                    'total_items': stock_data.get('total_items', 0)
+                },
+                user_name=user_name,
+            )
+            db.session.add(history)
+            
+            db.session.flush()
+            
+            return True, {
+                'service_action_id': service_action_id,
+                'new_tracking_number': new_tracking_number,
+                'stock_data': stock_data,
+                'status': ServiceActionStatus.CONFIRMED.value
+            }, None
+            
+        except Exception as e:
+            error_msg = f"خطأ في تأكيد وإرسال الإجراء: {str(e)}"
+            print(f"UnifiedService.confirm_and_send error: {e}")
+            return False, None, error_msg
+
+    @staticmethod
+    def confirm_return(
+        service_action_id: int,
+        new_tracking_number: str,
+        user_name: str = "فني الصيانة"
+    ) -> Tuple[bool, Optional[Dict], Optional[str]]:
+        """
+        Confirm return service action - customer will ship items back
+        (Only for return_from_customer)
+        """
+        try:
+            # Get service action
+            service_action = ServiceAction.query.get(service_action_id)
+            if not service_action:
+                return False, None, f"خدمة العمليات غير موجودة: #{service_action_id}"
+            
+            # Validate action type
+            if service_action.action_type != ServiceActionType.RETURN_FROM_CUSTOMER:
+                return False, None, "هذه العملية متاحة فقط لعمليات الإرجاع من العميل"
+            
+            # Validate tracking number
+            if not new_tracking_number or len(new_tracking_number.strip()) < 3:
+                return False, None, "رقم التتبع الجديد غير صحيح"
+            
+            # Update service action
+            service_action.status = ServiceActionStatus.CONFIRMED
+            service_action.new_tracking_number = new_tracking_number.strip()
+            service_action.new_tracking_created_at = get_egypt_now()
+            db.session.add(service_action)
+            
+            # Create history record
+            history = ServiceActionHistory(
+                service_action_id=service_action.id,
+                action='confirm_return',
+                from_status=ServiceActionStatus.CREATED,
+                to_status=ServiceActionStatus.CONFIRMED,
+                notes=f'تم تأكيد الإرجاع - العميل سيرسل العناصر برقم التتبع: {new_tracking_number}',
+                action_data={
+                    'new_tracking_number': new_tracking_number,
+                    'refund_amount': float(service_action.refund_amount) if service_action.refund_amount else 0
+                },
+                user_name=user_name,
+            )
+            db.session.add(history)
+            
+            db.session.flush()
+            
+            return True, {
+                'service_action_id': service_action_id,
+                'new_tracking_number': new_tracking_number,
+                'refund_amount': float(service_action.refund_amount) if service_action.refund_amount else 0,
+                'status': ServiceActionStatus.CONFIRMED.value
+            }, None
+            
+        except Exception as e:
+            error_msg = f"خطأ في تأكيد الإرجاع: {str(e)}"
+            print(f"UnifiedService.confirm_return error: {e}")
+            return False, None, error_msg
+
+    @staticmethod
+    def receive_replacement_items(
+        service_action_id: int,
+        items_received: List[Dict],
+        user_name: str = "فني الصيانة"
+    ) -> Tuple[bool, Optional[Dict], Optional[str]]:
+        """
+        When scanning damaged items received back from replacement
+        items_received = [
+            {'item_type': 'part', 'item_id': 5, 'quantity': 1, 'condition': 'damaged'},
+            {'item_type': 'product', 'item_id': 1, 'quantity': 1, 'condition': 'valid'}
+        ]
+        """
+        try:
+            # Get service action
+            service_action = ServiceAction.query.get(service_action_id)
+            if not service_action:
+                return False, None, f"خدمة العمليات غير موجودة: #{service_action_id}"
+            
+            # Validate action type
+            if service_action.action_type not in [ServiceActionType.PART_REPLACE, ServiceActionType.FULL_REPLACE]:
+                return False, None, "هذه العملية متاحة فقط لعمليات الاستبدال"
+            
+            # Call StockService to add stock back
+            stock_success, stock_data, stock_error = StockService.receive_items(
+                service_action_id=service_action_id,
+                items_received=items_received,
+                user_name=user_name
+            )
+            
+            if not stock_success:
+                return False, None, f"خطأ في تحديث المخزون: {stock_error}"
+            
+            # Update service action status
+            service_action.status = ServiceActionStatus.PENDING_RECEIVE
+            db.session.add(service_action)
+            
+            # Create history record
+            history = ServiceActionHistory(
+                service_action_id=service_action.id,
+                action='receive_replacement',
+                from_status=ServiceActionStatus.CONFIRMED,
+                to_status=ServiceActionStatus.PENDING_RECEIVE,
+                notes=f'تم استلام العناصر المستبدلة من العميل',
+                action_data={
+                    'items_received': stock_data.get('items_received', []),
+                    'total_items': stock_data.get('total_items', 0)
+                },
+                user_name=user_name,
+            )
+            db.session.add(history)
+            
+            db.session.flush()
+            
+            return True, {
+                'service_action_id': service_action_id,
+                'stock_data': stock_data,
+                'status': ServiceActionStatus.PENDING_RECEIVE.value
+            }, None
+            
+        except Exception as e:
+            error_msg = f"خطأ في استلام العناصر المستبدلة: {str(e)}"
+            print(f"UnifiedService.receive_replacement_items error: {e}")
+            return False, None, error_msg
+
+    @staticmethod
+    def receive_return_items(
+        service_action_id: int,
+        items_received: List[Dict],
+        user_name: str = "فني الصيانة"
+    ) -> Tuple[bool, Optional[Dict], Optional[str]]:
+        """
+        When scanning items received back from customer return
+        items_received = [
+            {'item_type': 'product', 'item_id': 1, 'quantity': 1, 'condition': 'valid'},
+            {'item_type': 'part', 'item_id': 3, 'quantity': 2, 'condition': 'damaged'}
+        ]
+        """
+        try:
+            # Get service action
+            service_action = ServiceAction.query.get(service_action_id)
+            if not service_action:
+                return False, None, f"خدمة العمليات غير موجودة: #{service_action_id}"
+            
+            # Validate action type
+            if service_action.action_type != ServiceActionType.RETURN_FROM_CUSTOMER:
+                return False, None, "هذه العملية متاحة فقط لعمليات الإرجاع من العميل"
+            
+            # Call StockService to add stock back
+            stock_success, stock_data, stock_error = StockService.receive_returns(
+                service_action_id=service_action_id,
+                items_returned=items_received,
+                user_name=user_name
+            )
+            
+            if not stock_success:
+                return False, None, f"خطأ في تحديث المخزون: {stock_error}"
+            
+            # Update service action (do NOT complete yet - need to process refund first)
+            service_action.status = ServiceActionStatus.PENDING_RECEIVE
+            db.session.add(service_action)
+            
+            # Create history record
+            history = ServiceActionHistory(
+                service_action_id=service_action.id,
+                action='receive_return',
+                from_status=ServiceActionStatus.CONFIRMED,
+                to_status=ServiceActionStatus.PENDING_RECEIVE,
+                notes=f'تم استلام العناصر المرتجعة من العميل - في انتظار معالجة الاسترداد',
+                action_data={
+                    'items_returned': stock_data.get('items_returned', []),
+                    'total_items': stock_data.get('total_items', 0),
+                    'refund_amount': float(service_action.refund_amount) if service_action.refund_amount else 0
+                },
+                user_name=user_name,
+            )
+            db.session.add(history)
+            
+            db.session.flush()
+            
+            return True, {
+                'service_action_id': service_action_id,
+                'stock_data': stock_data,
+                'refund_amount': float(service_action.refund_amount) if service_action.refund_amount else 0,
+                'status': ServiceActionStatus.PENDING_RECEIVE.value,
+                'next_step': 'process_refund_required'
+            }, None
+            
+        except Exception as e:
+            error_msg = f"خطأ في استلام المرتجعات: {str(e)}"
+            print(f"UnifiedService.receive_return_items error: {e}")
+            return False, None, error_msg
+
+    @staticmethod
+    def process_refund_and_complete(
+        service_action_id: int,
+        user_name: str = "فني الصيانة"
+    ) -> Tuple[bool, Optional[Dict], Optional[str]]:
+        """
+        Process refund for customer return and complete service action
+        """
+        try:
+            # Get service action
+            service_action = ServiceAction.query.get(service_action_id)
+            if not service_action:
+                return False, None, f"خدمة العمليات غير موجودة: #{service_action_id}"
+            
+            # Validate action type
+            if service_action.action_type != ServiceActionType.RETURN_FROM_CUSTOMER:
+                return False, None, "هذه العملية متاحة فقط لعمليات الإرجاع من العميل"
+            
+            # Validate refund amount
+            if not service_action.refund_amount or service_action.refund_amount <= 0:
+                return False, None, "مبلغ الاسترداد غير محدد أو غير صحيح"
+            
+            # Mark refund as processed
+            service_action.refund_processed = True
+            service_action.refund_processed_at = get_egypt_now()
+            
+            # Update action_data to mark as completed
+            action_data = service_action.action_data or {}
+            action_data['final_status'] = 'completed'
+            action_data['refund_processed'] = True
+            service_action.action_data = action_data
+            
+            db.session.add(service_action)
+            
+            # Create history record
+            history = ServiceActionHistory(
+                service_action_id=service_action.id,
+                action='process_refund_complete',
+                from_status=ServiceActionStatus.PENDING_RECEIVE,
+                to_status=ServiceActionStatus.PENDING_RECEIVE,  # Status remains, but marked complete in action_data
+                notes=f'تم معالجة الاسترداد وإكمال العملية - المبلغ: {service_action.refund_amount}',
+                action_data={
+                    'final_status': 'completed',
+                    'refund_amount': float(service_action.refund_amount),
+                    'refund_processed': True,
+                    'refund_processed_at': service_action.refund_processed_at.isoformat()
+                },
+                user_name=user_name,
+            )
+            db.session.add(history)
+            
+            db.session.flush()
+            
+            return True, {
+                'service_action_id': service_action_id,
+                'refund_amount': float(service_action.refund_amount),
+                'refund_processed': True,
+                'refund_processed_at': service_action.refund_processed_at.isoformat(),
+                'final_status': 'completed'
+            }, None
+            
+        except Exception as e:
+            error_msg = f"خطأ في معالجة الاسترداد: {str(e)}"
+            print(f"UnifiedService.process_refund_and_complete error: {e}")
+            return False, None, error_msg
 
 

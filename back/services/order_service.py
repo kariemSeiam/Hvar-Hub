@@ -16,6 +16,7 @@ from utils.bosta_utils import (
     transform_bosta_data_for_service_actions as util_transform_bosta_service_actions,
 )
 from services.unified_service import UnifiedService
+from services.stock_service import StockService
 
 
 class BostaAPIService:
@@ -35,7 +36,7 @@ class BostaAPIService:
         return {
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'ar',
-            'Authorization': f'Bearer {token}',
+            'Authorization': f'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IkxDMDk1RFUzYVd6czhnOEpqTjM3UyIsInJvbGVzIjpbIkJVU0lORVNTX0FETUlOIl0sImJ1c2luZXNzQWRtaW5JbmZvIjp7ImJ1c2luZXNzSWQiOiJaMGZLbmVrUmQ3SXllaGhjN2hMRnoiLCJidXNpbmVzc05hbWUiOiJIVkFSIn0sImNvdW50cnkiOnsiX2lkIjoiNjBlNDQ4MmM3Y2I3ZDRiYzQ4NDljNGQ1IiwibmFtZSI6IkVneXB0IiwibmFtZUFyIjoi2YXYtdixIiwiY29kZSI6IkVHIn0sImVtYWlsIjoia2FyaWVtc2VpYW1AZ21haWwuY29tIiwicGhvbmUiOiIrMjAxMDMzOTM5ODI4IiwiZ3JvdXAiOnsiX2lkIjoiWGFxbENGQSIsIm5hbWUiOiJCVVNJTkVTU19GVUxMX0FDQ0VTUyIsImNvZGUiOjExNX0sInRva2VuVHlwZSI6IkFDQ0VTUyIsInRva2VuVmVyc2lvbiI6IlYyIiwic2Vzc2lvbklkIjoiMDFLMzlHQkREUjRSOFpDNTVWMTFTNVYxUVYiLCJpYXQiOjE3NTU4ODcwMjMsImV4cCI6MTc1NzA5NjYyM30.Wn_eHgRWuPTVd3zaG8Iop4h4VDedT7hW4iddOI6voSM',
             'Content-Type': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
@@ -993,3 +994,65 @@ class OrderService:
         except Exception as e:
             db.session.rollback()
             return False, None, f"خطأ في تحديث البيانات من Bosta: {str(e)}"
+
+    @staticmethod
+    def adjust_stock_for_maintenance(
+        order_id: int,
+        adjustments: List[Dict],
+        user_name: str = "فني الصيانة"
+    ) -> Tuple[bool, Optional[Dict], Optional[str]]:
+        """
+        During maintenance, adjust stock for parts used/added
+        adjustments = [
+            {'item_type': 'part', 'item_id': 5, 'quantity': -2, 'condition': 'valid', 'notes': 'Used for repair'},
+            {'item_type': 'part', 'item_id': 3, 'quantity': 1, 'condition': 'damaged', 'notes': 'Removed damaged part'}
+        ]
+        """
+        try:
+            # Validate order exists
+            order = Order.query.get(order_id)
+            if not order:
+                return False, None, f"الطلب غير موجود: #{order_id}"
+            
+            # Validate adjustments format
+            if not adjustments or not isinstance(adjustments, list):
+                return False, None, "قائمة التعديلات مطلوبة"
+            
+            # Process each adjustment through StockService
+            adjustment_results = []
+            total_adjustments = 0
+            
+            for adjustment in adjustments:
+                # Validate adjustment format
+                required_fields = ['item_type', 'item_id', 'quantity', 'condition']
+                for field in required_fields:
+                    if field not in adjustment:
+                        return False, None, f"حقل مطلوب مفقود في التعديل: {field}"
+                
+                # Call StockService for each adjustment
+                stock_success, stock_data, stock_error = StockService.maintenance_adjustment(
+                    order_id=order_id,
+                    item_type=adjustment['item_type'],
+                    item_id=adjustment['item_id'],
+                    quantity_change=adjustment['quantity'],
+                    condition=adjustment['condition'],
+                    notes=adjustment.get('notes', 'تعديل مخزون أثناء الصيانة'),
+                    user_name=user_name
+                )
+                
+                if not stock_success:
+                    return False, None, f"خطأ في تعديل المخزون: {stock_error}"
+                
+                adjustment_results.append(stock_data)
+                total_adjustments += 1
+            
+            return True, {
+                'order_id': order_id,
+                'total_adjustments': total_adjustments,
+                'adjustments_processed': adjustment_results
+            }, None
+            
+        except Exception as e:
+            error_msg = f"خطأ في تعديل المخزون للصيانة: {str(e)}"
+            print(f"OrderService.adjust_stock_for_maintenance error: {e}")
+            return False, None, error_msg
