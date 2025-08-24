@@ -11,6 +11,7 @@ from datetime import datetime
 from enum import Enum
 from sqlalchemy import Enum as SQLEnum, text
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import validates
 from dotenv import load_dotenv
 
 # Add the parent directory to the path so we can import our modules
@@ -96,6 +97,17 @@ class PartType(Enum):
     HEATING_ELEMENT = 'heating_element'
     WARRANTY = 'warranty'
     COUPON = 'coupon'
+
+
+class StockMovementType(Enum):
+    MAINTENANCE = 'maintenance'      # تعديل المخزون أثناء الصيانة
+    SEND = 'send'                   # إرسال عناصر للعميل
+    RECEIVE = 'receive'             # استلام عناصر من العميل
+
+
+class ItemCondition(Enum):
+    VALID = 'valid'                 # سليم
+    DAMAGED = 'damaged'             # تالف
 
 # ============================================================================
 # MODEL DEFINITIONS
@@ -318,7 +330,8 @@ class Product(BaseModel):
 
     # Inventory
     alert_quantity = db.Column(db.Integer, default=0)
-    current_stock = db.Column(db.Integer, default=0)
+    current_stock = db.Column(db.Integer, default=0)  # Total stock (valid + damaged)
+    current_stock_damaged = db.Column(db.Integer, default=0)  # Damaged count
     warranty_period_months = db.Column(db.Integer, default=12)
 
     # Status
@@ -332,6 +345,32 @@ class Product(BaseModel):
     # Relationships
     parts = db.relationship('Part', backref='product', lazy='dynamic')
 
+    @validates('current_stock_damaged')
+    def validate_damaged_stock(self, key, current_stock_damaged):
+        """Validate that damaged stock doesn't exceed total stock"""
+        if current_stock_damaged is not None and current_stock_damaged < 0:
+            raise ValueError("current_stock_damaged must be non-negative")
+        if (current_stock_damaged is not None and 
+            self.current_stock is not None and 
+            current_stock_damaged > self.current_stock):
+            raise ValueError("current_stock_damaged cannot exceed current_stock")
+        return current_stock_damaged
+    
+    @validates('current_stock')
+    def validate_current_stock(self, key, current_stock):
+        """Validate that current stock is non-negative"""
+        if current_stock is not None and current_stock < 0:
+            raise ValueError("current_stock must be non-negative")
+        return current_stock
+
+    def get_valid_stock(self):
+        """Get valid (non-damaged) stock count"""
+        return max(0, self.current_stock - self.current_stock_damaged)
+    
+    def is_low_stock(self):
+        """Check if product is low on valid stock"""
+        return self.get_valid_stock() <= self.alert_quantity
+    
     def to_dict(self):
         """Convert product instance to dictionary with proper enum handling"""
         try:
@@ -341,6 +380,12 @@ class Product(BaseModel):
             if self.specifications:
                 base_dict['specifications'] = self.specifications
             
+            # Add computed stock fields
+            base_dict.update({
+                'valid_stock': self.get_valid_stock(),
+                'is_low_stock': self.is_low_stock(),
+            })
+            
             return base_dict
         except Exception as e:
             print(f"Error in Product.to_dict() for product {self.id}: {str(e)}")
@@ -349,6 +394,8 @@ class Product(BaseModel):
                 'sku': self.sku,
                 'name_ar': self.name_ar,
                 'category': self.category.value if self.category else None,
+                'current_stock': self.current_stock,
+                'current_stock_damaged': self.current_stock_damaged,
                 'error': f'Serialization error: {str(e)}'
             }
 
@@ -365,7 +412,8 @@ class Part(BaseModel):
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False, index=True)
 
     # Inventory
-    current_stock = db.Column(db.Integer, default=0)
+    current_stock = db.Column(db.Integer, default=0)  # Total stock (valid + damaged)
+    current_stock_damaged = db.Column(db.Integer, default=0)  # Damaged count
     min_stock_level = db.Column(db.Integer, default=5)
     max_stock_level = db.Column(db.Integer, default=100)
 
@@ -377,6 +425,32 @@ class Part(BaseModel):
     cost_price = db.Column(db.Numeric(10, 2))
     selling_price = db.Column(db.Numeric(10, 2))
 
+    @validates('current_stock_damaged')
+    def validate_damaged_stock(self, key, current_stock_damaged):
+        """Validate that damaged stock doesn't exceed total stock"""
+        if current_stock_damaged is not None and current_stock_damaged < 0:
+            raise ValueError("current_stock_damaged must be non-negative")
+        if (current_stock_damaged is not None and 
+            self.current_stock is not None and 
+            current_stock_damaged > self.current_stock):
+            raise ValueError("current_stock_damaged cannot exceed current_stock")
+        return current_stock_damaged
+    
+    @validates('current_stock')
+    def validate_current_stock(self, key, current_stock):
+        """Validate that current stock is non-negative"""
+        if current_stock is not None and current_stock < 0:
+            raise ValueError("current_stock must be non-negative")
+        return current_stock
+
+    def get_valid_stock(self):
+        """Get valid (non-damaged) stock count"""
+        return max(0, self.current_stock - self.current_stock_damaged)
+    
+    def is_low_stock(self):
+        """Check if part is low on valid stock"""
+        return self.get_valid_stock() <= self.min_stock_level
+    
     def to_dict(self):
         """Convert part instance to dictionary with proper enum handling"""
         try:
@@ -388,6 +462,12 @@ class Part(BaseModel):
             if self.selling_price is not None:
                 base_dict['selling_price'] = float(self.selling_price)
             
+            # Add computed stock fields
+            base_dict.update({
+                'valid_stock': self.get_valid_stock(),
+                'is_low_stock': self.is_low_stock(),
+            })
+            
             return base_dict
         except Exception as e:
             print(f"Error in Part.to_dict() for part {self.id}: {str(e)}")
@@ -397,6 +477,8 @@ class Part(BaseModel):
                 'part_name': self.part_name,
                 'part_type': self.part_type.value if self.part_type else None,
                 'product_id': self.product_id,
+                'current_stock': self.current_stock,
+                'current_stock_damaged': self.current_stock_damaged,
                 'error': f'Serialization error: {str(e)}'
             }
 
@@ -480,7 +562,11 @@ class ServiceAction(BaseModel):
     # Service Action Details (our system data)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'))
     part_id = db.Column(db.Integer, db.ForeignKey('parts.id'))
-    refund_amount = db.Column(db.Numeric(10, 2))
+    
+    # Refund tracking (for return service actions)
+    refund_amount = db.Column(db.Numeric(10, 2))  # Amount to refund customer
+    refund_processed = db.Column(db.Boolean, default=False)  # Track refund status
+    refund_processed_at = db.Column(db.DateTime)  # When refund was processed
 
     # New tracking for service action (THIS IS THE KEY TO UNIFIED CYCLE)
     new_tracking_number = db.Column(db.String(100), unique=True, index=True)
@@ -503,6 +589,58 @@ class ServiceAction(BaseModel):
     product = db.relationship('Product', backref='service_actions')
     part = db.relationship('Part', backref='service_actions')
     maintenance_order = db.relationship('Order', backref='linked_service_actions', foreign_keys=[maintenance_order_id])
+    
+    def __repr__(self):
+        return f'<ServiceAction {self.action_type.value} #{self.id}>'
+    
+    @validates('refund_amount')
+    def validate_refund_amount(self, key, refund_amount):
+        """Validate that refund_amount is positive for return actions"""
+        if refund_amount is not None and refund_amount <= 0:
+            raise ValueError("refund_amount must be positive when specified")
+        return refund_amount
+    
+    @validates('action_type')
+    def validate_action_type(self, key, action_type):
+        """Validate that action_type is one of the allowed types"""
+        allowed_types = [ServiceActionType.PART_REPLACE, ServiceActionType.FULL_REPLACE, ServiceActionType.RETURN_FROM_CUSTOMER]
+        if action_type not in allowed_types:
+            raise ValueError(f"action_type must be one of: {[t.value for t in allowed_types]}")
+        return action_type
+    
+    def to_dict(self):
+        """Convert service action to dictionary with proper handling of refund fields"""
+        try:
+            base_dict = super().to_dict()
+            
+            # Convert decimal fields to float
+            if self.refund_amount is not None:
+                base_dict['refund_amount'] = float(self.refund_amount)
+            if self.original_cod_amount is not None:
+                base_dict['original_cod_amount'] = float(self.original_cod_amount)
+            if self.original_shipment_fees is not None:
+                base_dict['original_shipment_fees'] = float(self.original_shipment_fees)
+            
+            # Ensure refund tracking fields are included
+            base_dict.update({
+                'action_type': self.action_type.value if self.action_type else None,
+                'status': self.status.value if self.status else None,
+                'refund_processed': self.refund_processed,
+                'refund_processed_at': self.refund_processed_at.isoformat() if self.refund_processed_at else None,
+                'action_data': self.action_data or {},
+            })
+            
+            return base_dict
+        except Exception as e:
+            print(f"Error in ServiceAction.to_dict() for action {self.id}: {str(e)}")
+            return {
+                'id': self.id,
+                'action_type': self.action_type.value if self.action_type else None,
+                'status': self.status.value if self.status else None,
+                'customer_phone': self.customer_phone,
+                'original_tracking_number': self.original_tracking_number,
+                'error': f'Serialization error: {str(e)}'
+            }
 
 
 class ServiceActionHistory(BaseModel):
@@ -579,6 +717,187 @@ class ProofImage(BaseModel):
                 'image_url': self.image_url,
                 'error': f'Serialization error: {str(e)}'
             }
+
+
+class StockMovement(BaseModel):
+    """تتبع جميع حركات المخزون من صيانة وإرسال واستلام"""
+    __tablename__ = 'stock_movements'
+    
+    # ما الذي تغير
+    item_type = db.Column(db.String(10), nullable=False)  # 'product' or 'part'
+    item_id = db.Column(db.Integer, nullable=False)
+    quantity_change = db.Column(db.Integer, nullable=False)  # +/- amount (never 0)
+    
+    # لماذا تغير
+    movement_type = db.Column(SQLEnum(StockMovementType), nullable=False)
+    condition = db.Column(SQLEnum(ItemCondition), nullable=False)
+    
+    # ما الذي سبب التغيير
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)  # للصيانة
+    service_action_id = db.Column(db.Integer, db.ForeignKey('service_actions.id'), nullable=True)  # للإرسال/الاستلام
+    
+    # تفاصيل إضافية
+    notes = db.Column(db.String(255))
+    created_by = db.Column(db.String(100), default='فني الصيانة')
+    
+    # Relationships
+    order = db.relationship('Order', backref='stock_movements', foreign_keys=[order_id])
+    service_action = db.relationship('ServiceAction', backref='stock_movements', foreign_keys=[service_action_id])
+    
+    def __repr__(self):
+        return f'<StockMovement {self.movement_type.value} {self.item_type}:{self.item_id} qty:{self.quantity_change}>'
+    
+    @validates('quantity_change')
+    def validate_quantity_change(self, key, quantity_change):
+        """Validate that quantity_change is never zero"""
+        if quantity_change == 0:
+            raise ValueError("quantity_change must be non-zero (positive or negative)")
+        return quantity_change
+    
+    @validates('item_type')
+    def validate_item_type(self, key, item_type):
+        """Validate that item_type is either 'product' or 'part'"""
+        if item_type not in ['product', 'part']:
+            raise ValueError("item_type must be 'product' or 'part'")
+        return item_type
+    
+    @validates('condition')
+    def validate_condition(self, key, condition):
+        """Validate that condition is valid"""
+        if condition not in [ItemCondition.VALID, ItemCondition.DAMAGED]:
+            raise ValueError("condition must be 'valid' or 'damaged'")
+        return condition
+    
+    def to_dict(self):
+        """Convert stock movement to dictionary"""
+        try:
+            base_dict = super().to_dict()
+            base_dict.update({
+                'movement_type': self.movement_type.value if self.movement_type else None,
+                'condition': self.condition.value if self.condition else None,
+                'item_type': self.item_type,
+                'item_id': self.item_id,
+                'quantity_change': self.quantity_change,
+                'notes': self.notes,
+                'created_by': self.created_by,
+                'order_id': self.order_id,
+                'service_action_id': self.service_action_id,
+            })
+            return base_dict
+        except Exception as e:
+            print(f"Error in StockMovement.to_dict() for movement {self.id}: {str(e)}")
+            return {
+                'id': self.id,
+                'item_type': self.item_type,
+                'item_id': self.item_id,
+                'quantity_change': self.quantity_change,
+                'movement_type': self.movement_type.value if self.movement_type else None,
+                'error': f'Serialization error: {str(e)}'
+            }
+    
+    @classmethod
+    def get_by_item(cls, item_type, item_id):
+        """Get all movements for a specific item"""
+        return cls.query.filter_by(item_type=item_type, item_id=item_id).order_by(cls.created_at.desc()).all()
+    
+    @classmethod
+    def get_by_order(cls, order_id):
+        """Get all movements for a maintenance order"""
+        return cls.query.filter_by(order_id=order_id).order_by(cls.created_at.desc()).all()
+    
+    @classmethod
+    def get_by_service_action(cls, service_action_id):
+        """Get all movements for a service action"""
+        return cls.query.filter_by(service_action_id=service_action_id).order_by(cls.created_at.desc()).all()
+
+
+class ServiceActionItem(BaseModel):
+    """تتبع العناصر المرسلة والمستلمة في كل خدمة"""
+    __tablename__ = 'service_action_items'
+    
+    service_action_id = db.Column(db.Integer, db.ForeignKey('service_actions.id'), nullable=False, index=True)
+    item_type = db.Column(db.String(10), nullable=False)  # 'product' or 'part'
+    item_id = db.Column(db.Integer, nullable=False)
+    
+    # للإرسال
+    quantity_to_send = db.Column(db.Integer, default=0)
+    sent_at = db.Column(db.DateTime)
+    
+    # للاستلام
+    quantity_received = db.Column(db.Integer, default=0)
+    condition_received = db.Column(SQLEnum(ItemCondition))  # 'valid', 'damaged'
+    received_at = db.Column(db.DateTime)
+    
+    # Relationships
+    service_action = db.relationship('ServiceAction', backref='service_action_items', foreign_keys=[service_action_id])
+    
+    def __repr__(self):
+        return f'<ServiceActionItem SA:{self.service_action_id} {self.item_type}:{self.item_id}>'
+    
+    @validates('quantity_to_send')
+    def validate_quantity_to_send(self, key, quantity_to_send):
+        """Validate that quantity_to_send is non-negative"""
+        if quantity_to_send is not None and quantity_to_send < 0:
+            raise ValueError("quantity_to_send must be non-negative")
+        return quantity_to_send
+    
+    @validates('quantity_received')
+    def validate_quantity_received(self, key, quantity_received):
+        """Validate that quantity_received is non-negative"""
+        if quantity_received is not None and quantity_received < 0:
+            raise ValueError("quantity_received must be non-negative")
+        return quantity_received
+    
+    @validates('item_type')
+    def validate_item_type(self, key, item_type):
+        """Validate that item_type is either 'product' or 'part'"""
+        if item_type not in ['product', 'part']:
+            raise ValueError("item_type must be 'product' or 'part'")
+        return item_type
+    
+    def to_dict(self):
+        """Convert service action item to dictionary"""
+        try:
+            base_dict = super().to_dict()
+            base_dict.update({
+                'service_action_id': self.service_action_id,
+                'item_type': self.item_type,
+                'item_id': self.item_id,
+                'quantity_to_send': self.quantity_to_send,
+                'quantity_received': self.quantity_received,
+                'condition_received': self.condition_received.value if self.condition_received else None,
+                'sent_at': self.sent_at.isoformat() if self.sent_at else None,
+                'received_at': self.received_at.isoformat() if self.received_at else None,
+            })
+            return base_dict
+        except Exception as e:
+            print(f"Error in ServiceActionItem.to_dict() for item {self.id}: {str(e)}")
+            return {
+                'id': self.id,
+                'service_action_id': self.service_action_id,
+                'item_type': self.item_type,
+                'item_id': self.item_id,
+                'quantity_to_send': self.quantity_to_send,
+                'quantity_received': self.quantity_received,
+                'error': f'Serialization error: {str(e)}'
+            }
+    
+    @classmethod
+    def get_by_service_action(cls, service_action_id):
+        """Get all items for a service action"""
+        return cls.query.filter_by(service_action_id=service_action_id).all()
+    
+    @classmethod
+    def get_pending_items(cls, service_action_id):
+        """Get items that haven't been received yet"""
+        return cls.query.filter_by(
+            service_action_id=service_action_id,
+            received_at=None
+        ).all()
+    
+    def is_fully_received(self):
+        """Check if all sent quantity has been received"""
+        return self.quantity_received >= self.quantity_to_send if self.quantity_to_send > 0 else False
 
 # Action to Status mapping for business logic
 ACTION_STATUS_MAP = {
@@ -779,7 +1098,15 @@ def create_indexes():
             "CREATE INDEX IF NOT EXISTS idx_parts_product_id ON parts(product_id)",
             "CREATE INDEX IF NOT EXISTS idx_service_actions_status ON service_actions(status)",
             "CREATE INDEX IF NOT EXISTS idx_service_actions_phone ON service_actions(customer_phone)",
-            "CREATE INDEX IF NOT EXISTS idx_service_actions_original_tracking ON service_actions(original_tracking_number)"
+            "CREATE INDEX IF NOT EXISTS idx_service_actions_original_tracking ON service_actions(original_tracking_number)",
+            # Stock Movement Indexes (NEW)
+            "CREATE INDEX IF NOT EXISTS idx_stock_movement_item ON stock_movements(item_type, item_id)",
+            "CREATE INDEX IF NOT EXISTS idx_stock_movement_type ON stock_movements(movement_type, created_at)",
+            "CREATE INDEX IF NOT EXISTS idx_stock_movement_order ON stock_movements(order_id)",
+            "CREATE INDEX IF NOT EXISTS idx_stock_movement_service ON stock_movements(service_action_id)",
+            # Service Action Item Indexes (NEW)
+            "CREATE INDEX IF NOT EXISTS idx_service_action_item_service ON service_action_items(service_action_id)",
+            "CREATE INDEX IF NOT EXISTS idx_service_action_item_type ON service_action_items(item_type, item_id)"
         ]
         
         for index_sql in indexes:
@@ -856,6 +1183,8 @@ __all__ = [
     'Order', 
     'MaintenanceHistory', 
     'ProofImage',
+    'StockMovement',
+    'ServiceActionItem',
     'OrderStatus',
     'ReturnCondition',
     'MaintenanceAction',
@@ -863,6 +1192,8 @@ __all__ = [
     'ServiceActionStatus',
     'ProductCategory',
     'PartType',
+    'StockMovementType',
+    'ItemCondition',
     'Product',
     'Part',
     'ServiceAction',
