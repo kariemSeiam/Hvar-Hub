@@ -1,8 +1,3 @@
----
-description: API route patterns for requests, responses, errors, and pagination
-globs: ["back/routes/**/*.py"]
-alwaysApply: true
----
 
 - Request handling
   - Parse JSON with `request.get_json()`; trim strings; coerce numeric params with bounds (e.g., `limit` ≤ 100).
@@ -13,15 +8,39 @@ alwaysApply: true
   - Error: `{ success: false, message: '...' }` with appropriate status.
   - Collections: `{ success: true, data: { orders: [...], pagination: {...} } }`.
 
+- Unified Service Action Cycle Endpoints
+  - **Service Action Creation**: `POST /api/v1/services/create` for PART_REPLACE, FULL_REPLACE, RETURN_FROM_CUSTOMER
+    - Accept `items_to_send` array for replacements
+    - Accept `refund_amount` for returns
+    - Validate `action_type` enum and required fields
+  - **Service Action Confirmation**: 
+    - `POST /api/v1/services/{id}/confirm-send` for replacements (reduce stock)
+    - `POST /api/v1/services/{id}/confirm-return` for returns (customer ships back)
+  - **Service Action Receiving**:
+    - `POST /api/v1/services/{id}/receive-replacement` for damaged items back
+    - `POST /api/v1/services/{id}/receive-return` for customer returns
+  - **Return Processing**: `POST /api/v1/services/{id}/process-refund` for completing returns
+  - **Maintenance Stock**: `POST /api/v1/orders/{id}/stock-adjustment` for maintenance stock changes
+  - **Stock Viewing**: `GET /api/v1/stock/movements` and `GET /api/v1/stock/current`
+
 - Errors
   - Wrap body in try/except; log traceback server-side, but return safe user-facing Arabic error.
   - Provide blueprint-level 400/404/500 handlers mirroring `orders_bp`.
+  - **Stock Validation Errors**: Return 400 for invalid quantities, conditions, or item types
+  - **Service Action Errors**: Return 400 for invalid action types, missing required fields
 
 - Endpoints
   - Mount under `/api/v1/*` for general APIs and `/api/orders/*` for order workflows.
   - Keep verbs semantic: GET for reads, POST for actions/mutations (`/orders/{id}/action`).
+  - **Service Actions**: Use `/api/v1/services/*` for service action workflows
+  - **Stock Management**: Use `/api/v1/stock/*` for stock viewing and `/api/v1/orders/{id}/stock-adjustment` for maintenance
 
 - SPA serving
+  - Unknown routes should serve `front/dist/index.html` to support client routing (`main_bp` and app-level 404 handler).
+
+These rules ensure consistent, predictable APIs and clean separation from service logic while implementing the Unified Service Action Cycle and Stock Management.
+
+
   - Unknown routes should serve `front/dist/index.html` to support client routing (`main_bp` and app-level 404 handler).
 
 These rules ensure consistent, predictable APIs and clean separation from service logic.

@@ -1,20 +1,34 @@
----
-description: Service layer conventions, validation, and external API usage
-globs: ["back/services/**/*.py"]
-alwaysApply: true
----
 
 - Responsibilities
   - Encapsulate business logic and IO (DB queries, external APIs). Keep routes thin.
   - Expose static/class methods for operations; avoid storing state on service instances.
 
+- Unified Service Action Cycle Services
+  - **StockService**: Central service for all stock operations with 4 main methods:
+    - `maintenance_adjustment()`: Internal stock changes during maintenance
+    - `send_items()`: Reduce stock when sending replacement items to customers
+    - `receive_items()`: Add stock when receiving items back from replacements
+    - `receive_returns()`: Add stock when receiving customer returns
+  - **UnifiedService**: Orchestrate service action workflows:
+    - `create_service_action()`: Create PART_REPLACE, FULL_REPLACE, or RETURN_FROM_CUSTOMER
+    - `confirm_and_send()`: Confirm replacements and reduce stock
+    - `confirm_return()`: Confirm customer returns
+    - `receive_replacement_items()`: Process received replacement items
+    - `receive_return_items()`: Process received return items
+    - `process_refund_and_complete()`: Complete return with refund processing
+  - **OrderService**: Add `adjust_stock_for_maintenance()` for maintenance stock adjustments
+
 - Validation
   - Validate inputs early; return `(success, data, error)` tuples from service methods to keep route handlers simple.
   - Follow `OrderService.validate_action_data` patterns (length checks, numeric parsing, allowed enum values). Centralize validation here.
+  - **Stock Validation**: Validate `quantity_change` is non-zero, `condition` is valid enum value
+  - **Service Action Validation**: Validate `items_to_send` structure, `refund_amount` is positive for returns
 
 - Transactions and errors
   - On exceptions during writes, `db.session.rollback()` and return a safe Arabic error message. Avoid leaking internal errors.
   - Use timezone helpers for timestamps. Never store naive datetimes.
+  - **Stock Operations**: Ensure stock updates and movement records are created in same transaction
+  - **Service Actions**: Ensure service action updates and item records are created in same transaction
 
 - External APIs
   - Centralize third-party calls (e.g., Bosta) in a dedicated class like `BostaAPIService`.
@@ -23,6 +37,13 @@ alwaysApply: true
 
 - Performance
   - For list endpoints, build queries incrementally and paginate. Manually load lazy relationships when serializing collections to avoid N+1 with implicit access.
+  - Provide a UI-friendly `ui_status` in list responses for tab mapping (keep mapping in one place).
+  - **Stock Queries**: Use indexes on `movement_type`, `item_type`, `item_id` for fast stock movement queries
+  - **Service Action Queries**: Use indexes on `service_action_id`, `item_type` for fast item queries
+
+These rules keep business logic testable, robust, and consistent across features while implementing the Unified Service Action Cycle and Stock Management.
+
+
   - Provide a UI-friendly `ui_status` in list responses for tab mapping (keep mapping in one place).
 
 These rules keep business logic testable, robust, and consistent across features.

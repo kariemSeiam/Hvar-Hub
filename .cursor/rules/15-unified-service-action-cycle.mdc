@@ -1,0 +1,179 @@
+# Unified Service Action Cycle Implementation Rules
+
+## 🎯 Core Business Flows
+
+### **Flow 1: MAINTENANCE (Internal Stock Management)**
+- **Purpose**: Track stock changes during repair process
+- **Implementation**: Use `OrderService.adjust_stock_for_maintenance()` and `StockService.maintenance_adjustment()`
+- **Stock Impact**: Internal adjustments (add/remove parts) linked to maintenance orders
+- **Database**: `StockMovement` with `movement_type='maintenance'` and `order_id`
+
+### **Flow 2: REPLACEMENT (Send/Receive Products)**
+- **Purpose**: Handle part/product replacements with customers
+- **Types**: `PART_REPLACE` and `FULL_REPLACE` service actions
+- **Stock Impact**: 
+  - SEND: Stock minus when shipping replacement items
+  - RECEIVE: Stock plus when receiving damaged items back
+- **Database**: `StockMovement` with `movement_type='send'/'receive'` and `service_action_id`
+
+### **Flow 3: RETURN (Customer Returns + Refund)**
+- **Purpose**: Process customer returns with refund processing
+- **Type**: `RETURN_FROM_CUSTOMER` service action
+- **Stock Impact**: Stock plus when receiving returned items (categorized valid/damaged)
+- **Database**: `StockMovement` with `movement_type='receive'` and refund tracking
+
+## 🔧 Implementation Patterns
+
+### **StockService Methods**
+```python
+# Always use these 4 methods for stock operations
+StockService.maintenance_adjustment()  # Internal maintenance
+StockService.send_items()             # Send replacements
+StockService.receive_items()          # Receive replacements back
+StockService.receive_returns()        # Receive customer returns
+```
+
+### **Service Action Creation**
+```python
+# Create with proper type and data
+UnifiedService.create_service_action(
+    action_type='part_replace',           # or 'full_replace', 'return_from_customer'
+    customer_data={'phone': '+201155125743'},
+    original_tracking='68427300',
+    items_to_send=[...],                 # For replacements
+    refund_amount=150.00                 # For returns
+)
+```
+
+### **Stock Movement Tracking**
+```python
+# Every stock change creates a StockMovement record
+StockMovement(
+    item_type='part',                    # 'product' or 'part'
+    item_id=5,
+    quantity_change=-2,                  # Negative for usage, positive for addition
+    movement_type='maintenance',         # 'maintenance', 'send', 'receive'
+    condition='valid',                   # 'valid' or 'damaged'
+    order_id=123,                        # For maintenance
+    service_action_id=456,               # For service actions
+    notes='Used for repair'
+)
+```
+
+## 📊 Database Schema Rules
+
+### **StockMovement Table**
+- **Required Fields**: `item_type`, `item_id`, `quantity_change`, `movement_type`, `condition`
+- **Optional Fields**: `order_id` (maintenance), `service_action_id` (service actions)
+- **Validation**: `quantity_change` never 0, `condition` always 'valid' or 'damaged'
+- **Indexes**: `(item_type, item_id)`, `(movement_type, created_at)`, `(order_id)`, `(service_action_id)`
+
+### **ServiceActionItem Table**
+- **Required Fields**: `service_action_id`, `item_type`, `item_id`
+- **Sending Fields**: `quantity_to_send`, `sent_at`
+- **Receiving Fields**: `quantity_received`, `condition_received`, `received_at`
+- **Validation**: Non-negative quantities, valid conditions
+
+### **ServiceAction Updates**
+- **Refund Fields**: `refund_amount`, `refund_processed`, `refund_processed_at`
+- **Type Restriction**: Only 3 types (MAINTENANCE handled via maintenance orders)
+
+## 🚀 API Endpoint Patterns
+
+### **Service Action Endpoints**
+```python
+# Creation
+POST /api/v1/services/create
+{
+    "action_type": "part_replace",
+    "customer_phone": "+201155125743",
+    "original_tracking": "68427300",
+    "items_to_send": [...],
+    "notes": "Replacement for damaged parts"
+}
+
+# Confirmation
+POST /api/v1/services/{id}/confirm-send      # For replacements
+POST /api/v1/services/{id}/confirm-return    # For returns
+
+# Receiving
+POST /api/v1/services/{id}/receive-replacement  # Damaged items back
+POST /api/v1/services/{id}/receive-return       # Customer returns
+
+# Completion
+POST /api/v1/services/{id}/process-refund       # For returns
+```
+
+### **Maintenance Stock Endpoints**
+```python
+# Stock adjustments during maintenance
+POST /api/v1/orders/{id}/stock-adjustment
+{
+    "adjustments": [
+        {"item_type": "part", "item_id": 5, "quantity": -2, "condition": "valid", "notes": "Used for repair"}
+    ]
+}
+
+# Stock viewing
+GET /api/v1/stock/movements    # All stock movements
+GET /api/v1/stock/current      # Current stock levels
+```
+
+## ✅ Validation Rules
+
+### **Stock Operations**
+- `quantity_change` must be non-zero
+- `condition` must be 'valid' or 'damaged'
+- `item_type` must be 'product' or 'part'
+- `item_id` must reference existing product/part
+
+### **Service Actions**
+- `action_type` must be valid enum value
+- `items_to_send` must be array with valid structure
+- `refund_amount` must be positive for returns
+- Required fields based on action type
+
+### **Business Logic**
+- Cannot send items if insufficient stock
+- Cannot receive items without valid service action
+- Cannot process refund without receiving items
+- Maintenance stock adjustments must reference valid order
+
+## 🔄 State Transitions
+
+### **Service Action States**
+```
+CREATED → CONFIRMED → PENDING_RECEIVE → COMPLETED
+    ↓
+PENDING_PREPARE → IN_MAINTENANCE → COMPLETED/FAILED
+```
+
+### **Stock Impact by State**
+- **CREATED**: No stock impact
+- **CONFIRMED**: Stock minus (for replacements)
+- **PENDING_RECEIVE**: Waiting for customer
+- **COMPLETED**: Stock plus (received items)
+
+## 📝 Best Practices
+
+### **Error Handling**
+- Always rollback transactions on stock operation failures
+- Return Arabic error messages for validation failures
+- Log detailed errors server-side, safe messages client-side
+
+### **Performance**
+- Use database indexes for stock queries
+- Batch stock operations when possible
+- Cache stock levels for frequently accessed items
+
+### **Testing**
+- Test each business flow end-to-end
+- Verify stock calculations are accurate
+- Test error conditions and edge cases
+- Validate state transitions
+
+This rule ensures consistent implementation of the Unified Service Action Cycle across the entire codebase.
+description:
+globs:
+alwaysApply: false
+---

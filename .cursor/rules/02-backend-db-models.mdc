@@ -1,32 +1,46 @@
----
-description: Database models, enums, timestamps, and indexing rules
-globs: ["back/db/**/*.py", "back/utils/timezone.py", "back/config/**/*.py"]
-alwaysApply: true
----
 
 - Models and base behavior
   - Use `BaseModel` in `back/db/auto_init.py` for `id`, `created_at`, `updated_at`, and `save/delete/to_dict` utilities.
   - Always use `get_egypt_now()` for default and timestamp updates to keep Africa/Cairo timezone.
 
+- Unified Service Action Cycle Models
+  - **StockMovement**: Central table for all stock changes with `movement_type` ('maintenance', 'send', 'receive'), `item_type` ('product'/'part'), `quantity_change` (+/-), `condition` ('valid'/'damaged')
+  - **ServiceActionItem**: Track items sent/received in service actions with `quantity_to_send`, `sent_at`, `quantity_received`, `condition_received`, `received_at`
+  - **ServiceAction Updates**: Add `refund_amount`, `refund_processed`, `refund_processed_at` for return service actions
+  - **Product/Part Updates**: Add `current_stock_damaged` field alongside existing `current_stock` for condition tracking
+
 - Enums and transitions
   - Add new states to `OrderStatus` and new actions to `MaintenanceAction` in `back/db/auto_init.py`.
   - Update `ACTION_STATUS_MAP` and `Order.can_transition_to` accordingly. Keep transitions explicit and conservative.
   - If an action should not change status (like `SET_RETURN_CONDITION`), document it and skip in the mapping.
+  - **ServiceActionType**: Only 3 types - `PART_REPLACE`, `FULL_REPLACE`, `RETURN_FROM_CUSTOMER` (MAINTENANCE handled via maintenance orders)
 
 - Columns and migrations
   - Prefer adding columns/types in `Order`/`MaintenanceHistory`/`ProofImage` within `auto_init.py`.
   - For dev self-heal, follow the pattern in `OrderService.get_orders_by_status` that ALTERs missing columns in SQLite. Consider mirroring such checks if you introduce new columns accessed by queries.
   - For MySQL, keep UTF-8 settings via `configure_utf8_database()`; if you add string columns, ensure they are covered by charset adjustments.
+  - **New Tables**: Create `StockMovement` and `ServiceActionItem` tables in `back/init_db.py`
 
 - Indexing
   - If you add high-frequency filters/sorts, extend `create_indexes()` with `CREATE INDEX IF NOT EXISTS ...` covering new columns.
   - Index common search fields (e.g., phone, tracking_number) and timestamp-based sorts.
+  - **Stock Movement Indexes**: Index `item_type`, `item_id`, `movement_type`, `created_at` for stock queries
+  - **Service Action Indexes**: Index `service_action_id`, `item_type`, `item_id` for service action item queries
 
 - Serialization
   - Extend `to_dict()` carefully; convert numerics to float and datetimes to ISO strings as shown in `Order.to_dict()`.
   - Include related data via dynamic relationships with explicit ordering (e.g., `maintenance_history.order_by(...).all()`).
+  - **Stock Movement Serialization**: Include `movement_type`, `condition`, `notes` in `StockMovement.to_dict()`
+  - **Service Action Item Serialization**: Include `quantity_to_send`, `quantity_received`, `condition_received` in `ServiceActionItem.to_dict()`
 
 - Data integrity
+  - Keep validation in services; models should remain thin. Use enums for constrained values (`return_condition`, `status`).
+  - **Stock Validation**: Ensure `quantity_change` is never 0, `condition` is always 'valid' or 'damaged'
+  - **Service Action Validation**: Ensure `quantity_to_send` and `quantity_received` are non-negative
+
+These rules preserve consistent schema evolution, correct time handling, and fast queries while implementing the Unified Service Action Cycle and Stock Management.
+
+
   - Keep validation in services; models should remain thin. Use enums for constrained values (`return_condition`, `status`).
 
 These rules preserve consistent schema evolution, correct time handling, and fast queries.

@@ -1,18 +1,20 @@
----
-description: Global architecture and layering rules for HVAR Hub (Flask backend + React/Tailwind frontend)
-globs: ["**/*"]
-alwaysApply: true
----
 
-Follow these guardrails to keep backend, frontend, and data flows consistent with the existing project.
+Follow these guardrails to keep backend, frontend, and data flows consistent with the existing project and the new Unified Service Action Cycle.
 
 - Architecture overview
   - Backend: Flask app factory in `back/app.py`, blueprints in `back/routes/`, services in `back/services/`, database models and enums in `back/db/auto_init.py`, configuration in `back/config/config.py`.
   - Frontend: React (Vite) app under `front/` with Tailwind and RTL support. Components in `front/src/components/`, pages in `front/src/pages/`, API clients in `front/src/api/`, hooks in `front/src/hooks/`, configuration in `front/src/config/`.
   - SPA routing: Backend serves `front/dist/index.html` for unknown paths via `back/routes/main.py` and 404 handler in `back/app.py`.
 
+- Unified Service Action Cycle Architecture
+  - **Three Main Business Flows**: MAINTENANCE (internal stock), REPLACEMENT (send/receive), RETURN (customer returns + refund)
+  - **Stock Service Foundation**: All stock operations go through `StockService` in `back/services/stock_service.py`
+  - **Service Action Types**: Only 3 types - `PART_REPLACE`, `FULL_REPLACE`, `RETURN_FROM_CUSTOMER` (MAINTENANCE handled via maintenance orders)
+  - **Stock Movement Tracking**: Single `StockMovement` table for all stock changes with `movement_type` ('maintenance', 'send', 'receive')
+  - **Multi-Product Support**: `ServiceActionItem` table for tracking items sent/received in service actions
+
 - Layering and separation
-  - Business logic belongs in services (e.g., `back/services/order_service.py`), not in route handlers. Routes should validate, delegate, and shape responses.
+  - Business logic belongs in services (e.g., `back/services/order_service.py`, `back/services/stock_service.py`, `back/services/unified_service.py`), not in route handlers. Routes should validate, delegate, and shape responses.
   - Data models and enums live in `back/db/auto_init.py`. Keep state transition logic centralized (`Order.can_transition_to`, `ACTION_STATUS_MAP`).
   - Frontend calls backend only through `front/src/api/*.js` modules (e.g., `orderAPI.js`). UI components never call axios directly.
 
@@ -42,6 +44,11 @@ Follow these guardrails to keep backend, frontend, and data flows consistent wit
   - Frontend: prefer `useOptimizedOrderAPI` for heavy flows, keep caches (`orderAPI` internal cache and `transformCache`) coherent; clear caches after mutating actions.
 
 - Security
+  - Do not hardcode external tokens in source. Move to environment variables and server-side calls. Ensure CORS stays restricted (`allowed_origins`).
+
+This rule ensures new code feels native, preserves the current development flow, and stays consistent across the stack while implementing the Unified Service Action Cycle.
+
+
   - Do not hardcode external tokens in source. Move to environment variables and server-side calls. Ensure CORS stays restricted (`allowed_origins`).
 
 This rule ensures new code feels native, preserves the current development flow, and stays consistent across the stack.

@@ -1,25 +1,144 @@
----
-description: Temporary test and debug file isolation with auto-cleanup
-globs: ["**/*"]
-alwaysApply: true
----
+## Backend Testing Strategy
 
-- Isolation
-  - Place any temporary tests or debug scripts in top-level directories:
-    - `/temp-tests/` for throwaway tests (frontend or backend).
-    - `/debug-scripts/` for ad-hoc scripts.
-  - Never put these files under `back/` or `front/` main source trees.
+### Unit Testing
+- **Services**: Test each service method independently with mocked dependencies
+- **Models**: Test model validation, relationships, and serialization
+- **Utilities**: Test helper functions with various input scenarios
 
-- Conventions
-  - Name files clearly, e.g., `temp-tests/backend/test_orders_flow.py`, `temp-tests/frontend/TestOrdersList.jsx`.
-  - Avoid importing temp modules from production code. Keep them self-contained.
+### Integration Testing
+- **API Endpoints**: Test complete request/response cycles
+- **Database Operations**: Test service methods with real database interactions
+- **External APIs**: Mock Bosta API calls for consistent testing
 
-- Cleanup
-  - After resolving the issue, delete the entire directories:
-    - Windows: `rmdir /S /Q temp-tests` and `rmdir /S /Q debug-scripts`.
-    - Unix: `rm -rf temp-tests debug-scripts`.
+### New Testing Requirements for Unified Service Action Cycle
 
-- Non-intrusive
+#### **StockService Testing**
+```python
+def test_maintenance_adjustment():
+    """Test internal stock adjustments during maintenance"""
+    # Test positive and negative quantity changes
+    # Test condition tracking (valid/damaged)
+    # Test order linking
+
+def test_send_items():
+    """Test stock reduction when sending replacement items"""
+    # Test stock validation before sending
+    # Test StockMovement record creation
+    # Test ServiceActionItem updates
+
+def test_receive_items():
+    """Test stock addition when receiving items back"""
+    # Test condition categorization
+    # Test stock level updates
+    # Test movement tracking
+
+def test_receive_returns():
+    """Test stock addition for customer returns"""
+    # Test return-specific logic
+    # Test condition tracking
+    # Test refund preparation
+```
+
+#### **UnifiedService Testing**
+```python
+def test_create_service_action():
+    """Test service action creation for all types"""
+    # Test PART_REPLACE with items_to_send
+    # Test FULL_REPLACE with items_to_send
+    # Test RETURN_FROM_CUSTOMER with refund_amount
+
+def test_service_action_workflow():
+    """Test complete service action lifecycle"""
+    # Test creation → confirmation → receiving → completion
+    # Test state transitions
+    # Test stock impact at each stage
+
+def test_error_conditions():
+    """Test error handling and validation"""
+    # Test insufficient stock
+    # Test invalid action types
+    # Test missing required fields
+```
+
+#### **API Endpoint Testing**
+```python
+def test_service_action_endpoints():
+    """Test all service action API endpoints"""
+    # Test creation with validation
+    # Test confirmation workflows
+    # Test receiving operations
+    # Test refund processing
+
+def test_stock_endpoints():
+    """Test stock management endpoints"""
+    # Test maintenance stock adjustments
+    # Test stock movement viewing
+    # Test current stock levels
+```
+
+## Frontend Testing Strategy
+
+### Component Testing
+- **Service Action Forms**: Test multi-product input and validation
+- **Stock Management UI**: Test stock display and interaction
+- **Workflow Components**: Test state transitions and user flows
+
+### Integration Testing
+- **API Integration**: Test frontend-backend communication
+- **State Management**: Test hooks and context updates
+- **User Workflows**: Test complete user journeys
+
+## Debugging Patterns
+
+### Backend Debugging
+- **Logging**: Use structured logging for service operations
+- **Database Queries**: Log SQL queries for performance analysis
+- **Stock Operations**: Log all stock changes for audit trail
+- **Error Tracking**: Capture detailed error context for debugging
+
+### Frontend Debugging
+- **React DevTools**: Use for component state inspection
+- **Network Tab**: Monitor API calls and responses
+- **Console Logging**: Strategic logging for user interactions
+- **Error Boundaries**: Catch and display errors gracefully
+
+## Development Tools
+
+### Backend Development
+- **Flask Debug Mode**: Enable for development server
+- **Database Browser**: Use SQLite browser for development
+- **Postman/Insomnia**: Test API endpoints during development
+- **Python Debugger**: Use pdb or IDE debugging
+
+### Frontend Development
+- **Vite Dev Server**: Hot reload for development
+- **React DevTools**: Browser extension for debugging
+- **Tailwind CSS IntelliSense**: IDE support for utility classes
+- **ESLint**: Code quality and consistency
+
+## Testing Best Practices
+
+### Test Organization
+- **Test Files**: Mirror source file structure
+- **Test Names**: Descriptive names that explain the scenario
+- **Test Data**: Use realistic test data that matches production
+- **Cleanup**: Ensure tests don't leave side effects
+
+### Test Coverage
+- **Critical Paths**: 100% coverage for stock operations
+- **Error Handling**: Test all error conditions and edge cases
+- **Business Logic**: Test all business rules and validations
+- **Integration Points**: Test service interactions and API calls
+
+### Performance Testing
+- **Stock Queries**: Test performance with large datasets
+- **API Response Times**: Monitor endpoint performance
+- **Database Operations**: Test transaction performance
+- **Frontend Rendering**: Test component render performance
+
+This rule ensures comprehensive testing and debugging support for the Unified Service Action Cycle implementation.
+
+
   - Do not alter configs to include these directories in builds or content globs. Ensure linters/builds ignore them if needed.
 
 These rules enable safe experimentation without polluting the main codebase.

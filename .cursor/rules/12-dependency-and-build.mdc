@@ -1,20 +1,89 @@
----
-description: Dependency management and build/run conventions for backend and frontend
-globs: ["back/**", "front/**"]
-alwaysApply: false
----
+## Backend Dependencies and Build
 
-- Backend (Flask)
-  - Add Python deps to `back/requirements.txt` with pinned versions when possible.
-  - Use `FLASK_ENV` to select config (`development`/`production`/`testing`). MySQL preferred; SQLite fallback in development.
-  - Initialize DB via `back/init_db.py` or auto-init on app start (`db/auto_init.py`).
+### Core Dependencies
+- **Flask**: Web framework with app factory pattern
+- **SQLAlchemy**: ORM for database operations
+- **Flask-SQLAlchemy**: Flask integration for SQLAlchemy
+- **Flask-CORS**: CORS handling for frontend integration
 
-- Frontend (Vite/Tailwind)
-  - Manage deps via `front/package.json`. Keep Tailwind and PostCSS configs minimal.
-  - Service worker is registered in `front/src/main.jsx`; ensure `front/public/sw.js` exists and stays lean.
+### Database Dependencies
+- **SQLite**: Development database (included with Python)
+- **PyMySQL**: MySQL driver for production (if using MySQL)
+- **Alembic**: Database migrations (recommended for production)
 
-- Local development
-  - Backend: `python run.py` (or WSGI via `passenger_wsgi.py` for prod).
+### External API Dependencies
+- **requests**: HTTP client for Bosta API integration
+- **python-dotenv**: Environment variable management
+
+### New Dependencies for Unified Service Action Cycle
+- **No additional dependencies required** - using existing Flask/SQLAlchemy stack
+- **Stock management**: Built with existing database models and services
+- **Service action workflow**: Extends existing service layer patterns
+
+### Backend Run Commands
+```bash
+# Development
+python back/run.py
+
+# Production
+gunicorn -w 4 -b 0.0.0.0:5000 back.app:app
+
+# Database initialization
+python back/init_db.py
+```
+
+## Frontend Dependencies and Build
+
+### Core Dependencies
+- **React**: UI library with hooks and functional components
+- **Vite**: Build tool and dev server
+- **Tailwind CSS**: Utility-first CSS framework
+- **React Router**: Client-side routing
+
+### UI and State Dependencies
+- **react-hot-toast**: Toast notifications
+- **@headlessui/react**: Accessible UI components
+- **lucide-react**: Icon library
+
+### New Dependencies for Service Action Cycle
+- **No additional dependencies required** - using existing React/Tailwind stack
+- **Multi-product forms**: Built with existing form components
+- **Stock management UI**: Extends existing dashboard patterns
+
+### Frontend Build Commands
+```bash
+# Development
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+## Development Workflow
+
+### Backend Development
+1. **Database First**: Start with models in `back/db/auto_init.py`
+2. **Services Layer**: Implement business logic in `back/services/`
+3. **API Endpoints**: Create routes in `back/routes/api/`
+4. **Testing**: Use existing testing patterns
+
+### Frontend Development
+1. **API Integration**: Update `front/src/api/` for new endpoints
+2. **Components**: Extend existing components for new features
+3. **State Management**: Use existing hooks and context patterns
+4. **Testing**: Follow existing component testing patterns
+
+### Database Migration Strategy
+- **Development**: Use `back/init_db.py` for schema changes
+- **Production**: Consider Alembic for proper migrations
+- **Data Seeding**: Use existing patterns in `back/init_db.py`
+
+This rule ensures consistent dependency management and build processes while implementing the Unified Service Action Cycle.
+
+
   - Frontend: `npm run dev` in `front/` (Vite). Ensure `CORS` origins include dev ports.
 
 These rules keep environments reproducible and builds fast.
