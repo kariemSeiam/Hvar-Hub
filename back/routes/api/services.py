@@ -9,18 +9,29 @@ def create_service_action():
     try:
         body = request.get_json(silent=True) or {}
         action_type_str = (body.get('action_type') or '').strip()
+        
+        # Support both old customer format and new direct fields
         customer = body.get('customer') or {}
+        customer_phone = body.get('customer_phone') or customer.get('phone') or customer.get('primary_phone')
+        
         original_tracking = (body.get('original_tracking') or '').strip()
         product_id = body.get('product_id')
         part_id = body.get('part_id')
         refund_amount = body.get('refund_amount')
         notes = body.get('notes', '')
         action_data = body.get('action_data') or {}
+        
+        # NEW: Support for multi-product service actions
+        items_to_send = body.get('items_to_send', [])
 
         try:
             action_type = ServiceActionType(action_type_str)
         except ValueError:
             return jsonify({ 'success': False, 'message': 'نوع إجراء الخدمة غير صحيح' }), 400
+
+        # Prepare customer data
+        if customer_phone and not customer:
+            customer = {'phone': customer_phone, 'primary_phone': customer_phone}
 
         ok, sa, err = UnifiedService.create_service_action(
             action_type,
@@ -28,6 +39,7 @@ def create_service_action():
             original_tracking,
             product_id=product_id,
             part_id=part_id,
+            items_to_send=items_to_send,
             refund_amount=refund_amount,
             notes=notes,
             action_data=action_data,
@@ -35,7 +47,118 @@ def create_service_action():
         if not ok:
             return jsonify({ 'success': False, 'message': err or 'فشل إنشاء إجراء الخدمة' }), 400
 
-        return jsonify({ 'success': True, 'data': sa.to_dict(), 'message': 'تم إنشاء إجراء الخدمة' }), 201
+        return jsonify({ 'success': True, 'data': sa, 'message': 'تم إنشاء إجراء الخدمة' }), 201
+    except Exception as e:
+        return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
+
+
+@api_bp.route('/services/<int:action_id>/confirm-send', methods=['POST'])
+def confirm_and_send_service_action(action_id):
+    """Confirm replacement service action and send items to customer (reduce stock)"""
+    try:
+        body = request.get_json(silent=True) or {}
+        new_tracking_number = (body.get('new_tracking_number') or '').strip()
+        notes = body.get('notes', '')
+        user_name = body.get('user_name', 'خدمة العملاء')
+
+        if not new_tracking_number:
+            return jsonify({ 'success': False, 'message': 'رقم التتبع الجديد مطلوب' }), 400
+
+        ok, sa, err = UnifiedService.confirm_and_send(action_id, new_tracking_number, user_name)
+        if not ok:
+            return jsonify({ 'success': False, 'message': err or 'فشل تأكيد وإرسال إجراء الخدمة' }), 400
+        
+        return jsonify({ 'success': True, 'data': sa, 'message': 'تم تأكيد وإرسال إجراء الخدمة' }), 200
+    except Exception as e:
+        return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
+
+
+@api_bp.route('/services/<int:action_id>/confirm-return', methods=['POST'])
+def confirm_return_service_action(action_id):
+    """Confirm return service action - customer will ship items back"""
+    try:
+        body = request.get_json(silent=True) or {}
+        new_tracking_number = (body.get('new_tracking_number') or '').strip()
+        notes = body.get('notes', '')
+        user_name = body.get('user_name', 'خدمة العملاء')
+
+        if not new_tracking_number:
+            return jsonify({ 'success': False, 'message': 'رقم التتبع الجديد مطلوب' }), 400
+
+        ok, sa, err = UnifiedService.confirm_return(action_id, new_tracking_number, user_name)
+        if not ok:
+            return jsonify({ 'success': False, 'message': err or 'فشل تأكيد إرجاع إجراء الخدمة' }), 400
+        
+        return jsonify({ 'success': True, 'data': sa, 'message': 'تم تأكيد إرجاع إجراء الخدمة' }), 200
+    except Exception as e:
+        return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
+
+
+@api_bp.route('/services/<int:action_id>/receive-replacement', methods=['POST'])
+def receive_replacement_items(action_id):
+    """Receive replacement items back from customer (add stock back)"""
+    try:
+        body = request.get_json(silent=True) or {}
+        items_received = body.get('items_received', [])
+        notes = body.get('notes', '')
+        user_name = body.get('user_name', 'فني الصيانة')
+
+        if not items_received:
+            return jsonify({ 'success': False, 'message': 'العناصر المستلمة مطلوبة' }), 400
+
+        # Validate items structure
+        for item in items_received:
+            if not all(key in item for key in ['item_type', 'item_id', 'quantity', 'condition']):
+                return jsonify({ 'success': False, 'message': 'بيانات العناصر غير مكتملة' }), 400
+
+        ok, sa, err = UnifiedService.receive_replacement_items(action_id, items_received, user_name)
+        if not ok:
+            return jsonify({ 'success': False, 'message': err or 'فشل استلام عناصر الاستبدال' }), 400
+        
+        return jsonify({ 'success': True, 'data': sa, 'message': 'تم استلام عناصر الاستبدال بنجاح' }), 200
+    except Exception as e:
+        return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
+
+
+@api_bp.route('/services/<int:action_id>/receive-return', methods=['POST'])
+def receive_return_items(action_id):
+    """Receive return items from customer (add stock back)"""
+    try:
+        body = request.get_json(silent=True) or {}
+        items_received = body.get('items_received', [])
+        notes = body.get('notes', '')
+        user_name = body.get('user_name', 'فني الصيانة')
+
+        if not items_received:
+            return jsonify({ 'success': False, 'message': 'العناصر المستلمة مطلوبة' }), 400
+
+        # Validate items structure
+        for item in items_received:
+            if not all(key in item for key in ['item_type', 'item_id', 'quantity', 'condition']):
+                return jsonify({ 'success': False, 'message': 'بيانات العناصر غير مكتملة' }), 400
+
+        ok, sa, err = UnifiedService.receive_return_items(action_id, items_received, user_name)
+        if not ok:
+            return jsonify({ 'success': False, 'message': err or 'فشل استلام عناصر الإرجاع' }), 400
+        
+        return jsonify({ 'success': True, 'data': sa, 'message': 'تم استلام عناصر الإرجاع بنجاح' }), 200
+    except Exception as e:
+        return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
+
+
+@api_bp.route('/services/<int:action_id>/process-refund', methods=['POST'])
+def process_refund_and_complete(action_id):
+    """Process refund for customer return and complete service action"""
+    try:
+        body = request.get_json(silent=True) or {}
+        notes = body.get('notes', '')
+        user_name = body.get('user_name', 'خدمة العملاء')
+
+        ok, sa, err = UnifiedService.process_refund_and_complete(action_id, user_name)
+        if not ok:
+            return jsonify({ 'success': False, 'message': err or 'فشل معالجة الاسترداد' }), 400
+        
+        return jsonify({ 'success': True, 'data': sa, 'message': 'تم معالجة الاسترداد وإكمال إجراء الخدمة' }), 200
     except Exception as e:
         return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
 
@@ -50,7 +173,7 @@ def confirm_service_action(action_id):
         ok, sa, err = UnifiedService.confirm_service_action(action_id, new_tracking_number, notes)
         if not ok:
             return jsonify({ 'success': False, 'message': err or 'فشل تأكيد إجراء الخدمة' }), 400
-        return jsonify({ 'success': True, 'data': sa.to_dict(), 'message': 'تم تأكيد إجراء الخدمة' }), 200
+        return jsonify({ 'success': True, 'data': sa, 'message': 'تم تأكيد إجراء الخدمة' }), 200
     except Exception as e:
         return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
 
@@ -63,7 +186,7 @@ def move_to_pending_receive(action_id):
         ok, sa, err = UnifiedService.move_to_pending_receive(action_id, notes)
         if not ok:
             return jsonify({ 'success': False, 'message': err or 'فشل تحديث الحالة' }), 400
-        return jsonify({ 'success': True, 'data': sa.to_dict(), 'message': 'تم تحديث حالة إجراء الخدمة إلى جاهز للاستلام' }), 200
+        return jsonify({ 'success': True, 'data': sa, 'message': 'تم تحديث حالة إجراء الخدمة إلى جاهز للاستلام' }), 200
     except Exception as e:
         return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
 
@@ -153,7 +276,7 @@ def complete_service_action(action_id):
         ok, sa, err = UnifiedService.complete_service_action(action_id, notes)
         if not ok:
             return jsonify({ 'success': False, 'message': err or 'فشل إكمال إجراء الخدمة' }), 400
-        return jsonify({ 'success': True, 'data': sa.to_dict(), 'message': 'تم إكمال إجراء الخدمة' }), 200
+        return jsonify({ 'success': True, 'data': sa, 'message': 'تم إكمال إجراء الخدمة' }), 200
     except Exception as e:
         return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
 
@@ -166,13 +289,13 @@ def fail_service_action(action_id):
         ok, sa, err = UnifiedService.fail_service_action(action_id, notes)
         if not ok:
             return jsonify({ 'success': False, 'message': err or 'فشل تسجيل فشل إجراء الخدمة' }), 400
-        return jsonify({ 'success': True, 'data': sa.to_dict(), 'message': 'تم تسجيل فشل إجراء الخدمة' }), 200
+        return jsonify({ 'success': True, 'data': sa, 'message': 'تم تسجيل فشل إجراء الخدمة' }), 200
     except Exception as e:
         return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
 
 
 # =====================
-# ENHANCED WORKFLOW ENDPOINTS
+# NEW UNIFIED WORKFLOW ENDPOINTS
 # =====================
 
 @api_bp.route('/services/by-customer-phone', methods=['GET'])

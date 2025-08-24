@@ -1,6 +1,7 @@
 from flask import jsonify, request
 from routes.api import api_bp
 from services.product_service import ProductService
+from services.stock_service import StockService
 
 
 # -----------------
@@ -102,15 +103,148 @@ def update_part(part_id):
         return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
 
 
-@api_bp.route('/parts/<int:part_id>', methods=['DELETE'])
-def delete_part(part_id):
+# -----------------
+# Stock Management endpoints
+# -----------------
+@api_bp.route('/stock/movements', methods=['GET'])
+def get_stock_movements():
+    """Get stock movements with optional filtering"""
     try:
-        ok, err = ProductService.delete_part(part_id)
-        if not ok:
-            return jsonify({ 'success': False, 'message': err or 'فشل حذف القطعة' }), 400
-        return jsonify({ 'success': True, 'message': 'تم حذف القطعة' }), 200
+        # Query parameters
+        item_type = request.args.get('item_type')  # 'product' or 'part'
+        item_id = request.args.get('item_id')
+        movement_type = request.args.get('movement_type')  # 'maintenance', 'send', 'receive'
+        order_id = request.args.get('order_id')
+        service_action_id = request.args.get('service_action_id')
+        page = int(request.args.get('page', 1))
+        limit = min(int(request.args.get('limit', 50)), 100)
+        
+        # Convert item_id to int if provided
+        if item_id:
+            try:
+                item_id = int(item_id)
+            except ValueError:
+                return jsonify({ 'success': False, 'message': 'item_id غير صحيح' }), 400
+        
+        # Convert order_id to int if provided
+        if order_id:
+            try:
+                order_id = int(order_id)
+            except ValueError:
+                return jsonify({ 'success': False, 'message': 'order_id غير صحيح' }), 400
+        
+        # Convert service_action_id to int if provided
+        if service_action_id:
+            try:
+                service_action_id = int(service_action_id)
+            except ValueError:
+                return jsonify({ 'success': False, 'message': 'service_action_id غير صحيح' }), 400
+        
+        success, movements, error = StockService.get_stock_movements(
+            item_type=item_type,
+            item_id=item_id,
+            movement_type=movement_type,
+            order_id=order_id,
+            service_action_id=service_action_id,
+            page=page,
+            limit=limit
+        )
+        
+        if not success:
+            return jsonify({ 'success': False, 'message': error or 'فشل جلب حركات المخزون' }), 400
+        
+        return jsonify({
+            'success': True,
+            'data': movements,
+            'message': 'تم جلب حركات المخزون بنجاح'
+        }), 200
+        
     except Exception as e:
-        return jsonify({ 'success': False, 'message': f'خطأ في الخادم: {str(e)}' }), 500
+        print(f"Unexpected error in get_stock_movements: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'خطأ في الخادم: {str(e)}'
+        }), 500
+
+
+@api_bp.route('/stock/current', methods=['GET'])
+def get_current_stock():
+    """Get current stock levels for all products and parts"""
+    try:
+        success, stock_data, error = StockService.get_current_stock()
+        
+        if not success:
+            return jsonify({ 'success': False, 'message': error or 'فشل جلب مستويات المخزون الحالية' }), 400
+        
+        return jsonify({
+            'success': True,
+            'data': stock_data,
+            'message': 'تم جلب مستويات المخزون الحالية بنجاح'
+        }), 200
+        
+    except Exception as e:
+        print(f"Unexpected error in get_current_stock: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'خطأ في الخادم: {str(e)}'
+        }), 500
+
+
+@api_bp.route('/stock/dashboard', methods=['GET'])
+def get_stock_dashboard():
+    """Get stock dashboard overview with summary statistics"""
+    try:
+        success, dashboard_data, error = StockService.get_stock_dashboard()
+        
+        if not success:
+            return jsonify({ 'success': False, 'message': error or 'فشل جلب لوحة تحكم المخزون' }), 400
+        
+        return jsonify({
+            'success': True,
+            'data': dashboard_data,
+            'message': 'تم جلب لوحة تحكم المخزون بنجاح'
+        }), 200
+        
+    except Exception as e:
+        print(f"Unexpected error in get_stock_dashboard: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'خطأ في الخادم: {str(e)}'
+        }), 500
+
+
+@api_bp.route('/stock/items/<item_type>/<int:item_id>', methods=['GET'])
+def get_item_stock_details(item_type, item_id):
+    """Get detailed stock information for a specific item"""
+    try:
+        if item_type not in ['product', 'part']:
+            return jsonify({ 'success': False, 'message': 'نوع العنصر يجب أن يكون product أو part' }), 400
+        
+        success, stock_details, error = StockService.get_item_stock_details(item_type, item_id)
+        
+        if not success:
+            return jsonify({ 'success': False, 'message': error or 'فشل جلب تفاصيل المخزون' }), 400
+        
+        return jsonify({
+            'success': True,
+            'data': stock_details,
+            'message': 'تم جلب تفاصيل المخزون بنجاح'
+        }), 200
+        
+    except Exception as e:
+        print(f"Unexpected error in get_item_stock_details: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'خطأ في الخادم: {str(e)}'
+        }), 500
 
 
 # -------------------
@@ -247,5 +381,8 @@ def force_sync_products():
             'success': False, 
             'message': f'خطأ في الخادم: {str(e)}' 
         }), 500
+
+
+# Stock Management endpoints moved to dedicated stock.py file
 
 

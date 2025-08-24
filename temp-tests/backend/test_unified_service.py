@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Minimal test to debug StockService.send_items method
+Minimal test to debug UnifiedService.confirm_and_send method
 """
 
 import sys
@@ -14,11 +14,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'back'))
 from app import create_app
 from db.auto_init import db, Product, Part, ServiceAction, ServiceActionItem
 from db.auto_init import ServiceActionType, ServiceActionStatus, ProductCategory, PartType
-from services.stock_service import StockService
+from services.unified_service import UnifiedService
 
-def test_stock_service():
-    """Test StockService.send_items method directly"""
-    print("🧪 Testing StockService.send_items method directly...")
+def test_unified_service():
+    """Test UnifiedService.confirm_and_send method directly"""
+    print("🧪 Testing UnifiedService.confirm_and_send method directly...")
     
     # Create app
     app = create_app('testing')
@@ -33,8 +33,8 @@ def test_stock_service():
         # Create test product
         from db.auto_init import ProductCategory
         product = Product(
-            sku='TEST-STOCK-001',
-            name_ar='Test Product Stock',
+            sku='TEST-UNIFIED-001',
+            name_ar='Test Product Unified',
             category=ProductCategory.HAND_BLENDER,
             current_stock=10,
             current_stock_damaged=1
@@ -46,8 +46,8 @@ def test_stock_service():
         # Create test part
         from db.auto_init import PartType
         part = Part(
-            part_sku='TEST-STOCK-PART-001',
-            part_name='Test Part Stock',
+            part_sku='TEST-UNIFIED-PART-001',
+            part_name='Test Part Unified',
             part_type=PartType.MOTOR,
             product_id=product.id,
             current_stock=20,
@@ -81,30 +81,26 @@ def test_stock_service():
         db.session.commit()
         print(f"✅ Service action item created: {service_item.id}")
         
-        # Test StockService.send_items method
-        print("\n🔍 Testing StockService.send_items method...")
+        # Test UnifiedService.confirm_and_send method
+        print("\n🔍 Testing UnifiedService.confirm_and_send method...")
         try:
-            items_to_send = [
-                {'item_type': 'part', 'item_id': part.id, 'quantity': 2}
-            ]
-            
-            success, data, error = StockService.send_items(
+            success, data, error = UnifiedService.confirm_and_send(
                 service_action_id=service_action.id,
-                items_to_send=items_to_send,
+                new_tracking_number='NEW-TRACKING-001',
                 user_name='Test User'
             )
             
             if success:
-                print(f"✅ StockService.send_items succeeded: {data}")
+                print(f"✅ UnifiedService.confirm_and_send succeeded: {data}")
             else:
-                print(f"❌ StockService.send_items failed: {error}")
+                print(f"❌ UnifiedService.confirm_and_send failed: {error}")
                 
         except Exception as e:
-            print(f"💥 StockService.send_items exception: {e}")
+            print(f"💥 UnifiedService.confirm_and_send exception: {e}")
             import traceback
             traceback.print_exc()
         
-        print("\n✅ StockService test completed!")
+        print("\n✅ UnifiedService test completed!")
         
     except Exception as e:
         print(f"💥 Test failed: {e}")
@@ -116,4 +112,4 @@ def test_stock_service():
         app_context.pop()
 
 if __name__ == '__main__':
-    test_stock_service()
+    test_unified_service()

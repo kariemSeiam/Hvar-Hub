@@ -420,6 +420,62 @@ def get_order_by_tracking(tracking_number):
         }), 500
 
 
+@orders_bp.route('/<int:order_id>/stock-adjustment', methods=['POST'])
+def adjust_stock_for_maintenance(order_id):
+    """Adjust stock during maintenance operations"""
+    try:
+        data = request.get_json()
+        adjustments = data.get('adjustments', [])
+        user_name = data.get('user_name', 'فني الصيانة')
+        
+        if not adjustments:
+            return jsonify({
+                'success': False,
+                'message': 'قائمة تعديلات المخزون مطلوبة'
+            }), 400
+        
+        # Validate adjustments structure
+        for adjustment in adjustments:
+            required_fields = ['item_type', 'item_id', 'quantity', 'condition']
+            if not all(field in adjustment for field in required_fields):
+                return jsonify({
+                    'success': False,
+                    'message': 'بيانات التعديل غير مكتملة'
+                }), 400
+            
+            # Validate quantity is not zero
+            if adjustment['quantity'] == 0:
+                return jsonify({
+                    'success': False,
+                    'message': 'الكمية يجب أن تكون مختلفة عن الصفر'
+                }), 400
+        
+        success, result, error = OrderService.adjust_stock_for_maintenance(
+            order_id, adjustments, user_name
+        )
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'data': result,
+                'message': 'تم تعديل المخزون بنجاح'
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'message': error or 'فشل تعديل المخزون'
+            }), 400
+            
+    except Exception as e:
+        print(f"Unexpected error in adjust_stock_for_maintenance: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'خطأ في الخادم: {str(e)}'
+        }), 500
+
+
 # Error handlers for the blueprint
 @orders_bp.errorhandler(400)
 def bad_request(error):

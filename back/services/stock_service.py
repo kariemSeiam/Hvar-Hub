@@ -560,7 +560,7 @@ class StockService:
             return False, None, f"خطأ في تحديث المخزون: {str(e)}"
     
     @staticmethod
-    def get_stock_summary(item_type: str, item_id: int) -> Dict[str, Any]:
+    def get_item_stock_summary(item_type: str, item_id: int) -> Dict[str, Any]:
         """Get current stock summary for an item"""
         item = StockService._get_item(item_type, item_id)
         if not item:
@@ -569,6 +569,7 @@ class StockService:
         return {
             'item_type': item_type,
             'item_id': item_id,
+            'sku': item.sku if item_type == 'product' else item.part_sku,
             'total_stock': item.current_stock,
             'damaged_stock': item.current_stock_damaged,
             'valid_stock': item.get_valid_stock(),
@@ -576,14 +577,175 @@ class StockService:
         }
     
     @staticmethod
-    def get_stock_movements(item_type: str = None, item_id: int = None, limit: int = 50) -> List[Dict]:
-        """Get stock movement history"""
-        query = StockMovement.query
-        
-        if item_type and item_id:
-            query = query.filter_by(item_type=item_type, item_id=item_id)
-        elif item_type:
-            query = query.filter_by(item_type=item_type)
-        
-        movements = query.order_by(StockMovement.created_at.desc()).limit(limit).all()
-        return [movement.to_dict() for movement in movements]
+    def get_stock_movements(filters=None, limit=100, page=1):
+        """
+        Get stock movements with filtering and pagination
+        """
+        try:
+            query = StockMovement.query
+            
+            if filters:
+                if 'item_type' in filters:
+                    query = query.filter_by(item_type=filters['item_type'])
+                if 'item_id' in filters:
+                    query = query.filter_by(item_id=filters['item_id'])
+                if 'movement_type' in filters:
+                    query = query.filter_by(movement_type=filters['movement_type'])
+                if 'order_id' in filters:
+                    query = query.filter_by(order_id=filters['order_id'])
+                if 'service_action_id' in filters:
+                    query = query.filter_by(service_action_id=filters['service_action_id'])
+            
+            # Apply pagination
+            offset = (page - 1) * limit
+            movements = query.order_by(StockMovement.created_at.desc()).offset(offset).limit(limit).all()
+            
+            return True, {
+                'movements': [movement.to_dict() for movement in movements],
+                'total_count': query.count(),
+                'page': page,
+                'limit': limit
+            }, None
+            
+        except Exception as e:
+            return False, None, f"خطأ في جلب حركات المخزون: {str(e)}"
+    
+    @staticmethod
+    def get_stock_summary(item_type=None, low_stock_only=False, limit=100):
+        """
+        Get current stock summary for products and parts
+        """
+        try:
+            summary = {'products': [], 'parts': []}
+            
+            if not item_type or item_type == 'product':
+                products = Product.query.limit(limit).all()
+                for product in products:
+                    valid_stock = product.get_valid_stock()
+                    if low_stock_only and valid_stock >= 10:  # Arbitrary low stock threshold
+                        continue
+                    
+                    summary['products'].append({
+                        'id': product.id,
+                        'sku': product.sku,
+                        'name': product.name_ar,
+                        'total_stock': product.current_stock,
+                        'damaged_stock': product.current_stock_damaged,
+                        'valid_stock': valid_stock,
+                        'price': 0.0  # Product model doesn't have price field
+                    })
+            
+            if not item_type or item_type == 'part':
+                parts = Part.query.limit(limit).all()
+                for part in parts:
+                    valid_stock = part.get_valid_stock()
+                    if low_stock_only and valid_stock >= 10:  # Arbitrary low stock threshold
+                        continue
+                    
+                    summary['parts'].append({
+                        'id': part.id,
+                        'sku': part.part_sku,
+                        'name': part.part_name,
+                        'total_stock': part.current_stock,
+                        'damaged_stock': part.current_stock_damaged,
+                        'valid_stock': valid_stock,
+                        'price': float(part.selling_price) if part.selling_price else 0.0
+                    })
+            
+            return True, summary, None
+            
+        except Exception as e:
+            return False, None, f"خطأ في جلب ملخص المخزون: {str(e)}"
+    
+    @staticmethod
+    def get_item_stock_details(item_type, item_id):
+        """
+        Get detailed stock information for a specific item
+        """
+        try:
+            item = StockService._get_item(item_type, item_id)
+            if not item:
+                return False, None, f"العنصر غير موجود: {item_type} #{item_id}"
+            
+            # Get recent stock movements for this item
+            movements = StockMovement.query.filter_by(
+                item_type=item_type, 
+                item_id=item_id
+            ).order_by(StockMovement.created_at.desc()).limit(20).all()
+            
+            details = {
+                'item': {
+                    'id': item.id,
+                    'sku': item.sku if item_type == 'product' else item.part_sku,
+                    'name': item.name_ar if item_type == 'product' else item.part_name,
+                    'type': item_type,
+                    'total_stock': item.current_stock,
+                    'damaged_stock': item.current_stock_damaged,
+                    'valid_stock': item.get_valid_stock(),
+                    'price': 0.0 if item_type == 'product' else (float(item.selling_price) if item.selling_price else 0.0)
+                },
+                'recent_movements': [movement.to_dict() for movement in movements],
+                'movement_count': len(movements)
+            }
+            
+            return True, details, None
+            
+        except Exception as e:
+            return False, None, f"خطأ في جلب تفاصيل المخزون: {str(e)}"
+    
+    @staticmethod
+    def get_dashboard_overview():
+        """
+        Get stock dashboard overview with statistics
+        """
+        try:
+            # Get total counts
+            total_products = Product.query.count()
+            total_parts = Part.query.count()
+            
+            # Get low stock items (assuming < 10 is low stock)
+            low_stock_products = Product.query.filter(
+                (Product.current_stock - Product.current_stock_damaged) < 10
+            ).count()
+            
+            low_stock_parts = Part.query.filter(
+                (Part.current_stock - Part.current_stock_damaged) < 10
+            ).count()
+            
+            # Get recent movements
+            recent_movements = StockMovement.query.order_by(
+                StockMovement.created_at.desc()
+            ).limit(10).all()
+            
+            # Calculate total stock value (simplified)
+            products = Product.query.all()
+            parts = Part.query.all()
+            
+            total_value = 0
+            for product in products:
+                # Product model doesn't have price field, skip for now
+                pass
+            
+            for part in parts:
+                if part.selling_price:
+                    total_value += float(part.selling_price) * part.get_valid_stock()
+            
+            dashboard = {
+                'overview': {
+                    'total_products': total_products,
+                    'total_parts': total_parts,
+                    'low_stock_products': low_stock_products,
+                    'low_stock_parts': low_stock_parts,
+                    'total_stock_value': round(total_value, 2)
+                },
+                'recent_movements': [movement.to_dict() for movement in recent_movements],
+                'alerts': {
+                    'low_stock_items': low_stock_products + low_stock_parts,
+                    'needs_attention': low_stock_products + low_stock_parts > 0
+                }
+            }
+            
+            return True, dashboard, None
+            
+        except Exception as e:
+            return False, None, f"خطأ في جلب لوحة معلومات المخزون: {str(e)}"

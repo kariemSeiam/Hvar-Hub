@@ -131,13 +131,13 @@ class BaseModel(db.Model):
         """Delete instance from database"""
         db.session.delete(self)
         db.session.commit()
-    
+
     def to_dict(self):
         """Convert model instance to dictionary"""
         result = {}
         for column in self.__table__.columns:
             value = getattr(self, column.name)
-            
+
             # Convert datetime objects to ISO format strings
             if isinstance(value, datetime):
                 result[column.name] = value.isoformat() if value else None
@@ -146,7 +146,7 @@ class BaseModel(db.Model):
                 result[column.name] = value.value if value else None
             else:
                 result[column.name] = value
-                
+
         return result
     
     @classmethod
@@ -1055,9 +1055,8 @@ def create_tables():
         from flask import Flask
         from app import create_app
         
-        # Create Flask app
-        app = Flask(__name__)
-        app.config.from_object(Config)
+        # Create Flask app with proper configuration
+        app = create_app()
         
         # Initialize database
         db.init_app(app)
@@ -1067,8 +1066,11 @@ def create_tables():
             db.create_all()
             print("✅ All tables created successfully")
             
-            # Configure UTF-8 character set
-            configure_utf8_database()
+            # Configure UTF-8 character set (only for MySQL)
+            try:
+                configure_utf8_database()
+            except Exception as e:
+                print(f"ℹ️  Skipping UTF-8 configuration: {str(e)}")
             
             # Create indexes
             create_indexes()
@@ -1082,43 +1084,95 @@ def create_tables():
 def create_indexes():
     """Create additional indexes for better performance"""
     try:
-        # Create indexes for better query performance
-        indexes = [
-            "CREATE INDEX IF NOT EXISTS idx_orders_tracking_number ON orders(tracking_number)",
-            "CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)",
-            "CREATE INDEX IF NOT EXISTS idx_orders_customer_phone ON orders(customer_phone)",
-            "CREATE INDEX IF NOT EXISTS idx_orders_scanned_at ON orders(scanned_at)",
-            "CREATE INDEX IF NOT EXISTS idx_maintenance_history_order_id ON maintenance_history(order_id)",
-            "CREATE INDEX IF NOT EXISTS idx_maintenance_history_action ON maintenance_history(action)",
-            "CREATE INDEX IF NOT EXISTS idx_maintenance_history_timestamp ON maintenance_history(timestamp)",
-            "CREATE INDEX IF NOT EXISTS idx_proof_images_order_id ON proof_images(order_id)",
-            # Inventory and service actions
-            "CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku)",
-            "CREATE INDEX IF NOT EXISTS idx_parts_part_sku ON parts(part_sku)",
-            "CREATE INDEX IF NOT EXISTS idx_parts_product_id ON parts(product_id)",
-            "CREATE INDEX IF NOT EXISTS idx_service_actions_status ON service_actions(status)",
-            "CREATE INDEX IF NOT EXISTS idx_service_actions_phone ON service_actions(customer_phone)",
-            "CREATE INDEX IF NOT EXISTS idx_service_actions_original_tracking ON service_actions(original_tracking_number)",
-            # Stock Movement Indexes (NEW)
-            "CREATE INDEX IF NOT EXISTS idx_stock_movement_item ON stock_movements(item_type, item_id)",
-            "CREATE INDEX IF NOT EXISTS idx_stock_movement_type ON stock_movements(movement_type, created_at)",
-            "CREATE INDEX IF NOT EXISTS idx_stock_movement_order ON stock_movements(order_id)",
-            "CREATE INDEX IF NOT EXISTS idx_stock_movement_service ON stock_movements(service_action_id)",
-            # Service Action Item Indexes (NEW)
-            "CREATE INDEX IF NOT EXISTS idx_service_action_item_service ON service_action_items(service_action_id)",
-            "CREATE INDEX IF NOT EXISTS idx_service_action_item_type ON service_action_items(item_type, item_id)"
-        ]
-        
+        # Check what database dialect we're actually using
+        try:
+            dialect_name = db.engine.dialect.name
+            print(f"📊 Creating indexes for dialect: {dialect_name}")
+        except Exception as e:
+            print(f"⚠️  Cannot determine database dialect: {str(e)}")
+            print("📊 Assuming SQLite for index creation")
+            dialect_name = 'sqlite'
+
+        # Test if we can actually connect to the database
+        try:
+            with db.engine.connect() as test_connection:
+                test_connection.execute(text("SELECT 1"))
+                print("✅ Database connection test successful")
+        except Exception as conn_e:
+            print(f"❌ Cannot connect to database for index creation: {str(conn_e)}")
+            return
+
+        # Define indexes based on database type
+        if dialect_name == 'mysql':
+            # MySQL-specific index syntax
+            indexes = [
+                "CREATE INDEX idx_orders_tracking_number ON orders(tracking_number)",
+                "CREATE INDEX idx_orders_status ON orders(status)",
+                "CREATE INDEX idx_orders_customer_phone ON orders(customer_phone)",
+                "CREATE INDEX idx_orders_scanned_at ON orders(scanned_at)",
+                "CREATE INDEX idx_maintenance_history_order_id ON maintenance_history(order_id)",
+                "CREATE INDEX idx_maintenance_history_action ON maintenance_history(action)",
+                "CREATE INDEX idx_maintenance_history_timestamp ON maintenance_history(timestamp)",
+                "CREATE INDEX idx_proof_images_order_id ON proof_images(order_id)",
+                # Inventory and service actions
+                "CREATE INDEX idx_products_sku ON products(sku)",
+                "CREATE INDEX idx_parts_part_sku ON parts(part_sku)",
+                "CREATE INDEX idx_parts_product_id ON parts(product_id)",
+                "CREATE INDEX idx_service_actions_status ON service_actions(status)",
+                "CREATE INDEX idx_service_actions_phone ON service_actions(customer_phone)",
+                "CREATE INDEX idx_service_actions_original_tracking ON service_actions(original_tracking_number)",
+                # Stock Movement Indexes (NEW)
+                "CREATE INDEX idx_stock_movement_item ON stock_movements(item_type, item_id)",
+                "CREATE INDEX idx_stock_movement_type ON stock_movements(movement_type, created_at)",
+                "CREATE INDEX idx_stock_movement_order ON stock_movements(order_id)",
+                "CREATE INDEX idx_stock_movement_service ON stock_movements(service_action_id)",
+                # Service Action Item Indexes (NEW)
+                "CREATE INDEX idx_service_action_item_service ON service_action_items(service_action_id)",
+                "CREATE INDEX idx_service_action_item_type ON service_action_items(item_type, item_id)"
+            ]
+        else:
+            # SQLite and other databases - use IF NOT EXISTS
+            indexes = [
+                "CREATE INDEX IF NOT EXISTS idx_orders_tracking_number ON orders(tracking_number)",
+                "CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)",
+                "CREATE INDEX IF NOT EXISTS idx_orders_customer_phone ON orders(customer_phone)",
+                "CREATE INDEX IF NOT EXISTS idx_orders_scanned_at ON orders(scanned_at)",
+                "CREATE INDEX IF NOT EXISTS idx_maintenance_history_order_id ON maintenance_history(order_id)",
+                "CREATE INDEX IF NOT EXISTS idx_maintenance_history_action ON maintenance_history(action)",
+                "CREATE INDEX IF NOT EXISTS idx_maintenance_history_timestamp ON maintenance_history(timestamp)",
+                "CREATE INDEX IF NOT EXISTS idx_proof_images_order_id ON proof_images(order_id)",
+                # Inventory and service actions
+                "CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku)",
+                "CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)",
+                "CREATE INDEX IF NOT EXISTS idx_parts_part_sku ON parts(part_sku)",
+                "CREATE INDEX IF NOT EXISTS idx_parts_product_id ON parts(product_id)",
+                "CREATE INDEX IF NOT EXISTS idx_parts_part_type ON parts(part_type)",
+                "CREATE INDEX IF NOT EXISTS idx_service_actions_status ON service_actions(status)",
+                "CREATE INDEX IF NOT EXISTS idx_service_actions_phone ON service_actions(customer_phone)",
+                "CREATE INDEX IF NOT EXISTS idx_service_actions_original_tracking ON service_actions(original_tracking_number)",
+                "CREATE INDEX IF NOT EXISTS idx_service_actions_action_type ON service_actions(action_type)",
+                # Stock Movement Indexes (NEW)
+                "CREATE INDEX IF NOT EXISTS idx_stock_movement_item ON stock_movements(item_type, item_id)",
+                "CREATE INDEX IF NOT EXISTS idx_stock_movement_type ON stock_movements(movement_type, created_at)",
+                "CREATE INDEX IF NOT EXISTS idx_stock_movement_order ON stock_movements(order_id)",
+                "CREATE INDEX IF NOT EXISTS idx_stock_movement_service ON stock_movements(service_action_id)",
+                # Service Action Item Indexes (NEW)
+                "CREATE INDEX IF NOT EXISTS idx_service_action_item_service ON service_action_items(service_action_id)",
+                "CREATE INDEX IF NOT EXISTS idx_service_action_item_type ON service_action_items(item_type, item_id)"
+            ]
+
+        created_count = 0
         for index_sql in indexes:
             try:
                 with db.engine.connect() as connection:
                     connection.execute(text(index_sql))
                     connection.commit()
+                    created_count += 1
             except Exception as e:
                 print(f"⚠️  Warning creating index: {str(e)}")
-        
-        print("✅ Indexes created successfully")
-        
+
+        print(f"✅ {created_count} indexes processed successfully")
+
     except Exception as e:
         print(f"❌ Error creating indexes: {str(e)}")
 
@@ -1156,6 +1210,10 @@ def auto_initialize_database():
     if not mysql_available:
         # Use SQLite for development
         print("📝 Using SQLite for development (MySQL not available)")
+        # Still need to create tables for SQLite
+        if not create_tables():
+            print("❌ Failed to create tables for SQLite")
+            return False
         return True  # Continue with SQLite
     
     # Step 2: Create tables

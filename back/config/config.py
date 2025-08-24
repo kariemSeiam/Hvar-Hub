@@ -38,24 +38,27 @@ class DevelopmentConfig(Config):
     DEVELOPMENT = True
     
     # Try MySQL first, fallback to SQLite
-    try:
-        import pymysql
-        # Test MySQL connection
-        pymysql.connect(
-            host=Config.MYSQL_HOST,
-            port=int(Config.MYSQL_PORT),
-            user=Config.MYSQL_USER,
-            password=Config.MYSQL_PASSWORD,
-            charset='utf8mb4'
-        )
-        # MySQL is available
-        SQLALCHEMY_DATABASE_URI = (
-            f"mysql+pymysql://{Config.MYSQL_USER}:{Config.MYSQL_PASSWORD}@"
-            f"{Config.MYSQL_HOST}:{Config.MYSQL_PORT}/{Config.MYSQL_DATABASE}?charset=utf8mb4"
-        )
-    except Exception:
-        # MySQL not available, use SQLite
-        SQLALCHEMY_DATABASE_URI = 'sqlite:///hvar_hub.db'
+    def __init__(self):
+        try:
+            import pymysql
+            # Test MySQL connection
+            pymysql.connect(
+                host=self.MYSQL_HOST,
+                port=int(self.MYSQL_PORT),
+                user=self.MYSQL_USER,
+                password=self.MYSQL_PASSWORD,
+                charset='utf8mb4'
+            )
+            # MySQL is available
+            self.SQLALCHEMY_DATABASE_URI = (
+                f"mysql+pymysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}@"
+                f"{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}?charset=utf8mb4"
+            )
+            print("✅ MySQL connection successful, using MySQL database")
+        except Exception as e:
+            # MySQL not available, use SQLite
+            self.SQLALCHEMY_DATABASE_URI = 'sqlite:///hvar_hub.db'
+            print(f"⚠️  MySQL not available ({str(e)}), falling back to SQLite")
 
 class ProductionConfig(Config):
     """Production configuration"""

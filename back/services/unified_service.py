@@ -96,7 +96,7 @@ class UnifiedService:
                     )
                     db.session.add(service_item)
                 
-                db.session.flush()  # Get IDs
+                db.session.commit()  # Commit the transaction
 
             return True, service_action, None
         except Exception as e:
@@ -520,14 +520,14 @@ class UnifiedService:
                 notes=f'تم إرسال العناصر للعميل - رقم التتبع: {new_tracking_number}',
                 action_data={
                     'new_tracking_number': new_tracking_number,
-                    'items_sent': stock_data.get('items_sent', []),
-                    'total_items': stock_data.get('total_items', 0)
+                    'items_sent': stock_data.get('items_sent', []) if stock_data else [],
+                    'total_items': stock_data.get('total_items', 0) if stock_data else 0
                 },
                 user_name=user_name,
             )
             db.session.add(history)
             
-            db.session.flush()
+            db.session.commit()
             
             return True, {
                 'service_action_id': service_action_id,
@@ -586,7 +586,7 @@ class UnifiedService:
             )
             db.session.add(history)
             
-            db.session.flush()
+            db.session.commit()
             
             return True, {
                 'service_action_id': service_action_id,
@@ -645,14 +645,14 @@ class UnifiedService:
                 to_status=ServiceActionStatus.PENDING_RECEIVE,
                 notes=f'تم استلام العناصر المستبدلة من العميل',
                 action_data={
-                    'items_received': stock_data.get('items_received', []),
-                    'total_items': stock_data.get('total_items', 0)
+                    'items_received': stock_data.get('items_received', []) if stock_data else [],
+                    'total_items': stock_data.get('total_items', 0) if stock_data else 0
                 },
                 user_name=user_name,
             )
             db.session.add(history)
             
-            db.session.flush()
+            db.session.commit()
             
             return True, {
                 'service_action_id': service_action_id,
@@ -710,15 +710,15 @@ class UnifiedService:
                 to_status=ServiceActionStatus.PENDING_RECEIVE,
                 notes=f'تم استلام العناصر المرتجعة من العميل - في انتظار معالجة الاسترداد',
                 action_data={
-                    'items_returned': stock_data.get('items_returned', []),
-                    'total_items': stock_data.get('total_items', 0),
+                    'items_returned': stock_data.get('items_returned', []) if stock_data else [],
+                    'total_items': stock_data.get('total_items', 0) if stock_data else 0,
                     'refund_amount': float(service_action.refund_amount) if service_action.refund_amount else 0
                 },
                 user_name=user_name,
             )
             db.session.add(history)
             
-            db.session.flush()
+            db.session.commit()
             
             return True, {
                 'service_action_id': service_action_id,
@@ -784,7 +784,7 @@ class UnifiedService:
             )
             db.session.add(history)
             
-            db.session.flush()
+            db.session.commit()
             
             return True, {
                 'service_action_id': service_action_id,
